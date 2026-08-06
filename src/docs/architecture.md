@@ -1,122 +1,135 @@
-Architecture
-Overview
+# Architecture
 
-Next Foundation is a modular frontend framework built with Next.js.
+## Overview
 
-Its purpose is to provide a reusable foundation for building websites and web applications while keeping the frontend independent from the CMS.
+Next Foundation is built around a small set of core concepts that work together to render a page from a CMS response.
 
-The CMS is responsible for managing content.
+```
+CMS / API
+    │
+    ▼
+PageDefinition
+    │
+    ▼
+PageRenderer
+    │
+    ▼
+ModuleRegistry
+    │
+    ▼
+Module
+    │
+    ▼
+React Component
+```
 
-The frontend is responsible for rendering that content.
+The goal is to keep every responsibility isolated.
 
-Core Principles
-Modular
+- **Foundation** manages the application lifecycle.
+- **Registry** stores every available module.
+- **Renderer** builds the page.
+- **Modules** are independent and reusable.
+- **CMS** only provides data.
 
-Every feature is implemented as an independent module.
+---
 
-A module can provide:
+## Folder Structure
 
-React components
-CMS integration
-Services
-Hooks
-Types
-Utilities
-
-Modules should be reusable and should not depend on other modules whenever possible.
-
-Headless
-
-The frontend never depends directly on the CMS implementation.
-
-The CMS only provides structured data.
-
-The frontend decides how to render it.
-
-Renderer Driven
-
-Pages are not hardcoded.
-
-A page is described by a JSON object returned by the CMS.
-
-The Renderer transforms that JSON into a React component tree.
-
-Component Driven
-
-UI components are independent from business logic.
-
-Reusable components live inside components.
-
-Feature-specific components live inside their own module.
-
-Extensible
-
-The framework should allow new modules to be added without changing the Core.
-
-The only requirement is that every module follows the same contract.
-
-Architecture
-Request
+```
+src/
+├── app/
+├── core/
+│   ├── foundation/
+│   ├── modules/
+│   ├── registry/
+│   ├── renderer/
+│   └── setup/
 │
-▼
-Next.js Router
+├── modules/
+│   ├── hero/
+│   ├── navigation/
+│   └── footer/
 │
-▼
-Page Renderer
+├── mocks/
 │
-▼
-Page Definition
+├── types/
 │
-▼
-Module Registry
-│
-▼
-React Components
-│
-▼
-HTML
-Responsibilities
-Next.js
-Routing
-Rendering
-Server Components
-API Routes
-Renderer
-Resolve the requested page
-Load the page definition
-Resolve modules
-Render the page
-Registry
+└── utils/
+```
 
-The Registry maps a module alias to its implementation.
+---
 
-Example:
+## Foundation
 
-hero → Hero Module
+The Foundation is the application's entry point.
 
-navigation → Navigation Module
+It creates and configures all framework services.
 
-footer → Footer Module
+Current responsibilities:
 
-Modules
+- Create the Module Registry.
+- Register all available modules.
+- Provide shared services to the renderer.
 
-Each module is responsible for a single feature.
+Future responsibilities:
+
+- Theme management
+- API Client
+- Adapters
+- Internationalization
+- Plugins
+- Global configuration
+
+---
+
+## Registry
+
+The Registry stores every module available in the application.
+
+Each module is registered once during startup.
+
+The renderer never imports modules directly.
+
+Instead, it asks the registry for the module matching a given alias.
+
+---
+
+## Renderer
+
+The renderer receives a `PageDefinition`.
+
+Its responsibility is only to translate that definition into React components.
+
+It does not know where the data comes from.
+
+---
+
+## Modules
+
+Every feature is implemented as an isolated module.
 
 Examples:
 
-Hero
-Header
-Navigation
-Footer
-Forms
-Components
+- Hero
+- CTA
+- Navigation
+- Footer
+- Services
+- Testimonials
 
-Reusable UI components.
+Modules can be developed independently and reused across multiple projects.
 
-Examples:
+---
 
-Button
-Input
-Modal
+## CMS
 
-These components do not know anything about the CMS.
+The CMS is responsible only for content.
+
+It returns a page definition containing:
+
+- page metadata
+- navigation
+- main modules
+- footer
+
+The frontend decides how each module is rendered.

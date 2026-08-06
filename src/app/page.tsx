@@ -1,10 +1,9 @@
 import { createFoundation } from '@/core/foundation';
 import { PageRenderer } from '@/core/renderer';
 
-import homePage from '@/mocks/pages/home';
-
-export default function HomePage() {
+export default async function HomePage() {
   const foundation = createFoundation();
+  const page = await foundation.page.getPage('/');
 
-  return <PageRenderer page={homePage} registry={foundation.modules} />;
+  return <PageRenderer page={page} registry={foundation.modules} />;
 }

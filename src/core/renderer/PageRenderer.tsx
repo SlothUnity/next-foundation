@@ -3,6 +3,7 @@ import type { PageDefinition } from '@/types';
 import type { ModuleRegistry } from '@/core/registry';
 
 import { renderModule } from './renderModule';
+import { Fragment } from 'react/jsx-runtime';
 
 interface PageRendererProps {
   page: PageDefinition;
@@ -20,12 +21,12 @@ export function PageRenderer({ page, registry }: PageRendererProps) {
 
       <main>
         {page.main.map((module, index) => (
-          <div key={`${module.alias}-${index}`}>
+          <Fragment key={`${module.alias}-${index}`}>
             {renderModule({
               module,
               registry,
             })}
-          </div>
+          </Fragment>
         ))}
       </main>
 
