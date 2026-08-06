@@ -1,0 +1,1 @@
+export { heroModule } from './hero';

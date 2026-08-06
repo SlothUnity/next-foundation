@@ -1,4 +1,4 @@
-import type { AppConfig } from '@/schemas';
+import type { AppConfig } from '@/types';
 
 export const appConfig: AppConfig = {
   name: 'Next Foundation',
