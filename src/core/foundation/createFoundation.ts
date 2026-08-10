@@ -2,7 +2,7 @@ import { ModuleRegistry } from '@/core/registry';
 import { registerModules } from '@/core/setup';
 import { MockPageSource } from '@/core/pages/MockPageSource';
 
-import type { Foundation } from './Foundation';
+import type { Foundation } from '@/types';
 
 export function createFoundation(): Foundation {
   const foundation: Foundation = {

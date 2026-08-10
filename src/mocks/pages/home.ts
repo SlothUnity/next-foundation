@@ -2,7 +2,7 @@ import type { PageDefinition } from '@/types';
 
 const homePage: PageDefinition = {
   meta: {
-    locale: 'pt-pt',
+    locale: 'pt-PT',
   },
   main: [
     {

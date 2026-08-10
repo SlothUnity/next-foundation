@@ -1,3 +1,4 @@
+export * from './definitions/Foundation';
 export * from './definitions/Meta';
 export * from './definitions/Module';
 export * from './definitions/ModuleSchema';

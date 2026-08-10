@@ -1,2 +1,2 @@
-export * from './Foundation';
+export * from './foundation';
 export * from './createFoundation';
