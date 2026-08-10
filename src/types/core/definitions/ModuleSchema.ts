@@ -1,3 +1,5 @@
-export interface ModuleSchema<TData = unknown> {
+import type { ModuleProps } from '@/types';
+
+export interface ModuleSchema<TData extends ModuleProps = ModuleProps> {
   parse(data: unknown): TData;
 }

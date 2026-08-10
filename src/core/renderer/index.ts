@@ -1,2 +1,2 @@
 export * from './PageRenderer';
-export * from './renderModule';
+export * from './ModuleRenderer';
