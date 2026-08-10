@@ -1,6 +1,5 @@
-import type { ModuleProps } from '@/types';
+import { z } from 'zod';
 
-export interface HeroProps extends ModuleProps {
-  title: string;
-  subtitle?: string;
-}
+import { heroSchema } from '../Hero.schema';
+
+export type HeroProps = z.infer<typeof heroSchema>;
