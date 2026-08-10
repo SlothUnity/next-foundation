@@ -1,9 +1,10 @@
-import type { ModuleComponent } from '../components/Module';
-import { ModuleSchema } from './ModuleSchema';
+import type { ModuleProps, RuntimeModuleComponent } from '../components/Module';
 
-export interface Module {
+import type { ModuleSchema } from './ModuleSchema';
+
+export interface Module<TProps extends ModuleProps = ModuleProps> {
   alias: string;
   name: string;
-  component: ModuleComponent;
-  schema?: ModuleSchema;
+  component: RuntimeModuleComponent;
+  schema?: ModuleSchema<TProps>;
 }

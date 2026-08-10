@@ -1,5 +1,5 @@
-import type { Module } from '@/types';
+import type { Module, ModuleProps } from '@/types';
 
-export function defineModule(module: Module): Module {
+export function defineModule<TProps extends ModuleProps>(module: Module<TProps>): Module<TProps> {
   return module;
 }

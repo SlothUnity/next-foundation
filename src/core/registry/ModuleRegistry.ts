@@ -1,9 +1,9 @@
 import { Registry } from './Registry';
 
-import type { Module } from '@/types';
+import type { Module, ModuleProps } from '@/types';
 
 export class ModuleRegistry extends Registry<string, Module> {
-  register(module: Module): void {
+  register<TProps extends ModuleProps>(module: Module<TProps>): void {
     this.add(module.alias, module);
   }
 
