@@ -1,160 +1,104 @@
-Page Definition API
-Overview
+# API
 
-The frontend never consumes CMS-specific responses.
+## Objetivo
 
-Every page must be transformed into a common structure called Page Definition.
+Este documento descreve os contratos públicos da Foundation e as fronteiras entre a aplicação, a fonte de páginas e o sistema de módulos.
 
-The Renderer only understands this structure.
+## PageSource
 
-This makes the frontend independent from the CMS implementation.
+`PageSource` é a abstração responsável por obter uma página.
 
-Page Definition
-PageDefinition
-│
-├── meta
-├── page
-├── globals
-└── regions
-Meta
-
-Contains information required to render the current request.
-
-Examples:
-
-locale
-seo
-robots
-canonical
-status
-
-Example:
-
-{
-"locale": "en",
-"status": "published",
-"seo": {}
+```ts
+export abstract class PageSource {
+  abstract getPage(slug: string, locale?: string): Promise<PageDefinition | undefined>;
 }
-Page
+```
 
-Contains information about the current page.
+### Regras
 
-Examples:
+- O `PageSource` não conhece Next.js.
+- O `PageSource` não chama `notFound()`.
+- O `PageSource` não conhece o router.
+- A fonte pode ser um mock, Payload ou outro CMS.
+- Uma página inexistente é representada por `undefined`.
 
-id
-title
-slug
-template
+## PageDefinition
 
-Example:
+O contrato interno de página é fixo:
 
-{
-"id": "home",
-"title": "Home",
-"slug": "/"
+```ts
+export interface PageDefinition {
+  meta: Meta;
+  navigation?: ModuleInstance;
+  main: ModuleInstance[];
+  footer?: ModuleInstance;
 }
-Globals
+```
 
-Contains global data shared across the application.
+Não usamos `regions`. O CMS deve ser adaptado para produzir este formato.
 
-Examples:
+## ModuleInstance
 
-Theme
-Header
-Navigation
-Footer
-Settings
-
-Example:
-
-{
-"theme": {},
-"header": {},
-"navigation": {},
-"footer": {}
+```ts
+export interface ModuleInstance<TData extends ModuleProps = ModuleProps> {
+  id: string;
+  alias: string;
+  data: TData;
 }
-Regions
+```
 
-A page is composed of one or more regions.
+`alias` identifica o módulo no registry e `data` contém os dados específicos desse módulo.
 
-Examples:
+## Module
 
-main
-sidebar
-footer
-modal
-
-Each region contains one or more modules.
-
-Example:
-
-{
-"main": [
-{
-"id": "hero-home",
-"alias": "hero",
-"data": {}
-},
-{
-"id": "services-home",
-"alias": "services",
-"data": {}
+```ts
+export interface Module<TProps extends ModuleProps = ModuleProps> {
+  alias: string;
+  name: string;
+  component: ModuleComponent<TProps>;
+  schema?: ModuleSchema<TProps>;
 }
-]
+```
+
+O módulo pode declarar um schema para validar os dados antes da renderização.
+
+## Foundation
+
+A Foundation agrega os serviços usados pela aplicação:
+
+```ts
+export interface Foundation {
+  modules: ModuleRegistry;
+  page: PageSource;
 }
-Module Definition
+```
 
-Every renderable module follows the same structure.
+A aplicação obtém uma `Foundation` e não precisa conhecer a implementação concreta do CMS.
 
-{
-"id": "hero-home",
-"alias": "hero",
-"data": {}
+## 404
+
+A responsabilidade é da camada da aplicação:
+
+```ts
+const page = await foundation.page.getPage(slug, locale);
+
+if (!page) {
+  notFound();
 }
-id
+```
 
-Unique identifier of the module instance.
+O core devolve `undefined`; o Next.js decide como apresentar o 404.
 
-Useful for:
+## Fonte externa
 
-analytics
-anchors
-tracking
-animations
-alias
+A implementação futura do Payload deverá transformar os dados externos em `PageDefinition`.
 
-Unique module identifier.
+```text
+Payload
+  ↓
+PayloadPageSource
+  ↓
+PageDefinition | undefined
+```
 
-The Renderer uses the alias to resolve the correct module.
-
-Example:
-
-hero
-│
-▼
-Module Registry
-│
-▼
-Hero Module
-│
-▼
-Hero Component
-data
-
-Contains all information required by the module.
-
-The Renderer never reads this object.
-
-It simply forwards it to the module.
-
-Renderer
-
-The Renderer is responsible for:
-
-Receiving a Page Definition.
-Rendering globals.
-Rendering every region.
-Resolving each module using the Module Registry.
-Rendering the final React tree.
-
-The Renderer never depends on the CMS implementation.
+A Foundation não deve depender da estrutura interna do Payload.

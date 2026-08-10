@@ -1,345 +1,164 @@
 # TODO
 
-## Current Architecture
+## Estado atual
 
-- [x] Foundation criada
-- [x] ModuleRegistry criado
-- [x] Registry genérico criado
-- [x] Module definitions com `alias`, `name` e `component`
-- [x] Module instances com `id`, `alias` e `data`
-- [x] Module component adapter criado
-- [x] PageDefinition criada
-- [x] PageSource criada e integrada na Foundation
-- [x] Mock PageSource implementada
-- [x] PageRenderer criado
-- [x] ModuleRenderer criado
-- [x] Navigation separado do `main`
-- [x] Footer separado do `main`
-- [x] `module.id` utilizado como React key
-- [x] Registry resolve módulos através do `alias`
-- [x] Módulos podem ser repetidos na mesma página
-- [x] Schema opcional adicionado ao contrato `Module`
-- [x] `ModuleSchema` criado sem acoplar o Core ao Zod
-- [x] Primeiro schema implementado no Hero
-- [x] `HeroProps` derivado do schema
-- [x] Dados do CMS validados antes do render
-- [x] `ModuleValidationError` criado
-- [x] `ModuleRenderError` criado
-- [x] Fallback para módulos inválidos/desconhecidos
-- [x] Erros detalhados em development
-- [x] Módulos inválidos não interrompem a página em production
-- [x] Convenção de nomes dos ficheiros uniformizada
+### Foundation
 
----
+- [x] `Foundation`
+- [x] `createFoundation`
+- [x] `ModuleRegistry`
+- [x] `PageSource`
+- [x] `MockPageSource`
 
-# Next Steps
+### Modules
 
-## 1. Type Safety
+- [x] `ModuleProps`
+- [x] `ModuleComponent`
+- [x] `Module`
+- [x] `ModuleSchema`
+- [x] `defineModule`
+- [x] `createModuleComponent`
+- [x] schemas de módulos
+- [x] registo automático dos módulos
 
-### Module Props
+### Rendering
 
-- [ ] Rever `ModuleProps = Record<string, unknown>`
-- [ ] Remover a index signature das props específicas dos módulos
-- [ ] Tornar `ModuleComponent` genérico
-- [ ] Manter o type erasure apenas no boundary do Registry/Renderer
-- [ ] Garantir que props inválidas como `subtitel` são detetadas pelo TypeScript
-- [ ] Garantir que módulos tipados continuam compatíveis com o Registry
+- [x] `PageRenderer`
+- [x] `ModuleRenderer`
+- [x] `ModuleErrorFallback`
+- [x] validação runtime com schema
+- [x] tratamento dev/prod
+- [x] testes do renderer
 
-### Module Definition
+### Pages
 
-- [ ] Rever os generics de `Module`
-- [ ] Associar `schema`, `component` e `data` através do mesmo tipo
-- [ ] Evitar casts `unknown as ...`
+- [x] `PageDefinition`
+- [x] `Meta`
+- [x] `ModuleInstance`
+- [x] `PageSource`
+- [x] `MockPageSource`
+- [x] página inexistente representada por `undefined`
+- [x] `notFound()` tratado na camada Next.js
 
----
+### Testing
 
-## 2. PageSource / CMS Boundary
+- [x] `Registry`
+- [x] `ModuleRegistry`
+- [x] `ModuleRenderer`
+- [x] `PageRenderer`
+- [x] `ModuleErrorFallback`
+- [x] `MockPageSource`
+- [x] isolamento entre testes
+- [x] typecheck verde
+- [x] suite de testes verde
 
-- [x] Criar `PageSource`
-- [x] Expor `PageSource` através da Foundation
-- [x] Criar implementação Mock
-- [ ] Definir contrato final da resposta da API
-- [ ] Separar claramente API DTOs de `PageDefinition`
-- [ ] Criar adapter entre resposta do CMS e `PageDefinition`
-- [ ] Preparar implementação futura para Payload CMS
-- [ ] Definir tratamento de páginas inexistentes
-- [ ] Definir tratamento de erros da API
+## Próximos passos
 
-### API Response
+### 1. Payload
 
-A resposta do CMS deverá conseguir fornecer:
+- [ ] Pesquisar a arquitetura atual do Payload.
+- [ ] Integrar Payload no projeto.
+- [ ] Criar collection `pages`.
+- [ ] Definir campos de página.
+- [ ] Definir como o Payload representa `navigation`, `main` e `footer`.
+- [ ] Definir os blocos/módulos disponíveis.
+- [ ] Configurar localization.
+- [ ] Configurar publicação/drafts conforme necessário.
 
-- [ ] Page metadata
-- [ ] SEO
-- [ ] Locale
-- [ ] Theme, se necessário
-- [ ] Navigation
-- [ ] Main modules
-- [ ] Footer
-- [ ] Module instances
-- [ ] Module `id`
-- [ ] Module `alias`
-- [ ] Module `data`
+### 2. Adapter Payload
 
----
+Criar uma implementação de:
 
-## 3. Renderer
+```ts
+class PayloadPageSource extends PageSource
+```
 
-- [x] Resolver módulo através do alias
-- [x] Validar `data` através do schema
-- [x] Renderizar componente correspondente
-- [x] Suportar módulos repetidos
-- [x] Navigation fora do `main`
-- [x] Footer fora do `main`
-- [x] Fallback de módulos inválidos
-- [ ] Avaliar suporte a carregamento lazy/dynamic dos módulos
-- [ ] Evitar carregar todos os módulos em todas as páginas
-- [ ] Definir estratégia de code splitting
+Responsabilidades:
 
----
+- receber `slug`;
+- receber `locale`;
+- consultar Payload;
+- transformar o resultado externo em `PageDefinition`;
+- devolver `undefined` quando a página não existir.
 
-## 4. Module Registry
+Não deve:
 
-- [x] Registry genérico
-- [x] ModuleRegistry
-- [x] Registo por alias
-- [x] Deteção de aliases duplicados
-- [x] Lookup por alias
-- [ ] Substituir `Object.values(modules)` por lista explícita e tipada
-- [ ] Garantir que apenas `Module` pode ser registado
-- [ ] Avaliar estratégia de lazy module loading
+- chamar `notFound()`;
+- conhecer `PageRenderer`;
+- conhecer o router;
+- alterar o contrato `PageDefinition`.
 
----
+### 3. Transformação de dados
 
-## 5. Error Handling
+- [ ] Definir o tipo dos documentos externos do Payload.
+- [ ] Criar transformação Payload → `PageDefinition`.
+- [ ] Testar a transformação isoladamente.
+- [ ] Testar páginas sem navigation.
+- [ ] Testar páginas sem footer.
+- [ ] Testar `main` vazio.
+- [ ] Testar módulos diferentes dentro de `main`.
+- [ ] Testar alias de módulos desconhecidos.
 
-- [x] `ModuleRenderError`
-- [x] `ModuleValidationError`
-- [x] Development com erros explícitos
-- [x] Production com fallback
-- [ ] Criar sistema de logging da Foundation
-- [ ] Não utilizar `console.error` diretamente no Core
-- [ ] Integrar logging com serviço externo no futuro
-- [ ] Criar `error.tsx`
-- [ ] Criar `not-found.tsx`
-- [ ] Definir tratamento de erros do PageSource
+### 4. Routing
 
----
+- [x] Tratar `undefined` com `notFound()` na aplicação.
+- [ ] Criar rota dinâmica para páginas vindas do CMS.
+- [ ] Extrair slug da rota.
+- [ ] Integrar locale da rota/request.
+- [ ] Criar `not-found.tsx` quando a camada visual do 404 for definida.
 
-## 6. SEO / Metadata
+### 5. Qualidade
 
-- [ ] Ligar `PageDefinition.meta` ao Next.js Metadata API
-- [ ] Implementar `generateMetadata`
-- [ ] Definir `<html lang>`
-- [ ] Suportar title
-- [ ] Suportar description
-- [ ] Suportar canonical
-- [ ] Suportar Open Graph
-- [ ] Suportar robots
-- [ ] Definir estratégia para metadata por locale
-
----
-
-## 7. Routing
-
-- [ ] Definir estrutura final do App Router
-- [ ] Avaliar `app/[locale]/[[...slug]]/page.tsx`
-- [ ] Resolver locale através do routing
-- [ ] Resolver slug através do PageSource
-- [ ] Implementar `generateStaticParams`
-- [ ] Implementar páginas inexistentes com `notFound()`
-- [ ] Testar home
-- [ ] Testar páginas internas
-- [ ] Testar páginas multilingues
-
----
-
-## 8. Testes
-
-### Registry
-
-- [ ] Registar módulo
-- [ ] Obter módulo por alias
-- [ ] Verificar existência
-- [ ] Remover módulo
-- [ ] Limpar registry
-- [ ] Alias duplicado deve lançar erro
-
-### ModuleRenderer
-
-- [ ] Renderizar módulo através do alias
-- [ ] Renderizar módulo com `data`
-- [ ] Renderizar módulo repetido
-- [ ] Alias desconhecido em development
-- [ ] Alias desconhecido em production
-- [ ] Schema válido
-- [ ] Schema inválido
-- [ ] Fallback em production
-
-### PageRenderer
-
-- [ ] Renderizar Navigation
-- [ ] Renderizar todos os módulos do Main
-- [ ] Renderizar Footer
-- [ ] Respeitar `module.id` como key
-- [ ] Renderizar múltiplas instâncias do mesmo alias
-
-### PageSource
-
-- [ ] Obter página existente
-- [ ] Página inexistente
-- [ ] Erro da source
-- [ ] Locale
-
----
-
-## 9. CI / Quality
-
-- [ ] Criar GitHub Actions
 - [ ] `pnpm typecheck`
 - [ ] `pnpm lint`
 - [ ] `pnpm format:check`
-- [ ] `pnpm build`
-- [ ] Executar testes no CI
-- [ ] Garantir que PRs não passam com erros de typecheck
-- [ ] Garantir que PRs não passam com testes falhados
+- [ ] `pnpm exec vitest run`
+- [ ] manter todos verdes antes de avançar para a próxima alteração estrutural.
 
----
+## Decisões arquiteturais fechadas
 
-## 10. TypeScript / Tooling
+### PageDefinition não usa `regions`
 
-- [ ] Rever `target`
-- [ ] Avaliar `ES2022`
-- [ ] Remover `allowJs` se não necessário
-- [ ] Ativar `noUncheckedIndexedAccess`
-- [ ] Ativar `noImplicitOverride`
-- [ ] Ativar `verbatimModuleSyntax`
-- [ ] Rever alias `@types/*`
-- [ ] Avaliar `eslint-plugin-simple-import-sort`
-- [ ] Avaliar regras type-checked do `@typescript-eslint`
-
----
-
-# Architecture Decisions
-
-## Module Identity
-
-Cada módulo possui:
+Mantemos:
 
 ```ts
-{
-  id: string;
-  alias: string;
-  data: ...
+export interface PageDefinition {
+  meta: Meta;
+  navigation?: ModuleInstance;
+  main: ModuleInstance[];
+  footer?: ModuleInstance;
 }
 ```
 
-`alias` identifica a definição do módulo.
+O CMS deve adaptar os seus dados para este contrato.
 
-`id` identifica a instância do módulo dentro da página.
+### O core não conhece Payload
 
-O mesmo `alias` pode aparecer várias vezes na mesma página.
+Payload será uma implementação de `PageSource`.
 
----
+### O core não conhece Next.js
 
-## Module Resolution
+`notFound()` pertence à aplicação.
 
-O Renderer não importa módulos diretamente.
+### O sistema não assume módulos específicos
 
-O fluxo é:
+Não existe dependência obrigatória de `hero`, `navigation`, `gallery` ou qualquer outro módulo concreto.
 
-```text
-ModuleInstance
-      │
-      ▼
-ModuleRegistry
-      │
-      │ alias
-      ▼
-Module Definition
-      │
-      ├── schema
-      └── component
-```
+### Página inexistente não é erro do renderer
 
----
-
-## Data Validation
-
-Os dados provenientes do CMS são considerados não confiáveis.
-
-O fluxo é:
-
-```text
-CMS
- │
- ▼
-ModuleInstance.data
- │
- ▼
-ModuleSchema.parse()
- │
- ├── válido ──► ModuleComponent
- │
- └── inválido
-       ├── development → error
-       └── production  → fallback
-```
-
----
-
-## Schema Dependency
-
-O Core não depende diretamente do Zod.
-
-O Core conhece apenas:
+`PageSource` devolve:
 
 ```ts
-interface ModuleSchema<TData> {
-  parse(data: unknown): TData;
-}
+undefined;
 ```
 
-O módulo pode utilizar Zod como implementação.
+e a aplicação decide apresentar 404.
 
-No futuro poderá ser substituído por outra biblioteca compatível.
+## Comandos de validação
 
----
-
-# Current Sprint
-
-## Sprint: CMS-driven rendering foundation
-
-### Completed
-
-- Foundation
-- Registry
-- ModuleRegistry
-- Module definitions
-- Module instances
-- PageSource
-- Mock PageSource
-- PageRenderer
-- ModuleRenderer
-- Module schema contract
-- Zod integration
-- Hero schema
-- Runtime validation
-- Module errors
-- Production fallback
-- Naming convention
-
-### Next
-
-**Primeiro objetivo: corrigir a type safety de `ModuleProps` e `ModuleComponent` sem voltar a introduzir casts inseguros.**
-
-Depois:
-
-1. Melhorar o contrato `Module`
-2. Criar testes do Registry/Renderer
-3. Criar CI
-4. Definir o contrato final da API/CMS
-5. Integrar SEO/metadata
-6. Implementar routing dinâmico
-7. Preparar Payload CMS
-8. Code splitting / dynamic modules
+```bash
+pnpm typecheck
+pnpm lint
+pnpm format:check
+pnpm exec vitest run
+```

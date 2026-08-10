@@ -1,124 +1,154 @@
 # Renderer
 
-## Overview
+## PageRenderer
 
-The renderer converts a `PageDefinition` into a React page.
+`PageRenderer` recebe uma `PageDefinition` e uma `Foundation`.
 
-It is completely independent from the CMS.
-
----
-
-## Rendering Flow
-
-```
-PageDefinition
-      │
-      ▼
-PageRenderer
-      │
-      ▼
-renderModule()
-      │
-      ▼
-ModuleRegistry
-      │
-      ▼
-Module Component
-```
-
----
-
-## Page Structure
-
-A page consists of three sections.
-
-```
-Navigation
-
-Main
- ├── Hero
- ├── Services
- ├── CTA
- └── Gallery
-
-Footer
-```
-
-Only the modules inside `main` are rendered as a collection.
-
-Navigation and Footer are rendered separately.
-
----
-
-## Module Resolution
-
-Each module instance contains an alias.
-
-Example:
-
-```json
-{
-  "alias": "hero",
-  "data": {
-    "title": "Next Foundation"
-  }
+```ts
+interface PageRendererProps {
+  page: PageDefinition;
+  foundation: Foundation;
 }
 ```
 
-The renderer asks the `ModuleRegistry` for the matching module.
+A responsabilidade do `PageRenderer` é apenas organizar as regiões fixas da página:
 
-If the alias is not registered, an error is thrown.
-
----
-
-# API
-
-## Current State
-
-The framework currently uses local mock data.
-
-```
-Mocks
-    │
-    ▼
-PageDefinition
-    │
-    ▼
-PageRenderer
+```text
+navigation?
+main[]
+footer?
 ```
 
----
+Não conhece módulos concretos.
 
-## Future API Flow
+## Estrutura
 
-The renderer will remain unchanged when a CMS is introduced.
+O renderer segue esta forma:
 
-Only the data source changes.
+```tsx
+<>
+  {page.navigation && <ModuleRenderer module={page.navigation} foundation={foundation} />}
 
+  <main>
+    {page.main.map((module) => (
+      <Fragment key={module.id}>
+        <ModuleRenderer module={module} foundation={foundation} />
+      </Fragment>
+    ))}
+  </main>
+
+  {page.footer && <ModuleRenderer module={page.footer} foundation={foundation} />}
+</>
 ```
-CMS
-    │
-    ▼
-API Client
-    │
-    ▼
-PageDefinition
-    │
-    ▼
-PageRenderer
+
+O `Fragment` não adiciona um wrapper DOM.
+
+A chave usa `module.id`, que pertence à instância da página.
+
+## ModuleRenderer
+
+`ModuleRenderer` resolve uma instância através do alias:
+
+```text
+ModuleInstance.alias
+        ↓
+ModuleRegistry.getByAlias()
+        ↓
+Module definition
 ```
 
-This separation keeps rendering independent from transport and storage.
+### Módulo não registado
 
----
+Em desenvolvimento:
 
-## Expected Response
+```text
+ModuleRenderError
+```
 
-The API should return a page definition containing:
+Em produção:
 
-- metadata
-- navigation
-- main modules
-- footer
+```text
+ModuleErrorFallback
+```
 
-The frontend is responsible for resolving module aliases and rendering the page.
+### Validação
+
+Se o módulo possuir schema:
+
+```ts
+data = definition.schema.parse(module.data);
+```
+
+Se a validação falhar:
+
+- desenvolvimento: lança `ModuleValidationError`;
+- produção: usa o comportamento de fallback definido pelo renderer.
+
+### Renderização
+
+Depois da resolução e validação:
+
+```tsx
+const Component = definition.component;
+
+return <Component {...data} />;
+```
+
+## ModuleErrorFallback
+
+O fallback é uma fronteira de apresentação de erros de módulo.
+
+Em desenvolvimento apresenta informação útil para diagnóstico.
+
+Em produção pode não apresentar conteúdo visível.
+
+Isto evita expor detalhes internos do sistema em produção.
+
+## Responsabilidades
+
+### PageRenderer
+
+Responsável por:
+
+- estrutura da página;
+- navigation opcional;
+- main;
+- footer opcional;
+- delegar cada módulo.
+
+Não é responsável por:
+
+- descobrir módulos;
+- validar schemas;
+- conhecer Payload;
+- conhecer módulos concretos.
+
+### ModuleRenderer
+
+Responsável por:
+
+- resolver alias;
+- validar dados;
+- renderizar o componente;
+- tratar erro/fallback.
+
+Não é responsável por:
+
+- obter páginas;
+- routing;
+- conhecer a estrutura do CMS.
+
+## Testes atuais
+
+O renderer tem cobertura para:
+
+- módulo registado com dados válidos;
+- dados inválidos em desenvolvimento;
+- alias desconhecido em desenvolvimento;
+- fallback de módulo desconhecido em produção;
+- navigation;
+- main;
+- footer;
+- ausência de navigation/footer.
+
+Os testes devem continuar independentes entre si.

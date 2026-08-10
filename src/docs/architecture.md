@@ -1,135 +1,166 @@
 # Architecture
 
-## Overview
+## Visão geral
 
-Next Foundation is built around a small set of core concepts that work together to render a page from a CMS response.
+O projeto separa aquisição de conteúdo, contrato interno, registry e renderização.
 
+```text
+Next.js App Router
+        │
+        ▼
+   Foundation
+   ┌────┴────┐
+   │         │
+ PageSource Modules
+   │         │
+   ▼         ▼
+ CMS/Mock  Registry
+   │         │
+   └────┬────┘
+        ▼
+ PageDefinition
+        │
+        ▼
+ PageRenderer
+        │
+        ▼
+ ModuleRenderer
+        │
+        ▼
+ React Module
 ```
-CMS / API
-    │
-    ▼
+
+## Princípios
+
+### 1. O CMS não define a arquitetura interna
+
+O CMS fornece dados externos.
+
+A Foundation define o contrato que o frontend utiliza.
+
+```text
+CMS document
+    ↓
+adapter
+    ↓
 PageDefinition
-    │
-    ▼
-PageRenderer
-    │
-    ▼
-ModuleRegistry
-    │
-    ▼
-Module
-    │
-    ▼
-React Component
 ```
 
-The goal is to keep every responsibility isolated.
+Isto permite trocar Payload por outra fonte sem alterar `PageRenderer` ou `ModuleRenderer`.
 
-- **Foundation** manages the application lifecycle.
-- **Registry** stores every available module.
-- **Renderer** builds the page.
-- **Modules** are independent and reusable.
-- **CMS** only provides data.
+### 2. O routing pertence à aplicação
 
----
+`PageSource` não sabe o que é Next.js.
 
-## Folder Structure
+Uma página inexistente retorna:
 
-```
-src/
-├── app/
-├── core/
-│   ├── foundation/
-│   ├── modules/
-│   ├── registry/
-│   ├── renderer/
-│   └── setup/
-│
-├── modules/
-│   ├── hero/
-│   ├── navigation/
-│   └── footer/
-│
-├── mocks/
-│
-├── types/
-│
-└── utils/
+```ts
+undefined;
 ```
 
----
+A aplicação trata isso:
+
+```ts
+if (!page) {
+  notFound();
+}
+```
+
+### 3. Módulos são descobertos pelo alias
+
+Uma `ModuleInstance` contém:
+
+```text
+id
+alias
+data
+```
+
+O renderer usa `alias` para consultar o `ModuleRegistry`.
+
+Não existe uma lista hardcoded de módulos no `PageRenderer`.
+
+### 4. Módulos são opcionais
+
+Uma página não precisa de ter Hero, Navigation ou Footer.
+
+O contrato suporta:
+
+```ts
+navigation?: ModuleInstance;
+main: ModuleInstance[];
+footer?: ModuleInstance;
+```
+
+O `main` pode conter zero ou vários módulos.
+
+### 5. Validação acontece no renderer
+
+O registry guarda a definição do módulo.
+
+Se existir schema:
+
+```text
+ModuleInstance.data
+       ↓
+schema.parse()
+       ↓
+dados validados
+       ↓
+component
+```
+
+Em desenvolvimento, erros são lançados para facilitar diagnóstico.
+
+Em produção, erros de módulo podem usar o fallback definido pelo renderer.
 
 ## Foundation
 
-The Foundation is the application's entry point.
+A criação da Foundation centraliza as implementações:
 
-It creates and configures all framework services.
+```ts
+export function createFoundation(): Foundation {
+  const foundation: Foundation = {
+    modules: new ModuleRegistry(),
+    page: new MockPageSource(),
+  };
 
-Current responsibilities:
+  registerModules(foundation);
 
-- Create the Module Registry.
-- Register all available modules.
-- Provide shared services to the renderer.
+  return foundation;
+}
+```
 
-Future responsibilities:
+A implementação concreta de `page` poderá posteriormente ser substituída por `PayloadPageSource`.
 
-- Theme management
-- API Client
-- Adapters
-- Internationalization
-- Plugins
-- Global configuration
+## Estado atual
 
----
+Já existem:
 
-## Registry
+- `Foundation`
+- `PageSource`
+- `MockPageSource`
+- `ModuleRegistry`
+- `PageRenderer`
+- `ModuleRenderer`
+- `ModuleErrorFallback`
+- schemas de módulos
+- testes de registry e renderer
 
-The Registry stores every module available in the application.
+## Payload
 
-Each module is registered once during startup.
+O Payload será tratado como infraestrutura/adaptador.
 
-The renderer never imports modules directly.
+A intenção é:
 
-Instead, it asks the registry for the module matching a given alias.
+```text
+Payload
+  ↓
+PayloadPageSource
+  ↓
+transformação
+  ↓
+PageDefinition
+```
 
----
-
-## Renderer
-
-The renderer receives a `PageDefinition`.
-
-Its responsibility is only to translate that definition into React components.
-
-It does not know where the data comes from.
-
----
-
-## Modules
-
-Every feature is implemented as an isolated module.
-
-Examples:
-
-- Hero
-- CTA
-- Navigation
-- Footer
-- Services
-- Testimonials
-
-Modules can be developed independently and reused across multiple projects.
-
----
-
-## CMS
-
-The CMS is responsible only for content.
-
-It returns a page definition containing:
-
-- page metadata
-- navigation
-- main modules
-- footer
-
-The frontend decides how each module is rendered.
+Não devemos alterar `PageDefinition` para imitar o Payload.
