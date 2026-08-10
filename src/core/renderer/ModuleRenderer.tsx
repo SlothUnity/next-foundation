@@ -2,6 +2,7 @@ import type { Foundation } from '@/core/foundation';
 import { ModuleRenderError, ModuleValidationError } from '@/core/errors';
 
 import type { ModuleInstance } from '@/types';
+
 import { ModuleErrorFallback } from './ModuleErrorFallback';
 
 interface ModuleRendererProps {
@@ -27,13 +28,15 @@ export function ModuleRenderer({ module, foundation }: ModuleRendererProps) {
       data = definition.schema.parse(module.data);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        throw new ModuleValidationError(
-          `Module "${module.alias}" data validation failed: ${error}`,
-        );
+        throw new ModuleValidationError(`Module "${module.alias}" data validation failed.`, {
+          cause: error,
+        });
       }
+
       return <ModuleErrorFallback alias={module.alias} />;
     }
   }
+
   const Component = definition.component;
 
   return <Component {...data} />;

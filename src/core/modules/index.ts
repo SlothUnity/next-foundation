@@ -1,2 +1,2 @@
-export * from './createModuleComponent';
+export * from './CreateModuleComponent';
 export * from './defineModule';
