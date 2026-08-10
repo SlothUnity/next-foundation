@@ -1,13 +1,13 @@
-import type { ModuleRegistry } from '@/core/registry';
+import type { Foundation } from '@/core/foundation';
 import type { ModuleInstance } from '@/types';
 
 interface RenderModuleProps {
   module: ModuleInstance;
-  registry: ModuleRegistry;
+  foundation: Foundation;
 }
 
-export function renderModule({ module, registry }: RenderModuleProps) {
-  const definition = registry.getByAlias(module.alias);
+export function renderModule({ module, foundation }: RenderModuleProps) {
+  const definition = foundation.modules.getByAlias(module.alias);
 
   if (!definition) {
     throw new Error(`Module "${module.alias}" is not registered.`);

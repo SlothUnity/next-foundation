@@ -1,30 +1,30 @@
+import { Fragment } from 'react';
+
+import type { Foundation } from '@/core/foundation';
 import type { PageDefinition } from '@/types';
 
-import type { ModuleRegistry } from '@/core/registry';
-
 import { renderModule } from './renderModule';
-import { Fragment } from 'react/jsx-runtime';
 
 interface PageRendererProps {
   page: PageDefinition;
-  registry: ModuleRegistry;
+  foundation: Foundation;
 }
 
-export function PageRenderer({ page, registry }: PageRendererProps) {
+export function PageRenderer({ page, foundation }: PageRendererProps) {
   return (
     <>
       {page.navigation &&
         renderModule({
           module: page.navigation,
-          registry,
+          foundation,
         })}
 
       <main>
-        {page.main.map((module, index) => (
-          <Fragment key={`${module.alias}-${index}`}>
+        {page.main.map((module) => (
+          <Fragment key={module.id}>
             {renderModule({
               module,
-              registry,
+              foundation,
             })}
           </Fragment>
         ))}
@@ -33,7 +33,7 @@ export function PageRenderer({ page, registry }: PageRendererProps) {
       {page.footer &&
         renderModule({
           module: page.footer,
-          registry,
+          foundation,
         })}
     </>
   );
