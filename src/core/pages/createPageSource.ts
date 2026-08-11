@@ -1,4 +1,4 @@
-import { PayloadPageSource } from '@/cms/payload/PayloadPageSource';
+import { PayloadPageSource } from '@/provider/payload/PayloadPageSource';
 
 import { MockPageSource } from './MockPageSource';
 import type { PageSource } from './PageSource';

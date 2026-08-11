@@ -1,7 +1,7 @@
 import type { CollectionConfig } from 'payload';
 
-import { pageBlocks } from '@/cms/payload/blocks';
-import { seoFields } from '@/cms/payload/fields/seoFields';
+import { pageBlocks } from '@/provider/payload/blocks';
+import { seoFields } from '@/provider/payload/fields/seoFields';
 
 export const Pages: CollectionConfig = {
   slug: 'pages',

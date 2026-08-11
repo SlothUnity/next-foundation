@@ -1,6 +1,6 @@
 import type { GlobalConfig } from 'payload';
 
-import { availableLocales } from '@/cms/payload/config/locales';
+import { availableLocales } from '@/provider/payload/config/locales';
 
 export const Site: GlobalConfig = {
   slug: 'site',

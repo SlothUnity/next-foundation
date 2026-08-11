@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import homePage from '@/mocks/pages/home';
+import homePage from '@/provider/mocks/pages/home';
 
 import { MockPageSource } from './MockPageSource';
 

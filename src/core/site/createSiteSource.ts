@@ -1,4 +1,4 @@
-import { PayloadSiteSource } from '@/cms/payload/PayloadSiteSource';
+import { PayloadSiteSource } from '@/provider/payload/PayloadSiteSource';
 
 import { MockSiteSource } from './MockSiteSource';
 import type { SiteSource } from './SiteSource';

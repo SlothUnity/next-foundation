@@ -5,13 +5,13 @@ import { buildConfig } from 'payload';
 import { postgresAdapter } from '@payloadcms/db-postgres';
 import { nestedDocsPlugin } from '@payloadcms/plugin-nested-docs';
 
-import { createSlug } from './src/cms/payload/utils/createSlug';
-import { payloadLocales } from './src/cms/payload/config/locales';
+import { createSlug } from './src/provider/payload/utils/createSlug';
+import { payloadLocales } from './src/provider/payload/config/locales';
 
-import { Site } from './src/cms/payload/globals/website/Site';
-import { Users } from './src/cms/payload/collections/administration/Users';
-import { Pages } from './src/cms/payload/collections/content/Pages';
-import { Media } from './src/cms/payload/collections/content/Media';
+import { Site } from './src/provider/payload/globals/website/Site';
+import { Users } from './src/provider/payload/collections/administration/Users';
+import { Pages } from './src/provider/payload/collections/content/Pages';
+import { Media } from './src/provider/payload/collections/content/Media';
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
