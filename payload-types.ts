@@ -179,8 +179,12 @@ export interface Page {
    * Use this page as the homepage of the website.
    */
   isHome?: boolean | null;
+  /**
+   * Select a parent page to create a nested page hierarchy.
+   */
+  parent?: (number | null) | Page;
   title: string;
-  slug: string;
+  pageUrl?: string | null;
   main?: HeroBlock[] | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
@@ -350,8 +354,9 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface PagesSelect<T extends boolean = true> {
   isHome?: T;
+  parent?: T;
   title?: T;
-  slug?: T;
+  pageUrl?: T;
   main?:
     | T
     | {

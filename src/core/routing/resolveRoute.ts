@@ -7,7 +7,7 @@ interface ResolveRouteOptions {
 
 export interface ResolvedRoute {
   locale: string;
-  slug: string;
+  path: string;
 }
 
 export function resolveRoute({
@@ -29,12 +29,12 @@ export function resolveRoute({
   if (requestedLocale) {
     return {
       locale: requestedLocale,
-      slug: rest.join('/'),
+      path: rest.join('/'),
     };
   }
 
   return {
     locale: defaultLocale,
-    slug: segments.join('/'),
+    path: segments.join('/'),
   };
 }

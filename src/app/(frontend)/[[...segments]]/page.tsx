@@ -23,7 +23,7 @@ export default async function Page({ params }: PageProps) {
     notFound();
   }
 
-  const page = await foundation.page.getPage(route.slug, route.locale);
+  const page = await foundation.page.getPage(route.path, route.locale);
 
   if (!page) {
     notFound();

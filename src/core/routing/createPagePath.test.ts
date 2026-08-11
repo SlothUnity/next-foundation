@@ -6,7 +6,7 @@ describe('createPagePath', () => {
   it('does not prefix the default locale', () => {
     expect(
       createPagePath({
-        slug: 'sobre-nos',
+        path: 'sobre-nos',
         locale: 'pt-PT',
         defaultLocale: 'pt-PT',
       }),
@@ -16,7 +16,7 @@ describe('createPagePath', () => {
   it('prefixes a non-default locale', () => {
     expect(
       createPagePath({
-        slug: 'about-us',
+        path: 'about-us',
         locale: 'en-GB',
         defaultLocale: 'pt-PT',
       }),
@@ -26,7 +26,7 @@ describe('createPagePath', () => {
   it('returns root for an empty slug in the default locale', () => {
     expect(
       createPagePath({
-        slug: '',
+        path: '',
         locale: 'pt-PT',
         defaultLocale: 'pt-PT',
       }),
@@ -36,7 +36,7 @@ describe('createPagePath', () => {
   it('returns the locale root for an empty slug in another locale', () => {
     expect(
       createPagePath({
-        slug: '',
+        path: '',
         locale: 'en-GB',
         defaultLocale: 'pt-PT',
       }),

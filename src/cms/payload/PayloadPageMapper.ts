@@ -14,9 +14,22 @@ function mapBlock(block: PayloadPageBlock): ModuleInstance {
     id,
     name: blockName || blockType,
     alias: blockType,
-    data,
+    data: removeNullValues(data),
   };
   return returnModule;
+}
+
+function removeNullValues(data: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(data)
+      .filter(([, value]) => value !== null)
+      .map(([key, value]) => [
+        key,
+        value && typeof value === 'object' && !Array.isArray(value)
+          ? removeNullValues(value as Record<string, unknown>)
+          : value,
+      ]),
+  );
 }
 
 export function mapPayloadPage(page: Page, locale: string): PageDefinition {

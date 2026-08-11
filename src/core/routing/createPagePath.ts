@@ -1,19 +1,15 @@
-import { getLocaleSegment } from './getLocaleSegment';
-
 interface CreatePagePathOptions {
-  slug: string;
+  path: string;
   locale: string;
   defaultLocale: string;
 }
 
-export function createPagePath({ slug, locale, defaultLocale }: CreatePagePathOptions): string {
-  const normalizedSlug = slug.replace(/^\/+/, '').replace(/\/+$/, '');
+export function createPagePath({ path, locale, defaultLocale }: CreatePagePathOptions): string {
+  const normalizedPath = path.split('/').filter(Boolean).join('/');
 
-  if (locale === defaultLocale) {
-    return normalizedSlug ? `/${normalizedSlug}` : '/';
-  }
+  const localeSegment = locale === defaultLocale ? '' : (locale.split('-')[0]?.toLowerCase() ?? '');
 
-  const localeSegment = getLocaleSegment(locale);
+  const segments = [localeSegment, normalizedPath].filter(Boolean);
 
-  return normalizedSlug ? `/${localeSegment}/${normalizedSlug}` : `/${localeSegment}`;
+  return `/${segments.join('/')}`;
 }

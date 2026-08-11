@@ -1,9 +1,23 @@
-import type { CollectionConfig } from 'payload';
+import type { CollectionConfig, RelationshipFieldSingleValidation } from 'payload';
 
 import { pageBlocks } from '@/cms/payload/blocks';
 import { seoFields } from '@/cms/payload/fields/seoFields';
 
 import { createSlug } from '../../utils/createSlug';
+
+interface PageSiblingData {
+  isHome?: boolean;
+}
+
+const validateParent: RelationshipFieldSingleValidation = (value, { siblingData }) => {
+  const pageData = siblingData as PageSiblingData;
+
+  if (pageData.isHome && value) {
+    return 'Homepage cannot have a parent page.';
+  }
+
+  return true;
+};
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
@@ -23,10 +37,11 @@ export const Pages: CollectionConfig = {
   },
 
   fields: [
+    // Root Page (isHome) field
     {
       name: 'isHome',
       type: 'checkbox',
-      label: 'Homepage',
+      label: 'Root Page',
       defaultValue: false,
 
       admin: {
@@ -69,6 +84,53 @@ export const Pages: CollectionConfig = {
       },
     },
 
+    // Parent Page field
+    {
+      name: 'parent',
+      type: 'relationship',
+      relationTo: 'pages',
+      label: 'Parent Page',
+
+      admin: {
+        description: 'Select a parent page to create a nested page hierarchy.',
+
+        condition: (_, siblingData) => {
+          const pageData = siblingData as PageSiblingData;
+
+          return !pageData.isHome;
+        },
+      },
+
+      hooks: {
+        beforeValidate: [
+          ({ value, siblingData }) => {
+            const pageData = siblingData as PageSiblingData;
+
+            if (pageData.isHome) {
+              return null;
+            }
+
+            return value;
+          },
+        ],
+      },
+
+      validate: validateParent,
+
+      filterOptions: ({ id }) => {
+        if (!id) {
+          return true;
+        }
+
+        return {
+          id: {
+            not_equals: id,
+          },
+        };
+      },
+    },
+
+    // Title field
     {
       name: 'title',
       type: 'text',
@@ -77,48 +139,67 @@ export const Pages: CollectionConfig = {
       localized: true,
     },
 
+    // Url field
     {
-      name: 'slug',
+      name: 'pageUrl',
       type: 'text',
-      label: 'Slug',
-      required: true,
-      unique: true,
+      label: 'Page URL',
       localized: true,
+
       admin: {
         readOnly: true,
+
+        components: {
+          Field: '/cms/payload/components/PageUrl#default',
+        },
       },
+
       hooks: {
         beforeValidate: [
-          ({ data, value }) => {
-            if (typeof data?.title === 'string' && !data?.isHome) {
-              return createSlug(data.title);
-            } else if (data?.isHome) {
-              return '/';
+          async ({ siblingData, req, value }) => {
+            if (siblingData?.isHome) {
+              return '';
             }
 
-            return value;
+            if (typeof siblingData?.title !== 'string') {
+              return value;
+            }
+
+            const segment = createSlug(siblingData.title);
+
+            const parent = siblingData?.parent;
+
+            if (!parent) {
+              return segment;
+            }
+
+            const parentId = typeof parent === 'object' ? parent.id : parent;
+
+            const parentPage = await req.payload.findByID({
+              collection: 'pages',
+              id: parentId,
+              locale: req.locale,
+              fallbackLocale: false,
+              depth: 0,
+              req,
+            });
+
+            if (parentPage.isHome) {
+              return segment;
+            }
+
+            return [parentPage.pageUrl, segment].filter(Boolean).join('/');
           },
         ],
       },
     },
 
-    {
-      name: 'pageUrl',
-      type: 'ui',
-      admin: {
-        components: {
-          Field: '/cms/payload/components/PageUrl#default',
-        },
-      },
-    },
-
+    // Content and SEO tabs
     {
       type: 'tabs',
-
       tabs: [
         {
           label: 'Modules',
-
           fields: [
             {
               name: 'main',
