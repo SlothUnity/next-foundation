@@ -9,37 +9,37 @@ import { isSupportedLocale, type SupportedLocale } from './config/locales';
 import { mapPayloadPage } from './PayloadPageMapper';
 
 export class PayloadPageSource extends PageSource {
-  async getPage(slug: string, locale?: SupportedLocale): Promise<PageDefinition | undefined> {
-    if (locale && !isSupportedLocale(locale)) {
+  async getPage(slug: string, locale?: string): Promise<PageDefinition | undefined> {
+    if (!locale || !isSupportedLocale(locale)) {
       return undefined;
     }
 
-    const payload = await getPayload({ config });
+    const payloadLocale: SupportedLocale = locale;
 
-    const payloadLocale: SupportedLocale | undefined = locale;
+    const payload = await getPayload({ config });
 
     const result = await payload.find({
       collection: 'pages',
       locale: payloadLocale,
       fallbackLocale: false,
 
-      where: {
-        slug: {
-          equals: slug,
-        },
-      },
+      where: slug
+        ? { slug: { equals: slug } }
+        : {
+            isHome: {
+              equals: true,
+            },
+          },
 
       limit: 1,
     });
 
     const page = result.docs[0];
 
-    console.log(page);
-
     if (!page) {
       return undefined;
     }
 
-    return mapPayloadPage(page, payloadLocale ?? 'pt-PT');
+    return mapPayloadPage(page, payloadLocale);
   }
 }

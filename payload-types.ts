@@ -175,6 +175,10 @@ export interface User {
  */
 export interface Page {
   id: number;
+  /**
+   * Use this page as the homepage of the website.
+   */
+  isHome?: boolean | null;
   title: string;
   slug: string;
   main?: HeroBlock[] | null;
@@ -345,6 +349,7 @@ export interface UsersSelect<T extends boolean = true> {
  * via the `definition` "pages_select".
  */
 export interface PagesSelect<T extends boolean = true> {
+  isHome?: T;
   title?: T;
   slug?: T;
   main?:

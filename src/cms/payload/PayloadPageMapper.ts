@@ -24,6 +24,6 @@ export function mapPayloadPage(page: Page, locale: string): PageDefinition {
     meta: {
       locale,
     },
-    main: page.main ? page.main.map(mapBlock) : [],
+    main: (page.main ?? []).map(mapBlock),
   };
 }

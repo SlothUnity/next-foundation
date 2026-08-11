@@ -24,6 +24,17 @@ export const Pages: CollectionConfig = {
 
   fields: [
     {
+      name: 'isHome',
+      type: 'checkbox',
+      label: 'Homepage',
+      defaultValue: false,
+
+      admin: {
+        description: 'Use this page as the homepage of the website.',
+      },
+    },
+
+    {
       name: 'title',
       type: 'text',
       label: 'Title',
