@@ -30,8 +30,8 @@ export async function resolvePayloadPage(
     locale,
     fallbackLocale: false,
     where: {
-      pageUrl: {
-        equals: path,
+      'breadcrumbs.url': {
+        equals: `/${path}`,
       },
     },
     limit: 1,

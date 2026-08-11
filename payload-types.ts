@@ -179,16 +179,20 @@ export interface Page {
    * Use this page as the homepage of the website.
    */
   isHome?: boolean | null;
-  /**
-   * Select a parent page to create a nested page hierarchy.
-   */
-  parent?: (number | null) | Page;
   title: string;
-  pageUrl?: string | null;
   main?: HeroBlock[] | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
   noIndex?: boolean | null;
+  parent?: (number | null) | Page;
+  breadcrumbs?:
+    | {
+        doc?: (number | null) | Page;
+        url?: string | null;
+        label?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -354,9 +358,7 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface PagesSelect<T extends boolean = true> {
   isHome?: T;
-  parent?: T;
   title?: T;
-  pageUrl?: T;
   main?:
     | T
     | {
@@ -365,6 +367,15 @@ export interface PagesSelect<T extends boolean = true> {
   seoTitle?: T;
   seoDescription?: T;
   noIndex?: T;
+  parent?: T;
+  breadcrumbs?:
+    | T
+    | {
+        doc?: T;
+        url?: T;
+        label?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   _status?: T;

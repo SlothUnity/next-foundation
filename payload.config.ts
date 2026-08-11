@@ -3,7 +3,9 @@ import { fileURLToPath } from 'node:url';
 
 import { buildConfig } from 'payload';
 import { postgresAdapter } from '@payloadcms/db-postgres';
+import { nestedDocsPlugin } from '@payloadcms/plugin-nested-docs';
 
+import { createSlug } from './src/cms/payload/utils/createSlug';
 import { payloadLocales } from './src/cms/payload/config/locales';
 
 import { Site } from './src/cms/payload/globals/website/Site';
@@ -54,4 +56,29 @@ export default buildConfig({
       connectionString: process.env.DATABASE_URL || '',
     },
   }),
+
+  plugins: [
+    nestedDocsPlugin({
+      collections: ['pages'],
+
+      generateLabel: (_, doc) => {
+        return typeof doc.title === 'string' ? doc.title : '';
+      },
+
+      generateURL: (docs) => {
+        const segments = docs
+          .filter((doc) => !doc.isHome)
+          .map((doc) => {
+            if (typeof doc.title !== 'string') {
+              return '';
+            }
+
+            return createSlug(doc.title);
+          })
+          .filter(Boolean);
+
+        return `/${segments.join('/')}`;
+      },
+    }),
+  ],
 });

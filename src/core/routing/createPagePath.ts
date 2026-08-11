@@ -9,7 +9,5 @@ export function createPagePath({ path, locale, defaultLocale }: CreatePagePathOp
 
   const localeSegment = locale === defaultLocale ? '' : (locale.split('-')[0]?.toLowerCase() ?? '');
 
-  const segments = [localeSegment, normalizedPath].filter(Boolean);
-
-  return `/${segments.join('/')}`;
+  return `/${[localeSegment, normalizedPath].filter(Boolean).join('/')}`;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useField, useLocale } from '@payloadcms/ui';
+import { useDocumentInfo, useLocale } from '@payloadcms/ui';
 
 import { createPagePath } from '@/core/routing';
 
@@ -9,37 +9,65 @@ interface SiteSettings {
   enabledLocales?: string[];
 }
 
-export default function PageUrl() {
-  const { value: pageUrl } = useField<string>({
-    path: 'pageUrl',
-  });
+interface Breadcrumb {
+  url?: string | null;
+}
 
+interface PageData {
+  breadcrumbs?: Breadcrumb[] | null;
+}
+
+export default function PageUrl() {
+  const { id } = useDocumentInfo();
   const locale = useLocale();
 
   const [defaultLocale, setDefaultLocale] = useState<string>();
+  const [pagePath, setPagePath] = useState<string>();
 
   useEffect(() => {
-    async function loadSite() {
-      const response = await fetch('/api/globals/site');
-
-      if (!response.ok) {
+    async function loadData() {
+      if (!locale?.code) {
         return;
       }
 
-      const site: SiteSettings = await response.json();
+      const siteResponse = await fetch('/api/globals/site');
+
+      if (!siteResponse.ok) {
+        return;
+      }
+
+      const site: SiteSettings = await siteResponse.json();
 
       setDefaultLocale(site.enabledLocales?.[0]);
+
+      if (!id) {
+        return;
+      }
+
+      const pageResponse = await fetch(
+        `/api/pages/${id}?locale=${encodeURIComponent(locale.code)}&depth=0`,
+      );
+
+      if (!pageResponse.ok) {
+        return;
+      }
+
+      const page: PageData = await pageResponse.json();
+
+      const lastBreadcrumb = page.breadcrumbs?.[page.breadcrumbs.length - 1];
+
+      setPagePath(lastBreadcrumb?.url ?? '/');
     }
 
-    void loadSite();
-  }, []);
+    void loadData();
+  }, [id, locale?.code]);
 
-  if (!defaultLocale || !locale?.code) {
+  if (!defaultLocale || !locale?.code || pagePath === undefined) {
     return null;
   }
 
   const path = createPagePath({
-    path: pageUrl ?? '',
+    path: pagePath,
     locale: locale.code,
     defaultLocale,
   });
@@ -48,7 +76,7 @@ export default function PageUrl() {
 
   return (
     <div>
-      <div>Page URL</div>
+      <span>Page URL: </span>
 
       <a href={url} target="_blank" rel="noopener noreferrer">
         {url}
