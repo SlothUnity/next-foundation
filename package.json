@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "pnpm run typecheck && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -19,7 +19,10 @@
     ]
   },
   "dependencies": {
+    "@payloadcms/db-postgres": "^3.87.1",
+    "@payloadcms/next": "^3.87.1",
     "next": "16.3.0",
+    "payload": "^3.87.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zod": "^4.4.3"
