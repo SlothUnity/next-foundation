@@ -32,6 +32,41 @@ export const Pages: CollectionConfig = {
       admin: {
         description: 'Use this page as the homepage of the website.',
       },
+
+      validate: async (value, { id, req }) => {
+        if (!value) {
+          return true;
+        }
+
+        const existingHomepages = await req.payload.find({
+          collection: 'pages',
+          where: {
+            and: [
+              {
+                isHome: {
+                  equals: true,
+                },
+              },
+              ...(id
+                ? [
+                    {
+                      id: {
+                        not_equals: id,
+                      },
+                    },
+                  ]
+                : []),
+            ],
+          },
+          limit: 1,
+        });
+
+        if (existingHomepages.docs.length > 0) {
+          return 'A homepage already exists.';
+        }
+
+        return true;
+      },
     },
 
     {
@@ -55,8 +90,10 @@ export const Pages: CollectionConfig = {
       hooks: {
         beforeValidate: [
           ({ data, value }) => {
-            if (typeof data?.title === 'string') {
+            if (typeof data?.title === 'string' && !data?.isHome) {
               return createSlug(data.title);
+            } else if (data?.isHome) {
+              return '/';
             }
 
             return value;

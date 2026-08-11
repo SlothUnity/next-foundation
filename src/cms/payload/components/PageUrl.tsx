@@ -1,31 +1,34 @@
 'use client';
 
-import { useField } from '@payloadcms/ui';
+import { useField, useLocale } from '@payloadcms/ui';
+
+import { createPagePath } from '@/core/routing';
 
 export default function PageUrl() {
   const { value: slug } = useField<string>({
     path: 'slug',
   });
 
-  const trimmedSlug = slug?.trim();
+  const locale = useLocale();
 
-  if (!trimmedSlug) {
+  if (!slug || !locale?.code) {
     return null;
   }
 
-  const url = `/${encodeURIComponent(trimmedSlug)}`;
+  const defaultLocale = 'pt-PT';
+
+  const path = createPagePath({
+    slug,
+    locale: locale.code,
+    defaultLocale,
+  });
 
   return (
     <div>
       <span>URL: </span>
 
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={`Abrir ${url} em uma nova aba`}
-      >
-        {url}
+      <a href={window.location.origin + path} target="_blank" rel="noopener noreferrer">
+        {window.location.origin + path}
       </a>
     </div>
   );

@@ -12,8 +12,6 @@ interface PageProps {
 export default async function Page({ params }: PageProps) {
   const { segments = [] } = await params;
 
-  console.log('Segments:', segments);
-
   const site = await foundation.site.getSite();
 
   const route = resolveRoute({
@@ -26,8 +24,6 @@ export default async function Page({ params }: PageProps) {
   }
 
   const page = await foundation.page.getPage(route.slug, route.locale);
-
-  console.log('Page:', page);
 
   if (!page) {
     notFound();
