@@ -22,7 +22,7 @@
     "paths": {
       "@types/*": ["./src/*"],
       "@/*": ["./src/*"],
-      "@payload-config": ["./src/cms/payload/payload.config.ts"]
+      "@payload-config": ["./payload.config.ts"]
     }
   },
   "include": [

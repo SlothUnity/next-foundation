@@ -3,7 +3,7 @@ import { getPayload } from 'payload';
 import type { PageDefinition } from '@/types';
 import { PageSource } from '@/core/pages/PageSource';
 
-import config from './payload.config';
+import config from '@payload-config';
 
 export class PayloadPageSource extends PageSource {
   async getPage(slug: string, locale?: string): Promise<PageDefinition | undefined> {
@@ -38,9 +38,11 @@ export class PayloadPageSource extends PageSource {
       return undefined;
     }
 
+    console.log(page);
+
     return {
       meta: {
-        locale: page.meta.locale,
+        locale: '',
       },
       main: [],
     };

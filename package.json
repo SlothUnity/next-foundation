@@ -2,6 +2,7 @@
   "name": "next-foundation",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "pnpm run typecheck && next dev",
     "build": "next build",
@@ -11,7 +12,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
-    "test": "vitest"
+    "test": "vitest",
+    "generate:types": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:types",
+    "generate:importmap": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:importmap",
+    "generate:payload": "pnpm run generate:types && pnpm run generate:importmap"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,md,yml,yaml}": [
@@ -21,6 +25,7 @@
   "dependencies": {
     "@payloadcms/db-postgres": "^3.87.1",
     "@payloadcms/next": "^3.87.1",
+    "@payloadcms/ui": "3.87.1",
     "next": "16.3.0",
     "payload": "^3.87.1",
     "react": "19.2.8",
@@ -34,6 +39,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
