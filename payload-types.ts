@@ -91,18 +91,14 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale:
-    | ('false' | 'none' | 'null')
-    | false
-    | null
-    | ('pt-PT' | 'en-GB' | 'es-ES' | 'fr-FR' | 'de-DE')
-    | ('pt-PT' | 'en-GB' | 'es-ES' | 'fr-FR' | 'de-DE')[];
+    ('false' | 'none' | 'null') | false | null | ('pt-PT' | 'en-GB') | ('pt-PT' | 'en-GB')[];
   globals: {
     site: Site;
   };
   globalsSelect: {
     site: SiteSelect<false> | SiteSelect<true>;
   };
-  locale: 'pt-PT' | 'en-GB' | 'es-ES' | 'fr-FR' | 'de-DE';
+  locale: 'pt-PT' | 'en-GB';
   widgets: {
     collections: CollectionsWidget;
   };
@@ -454,7 +450,7 @@ export interface Site {
   /**
    * Select the languages available on the site. The first language is the default.
    */
-  enabledLocales: ('pt-PT' | 'en-GB' | 'es-ES' | 'fr-FR' | 'de-DE')[];
+  enabledLocales: ('pt-PT' | 'en-GB')[];
   updatedAt?: string | null;
   createdAt?: string | null;
 }

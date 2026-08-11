@@ -4,7 +4,7 @@ import { MockPageSource } from './MockPageSource';
 import type { PageSource } from './PageSource';
 
 export function createPageSource(): PageSource {
-  switch (process.env.PAGE_SOURCE) {
+  switch (process.env.CMS_SOURCE) {
     case 'payload':
       return new PayloadPageSource();
 
@@ -12,6 +12,6 @@ export function createPageSource(): PageSource {
       return new MockPageSource();
 
     default:
-      throw new Error(`Unsupported PAGE_SOURCE "${process.env.PAGE_SOURCE}".`);
+      throw new Error(`Unsupported CMS_SOURCE "${process.env.CMS_SOURCE}".`);
   }
 }

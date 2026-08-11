@@ -3,4 +3,6 @@ export * from './modules';
 export * from './pages';
 export * from './registry';
 export * from './renderer';
+export * from './routing';
 export * from './setup';
+export * from './site';

@@ -1,8 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { Module, Foundation } from '@/types';
-import type { PageDefinition } from '@/types';
+import type { Foundation, Module, PageDefinition } from '@/types';
 
 import { PageRenderer } from './PageRenderer';
 
@@ -30,7 +29,17 @@ function createTestFoundation(): Foundation {
     modules: {
       getByAlias: (alias: string) => registeredModules.find((module) => module.alias === alias),
     } as Foundation['modules'],
+
     page: {} as Foundation['page'],
+
+    site: {
+      async getSite() {
+        return {
+          name: 'Test Site',
+          locales: ['pt-PT'],
+        };
+      },
+    },
   };
 }
 
@@ -40,13 +49,15 @@ describe('PageRenderer', () => {
 
     const page: PageDefinition = {
       meta: {
-        locale: 'pt-pt',
+        locale: 'pt-PT',
       },
+
       navigation: {
         id: 'navigation-1',
         alias: 'test-navigation',
         data: {},
       },
+
       main: [
         {
           id: 'main-1',
@@ -59,6 +70,7 @@ describe('PageRenderer', () => {
           data: {},
         },
       ],
+
       footer: {
         id: 'footer-1',
         alias: 'test-footer',
@@ -82,8 +94,9 @@ describe('PageRenderer', () => {
 
     const page: PageDefinition = {
       meta: {
-        locale: 'pt-pt',
+        locale: 'pt-PT',
       },
+
       main: [
         {
           id: 'main-1',
