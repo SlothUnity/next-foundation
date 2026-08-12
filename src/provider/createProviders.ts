@@ -1,30 +1,17 @@
-import type { PageSource } from '@/core/pages/PageSource';
-import type { SiteSource } from '@/core/site/SiteSource';
+import type { Provider } from './types';
 
-import { MockPageSource, MockSiteSource } from './mocks';
-import { PayloadPageSource } from './payload/PayloadPageSource';
-import { PayloadSiteSource } from './payload/PayloadSiteSource';
+import { mockProvider } from './mocks/provider';
+import { payloadProvider } from './payload/provider';
 
-interface Providers {
-  page: PageSource;
-  site: SiteSource;
-}
-
-export function createProviders(): Providers {
+export function createProviders(): Provider {
   const provider = process.env.PROVIDER ?? 'payload';
 
   switch (provider) {
     case 'mock':
-      return {
-        page: new MockPageSource(),
-        site: new MockSiteSource(),
-      };
+      return mockProvider;
 
     case 'payload':
-      return {
-        page: new PayloadPageSource(),
-        site: new PayloadSiteSource(),
-      };
+      return payloadProvider;
 
     default:
       throw new Error(`Unsupported PROVIDER "${provider}".`);

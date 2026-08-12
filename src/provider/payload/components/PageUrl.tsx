@@ -26,6 +26,8 @@ export default function PageUrl() {
 
   useEffect(() => {
     async function loadData() {
+      console.log('PageUrl: loadData called with id:', id, 'locale:', locale);
+
       if (!locale?.code) {
         return;
       }

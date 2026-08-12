@@ -1,11 +1,19 @@
 import type { CollectionConfig } from 'payload';
 
 import { pageBlocks } from '@/provider/payload/blocks';
-
 import { breadcrumbsField } from '@/provider/payload/plugins';
+import { getLivePreviewUrl } from '@/provider/payload/utils/getLivePreviewUrl';
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
+
+  versions: {
+    drafts: {
+      autosave: {
+        interval: 375,
+      },
+    },
+  },
 
   labels: {
     singular: 'Page',
@@ -15,10 +23,25 @@ export const Pages: CollectionConfig = {
   admin: {
     group: 'Content',
     useAsTitle: 'title',
-  },
 
-  versions: {
-    drafts: true,
+    livePreview: {
+      url: async ({ data, locale, req }) => {
+        const site = await req.payload.findGlobal({ slug: 'site', depth: 0 });
+
+        const defaultLocale = site.enabledLocales?.[0];
+
+        if (!defaultLocale) {
+          return undefined;
+        }
+
+        return getLivePreviewUrl({
+          breadcrumbs: data?.breadcrumbs,
+          isHome: data?.isHome,
+          locale: locale.code,
+          defaultLocale,
+        });
+      },
+    },
   },
 
   fields: [

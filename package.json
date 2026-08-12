@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm generate:payload && pnpm typecheck && next dev",
+    "dev": "pnpm generate:payload && pnpm lint && pnpm typecheck && pnpm test --run && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.88.0",
+    "@payloadcms/live-preview-react": "^3.88.0",
     "@payloadcms/next": "^3.88.0",
     "@payloadcms/plugin-nested-docs": "^3.88.0",
     "@payloadcms/plugin-seo": "^3.88.0",

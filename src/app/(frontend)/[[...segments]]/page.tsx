@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { draftMode } from 'next/headers';
+
 import { notFound } from 'next/navigation';
 
 import { foundation } from '@/core/foundation';
@@ -15,6 +17,7 @@ interface PageProps {
 
 async function resolvePage({ params }: PageProps) {
   const { segments = [] } = await params;
+  const { isEnabled: isDraft } = await draftMode();
 
   const site = await foundation.site.getSite();
 
@@ -27,7 +30,7 @@ async function resolvePage({ params }: PageProps) {
     return undefined;
   }
 
-  const page = await foundation.page.getPage(route.path, route.locale);
+  const page = await foundation.page.getPage(route.path, route.locale, { draft: isDraft });
 
   if (!page) {
     return undefined;
@@ -57,5 +60,9 @@ export default async function Page(props: PageProps) {
     notFound();
   }
 
-  return <PageRenderer page={result.page} foundation={foundation} />;
+  return (
+    <>
+      <PageRenderer page={result.page} foundation={foundation} />
+    </>
+  );
 }

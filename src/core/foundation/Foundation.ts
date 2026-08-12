@@ -1,8 +1,6 @@
-import { createProviders } from '@/provider/createProviders';
+import { providers } from '@/provider/providers';
 
 import { createFoundation } from './createFoundation';
-
-const providers = createProviders();
 
 export const foundation = createFoundation({
   page: providers.page,

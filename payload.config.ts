@@ -19,6 +19,8 @@ const dirname = path.dirname(filename);
 export default buildConfig({
   secret: process.env.PAYLOAD_SECRET || '',
 
+  serverURL: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
+
   localization: {
     locales: payloadLocales,
     defaultLocale: 'pt-PT',
@@ -42,6 +44,14 @@ export default buildConfig({
 
   admin: {
     user: Users.slug,
+
+    livePreview: {
+      breakpoints: [
+        { label: 'Mobile', name: 'mobile', width: 375, height: 667 },
+        { label: 'Tablet', name: 'tablet', width: 768, height: 1024 },
+        { label: 'Desktop', name: 'desktop', width: 1440, height: 900 },
+      ],
+    },
 
     importMap: {
       baseDir: path.resolve(dirname, 'src'),
