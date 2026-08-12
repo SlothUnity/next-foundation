@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm generate:payload && pnpm lint && pnpm typecheck && pnpm test --run && next dev",
+    "dev": "pnpm lint && pnpm typecheck && next dev",
+    "dev:payload": "pnpm generate:payload && pnpm run dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -14,8 +15,8 @@
     "prepare": "husky",
     "test": "vitest",
     "generate:types": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:types",
-    "generate:importmap": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:importmap",
-    "generate:payload": "pnpm run generate:types && pnpm run generate:importmap"
+    "generate:importMap": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:importmap",
+    "generate:payload": "pnpm run generate:types && pnpm run generate:importMap"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,md,yml,yaml}": [

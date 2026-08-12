@@ -51,7 +51,7 @@ Três sítios tratam a ausência de `site.enabledLocales` como "nada a mostrar",
 ### 2. Limpeza pendente
 
 - [ModuleErrorFallback.tsx](../src/core/renderer/ModuleErrorFallback.tsx) tem um `console.error(process.env.NODE_ENV === 'development')` que é debug esquecido.
-- O [PageUrl.tsx](../src/providers/payload/components/PageUrl.tsx) ignora o `isHome`, logo mostra `/slug-da-home` onde o Live Preview abre `/`. A regra de derivação de path devia ser partilhada com o `getLivePreviewUrl`.
+- O parâmetro `isHome` do [getLivePreviewUrl.ts](../src/providers/payload/utils/getLivePreviewUrl.ts) é redundante: o `generateURL` do nested-docs já filtra os documentos com `isHome`, logo o `breadcrumbs.url` da homepage já é `/`. Não faz mal, mas sugere uma regra que não existe.
 - O `vitest.config.ts` usa `__dirname`, que o Vite já sinaliza como não suportado no futuro `configLoader: 'native'`.
 
 ### 3. Módulos
