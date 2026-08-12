@@ -1,1 +1,2 @@
-export * from './pages/home';
+export * from './pages';
+export * from './site';

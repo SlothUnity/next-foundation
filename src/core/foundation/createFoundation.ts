@@ -1,15 +1,17 @@
 import { ModuleRegistry } from '@/core/registry';
 import { registerModules } from '@/core/setup';
-import { createPageSource } from '@/core/pages/createPageSource';
-import { createSiteSource } from '@/core/site/createSiteSource';
+
+import { createProviders } from '@/provider/createProviders';
 
 import type { Foundation } from '@/types';
 
 export function createFoundation(): Foundation {
+  const providers = createProviders();
+
   const foundation: Foundation = {
     modules: new ModuleRegistry(),
-    page: createPageSource(),
-    site: createSiteSource(),
+    page: providers.page,
+    site: providers.site,
   };
 
   registerModules(foundation);

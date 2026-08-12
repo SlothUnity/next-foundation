@@ -84,7 +84,7 @@ export const Pages: CollectionConfig = {
 
       admin: {
         components: {
-          Field: '/cms/payload/components/PageUrl#default',
+          Field: '/provider/payload/components/PageUrl#default',
         },
       },
     },
