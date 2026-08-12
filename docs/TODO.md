@@ -25,6 +25,7 @@
 - `createProvider` por variável `PROVIDER`, singleton em `provider.ts`
 - provider `mocks` — site completo sem base de dados
 - provider `payload`
+- provider `api` — pedido a cru (`API_URL` + caminho) e transporte pronto (cliente, cache, erros, testes), com duas costuras editáveis: `createPageRequest` e `mapApiPage`
 
 ### Payload
 
@@ -37,9 +38,14 @@
 - rascunhos com autosave a 375ms
 - Live Preview server-side: `RefreshRouteOnSave`, `next/preview`, `next/exit-preview`
 
+### App
+
+- root layout dentro do segmento dinâmico, com `lang` do `<html>` vindo da `meta.locale` da página
+- `resolvePage` partilhado por layout, `generateMetadata` e página, com `cache` do React
+
 ### Qualidade
 
-- `typecheck`, `lint` e 31 testes verdes
+- `typecheck`, `lint` e 80 testes verdes
 - testes sem carregar o `payload.config.ts`
 
 ## Próximos passos
@@ -61,6 +67,10 @@ Só existe o `hero`. Os próximos exercitam partes do contrato que ainda não fo
 ### 4. Navigation e footer
 
 O `PageDefinition` já os prevê, mas nenhum provider os preenche. Falta decidir onde vivem no CMS — provavelmente globals — e mapeá-los.
+
+### 4.1 Mapeamento do provider api
+
+O transporte está feito e o `mapApiPage` está deliberadamente por escrever: arranca com `PROVIDER=api`, e o erro do primeiro pedido diz as chaves que a API devolveu. Se ela precisar de contexto no pedido, isso vive no `createPageRequest`. Ver [api.md](api.md).
 
 ### 5. Tema
 

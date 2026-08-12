@@ -1,5 +1,6 @@
 import type { Provider } from './Provider.types';
 
+import { apiProvider } from './api/provider';
 import { mockProvider } from './mocks/provider';
 import { payloadProvider } from './payload/provider';
 
@@ -7,6 +8,9 @@ export function createProvider(): Provider {
   const name = process.env.PROVIDER ?? 'payload';
 
   switch (name) {
+    case 'api':
+      return apiProvider;
+
     case 'mock':
       return mockProvider;
 

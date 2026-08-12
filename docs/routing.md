@@ -106,13 +106,27 @@ Os campos de Open Graph caem para os campos gerais quando não estão preenchido
 
 Vive na camada `app` e não no `core` porque depende de tipos do Next. O `core` não conhece o framework.
 
-O `generateMetadata` reutiliza o mesmo `resolvePage` do componente da página, por isso a resolução acontece duas vezes por pedido — aceitável porque o Next deduplica os fetches, e mantém as duas em concordância por construção.
+O `generateMetadata`, a página e o layout chamam todos o mesmo [resolvePage](<../src/app/(frontend)/[[...segments]]/resolvePage.ts>), que está envolvido no `cache` do React: três chamadas, uma resolução por pedido. A chave é o caminho em string e não o array de segmentos, porque o `cache` compara argumentos por identidade e cada `await params` devolve um array novo.
+
+## O idioma do `<html>`
+
+O root layout vive **dentro** do segmento dinâmico, em [[[...segments]]/layout.tsx](<../src/app/(frontend)/[[...segments]]/layout.tsx>), e não acima dele. A razão é o `lang`:
+
+```tsx
+<html lang={resolved?.page.meta.locale}>
+```
+
+Quem declara o idioma é a página, não o routing — a fonte de conteúdo sabe em que idioma escreveu, e o mapper do provider põe isso na `meta.locale`. Um layout acima do segmento não recebe `params`, logo não sabe que página está a ser servida e não conseguiria lá chegar.
+
+A consequência prática: um provider cujo conteúdo traz o idioma tem o `lang` correcto sem declarar lista de idiomas nenhuma. A lista serve o `resolveRoute`, que é um problema diferente — ver [api.md](api.md#idiomas).
+
+Sem página resolvida (um 404) não se declara `lang` nenhum, em vez de declarar um errado.
 
 ## Rotas reservadas
 
 ```
 app/(frontend)/
-├── [[...segments]]/     ← todas as páginas
+├── [[...segments]]/     ← todas as páginas, e o root layout
 └── next/
     ├── preview/         ← activa o draftMode
     └── exit-preview/    ← desactiva
@@ -122,4 +136,4 @@ O prefixo `next/` isola as rotas de framework do namespace de conteúdo — é a
 
 ## draftMode
 
-O [layout.tsx](<../src/app/(frontend)/layout.tsx>) e o `page.tsx` chamam `draftMode()`, o que **retira estas rotas da geração estática**, mesmo em produção. No estado actual não se perde nada, porque as páginas vêm todas da base de dados. Se um dia se quiser ISR, é preciso isolar a leitura do `draftMode` do caminho normal.
+O [layout.tsx](<../src/app/(frontend)/[[...segments]]/layout.tsx>) e o `page.tsx` chamam `draftMode()`, o que **retira estas rotas da geração estática**, mesmo em produção. No estado actual não se perde nada, porque as páginas vêm todas da base de dados. Se um dia se quiser ISR, é preciso isolar a leitura do `draftMode` do caminho normal.

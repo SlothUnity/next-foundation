@@ -1,0 +1,329 @@
+# Provider API
+
+Serve conteúdo de uma API HTTP externa. Vive em [src/providers/api/](../src/providers/api/) e arranca com `PROVIDER=api`.
+
+Existe para o caso em que o CMS não corre dentro desta aplicação e foi escrito por alguém que não conhece esta estrutura. É a diferença de fundo em relação ao [provider Payload](payload.md): ali o formato é nosso, e um bloco que não encaixa corrige-se na collection. Aqui o formato é de outra pessoa, e a única coisa que se pode fazer é traduzi-lo.
+
+## A ideia
+
+**Vai a cru, e o que volta é mapeado.**
+
+```
+API_URL + o caminho onde estamos          →   resposta desconhecida
+                                              → mapear para PageDefinition
+```
+
+O pedido é o `API_URL` mais o caminho da página, e nada mais. Sem idioma, sem query string, sem headers: o provider não assume que a API precisa de contexto, porque a maioria não precisa. Se este projecto for um em que precise, isso acrescenta-se **editando um ficheiro na altura** — não fica declarado à espera.
+
+O que volta não se sabe. Olha-se para a resposta verdadeira, e traduz-se para o contrato interno que já está montado. Esse é o único trabalho que sobra.
+
+Duas costuras, uma por direcção, e são ficheiros feitos para editar:
+
+| Direcção | Ficheiro                                                            | Decide                                           |
+| -------- | ------------------------------------------------------------------- | ------------------------------------------------ |
+| Sai      | [createPageRequest.ts](../src/providers/api/createPageRequest.ts)   | caminho, e o que mais a API vier a precisar      |
+| Entra    | [mappers/mapApiPage.ts](../src/providers/api/mappers/mapApiPage.ts) | a resposta → `PageDefinition` **(por escrever)** |
+
+Tudo o resto — transporte, cache, erros, 404, testes — está feito, e não se toca para ligar uma API nova.
+
+```
+providers/api/
+├── provider.ts               ← o bundle: page, site
+├── createPageRequest.ts      ← ⚠️ o que sai
+├── mappers/
+│   ├── mapApiPage.ts         ← ⚠️ o que entra
+│   ├── normalize.ts          ← null / "" / ausente → undefined
+│   └── describeBody.ts       ← descreve um corpo desconhecido
+├── ApiClient.ts              ← fetch, auth, cache, 404 → undefined
+├── Api.types.ts              ← config e tipos de pedido
+├── createApiClient.ts        ← lê o ambiente
+├── errors/
+│   ├── ApiRequestError.ts    ← o pedido falhou
+│   └── ApiContractError.ts   ← o corpo não é o esperado
+└── sources/
+    ├── ApiPageSource.ts      ← junta as duas costuras
+    └── ApiSiteSource.ts      ← nome e idiomas do site, sem chamar a API
+```
+
+## Fluxo de um pedido
+
+```
+getPage('en/about-us', locale, { draft })
+        │                 └─ ignorado: ver "Idiomas"
+        ▼
+createPageRequest({ path, draft })                    ⚠️ costura
+        │  { endpoint: '/en/about-us' }
+        ▼
+ApiClient.get(endpoint, { params, headers, draft, tags })
+        │  GET {API_URL}/en/about-us
+        │
+        ├── 404 .................................→ undefined  → notFound()
+        ├── rede / 5xx / não-JSON ...............→ ApiRequestError
+        │
+        ▼
+corpo JSON (unknown)
+        │
+        ▼
+mapApiPage(raw)                                       ⚠️ costura
+        │
+        ├── fora do contrato ....................→ ApiContractError
+        ▼
+PageDefinition
+```
+
+O [ApiClient](../src/providers/api/ApiClient.ts) devolve `unknown` de propósito: não conhece páginas, módulos nem idiomas. Interpretar a resposta é trabalho do mapper, e é a única fronteira onde o formato externo existe.
+
+## Configuração
+
+Só o transporte é que é configurável por ambiente. Tudo o que tenha a ver com o formato da API vive em código, porque é código que se escreve depois de olhar para ela.
+
+| Variável         | Obrigatória | Efeito                                                    |
+| ---------------- | ----------- | --------------------------------------------------------- |
+| `API_URL`        | sim         | base da API. Ex.: `https://cms.exemplo.pt/api/v1/content` |
+| `API_TOKEN`      | não         | enviado como `Authorization: Bearer …`                    |
+| `API_REVALIDATE` | não         | segundos de cache do Next (`60` por omissão, `0` desliga) |
+
+Sem `API_URL` o provider falha no primeiro pedido, com a variável nomeada na mensagem — não serve uma página vazia. Um `API_REVALIDATE` que não seja um inteiro não-negativo é um erro, não um valor a ignorar em silêncio.
+
+O ambiente é lido **dentro do pedido**, não no import: o [createApiClient](../src/providers/api/createApiClient.ts) não é memoizado, e o `ApiClient` não guarda estado nem abre conexões. É isso que permite ao `createProvider` importar este bundle sem rebentar quando o `PROVIDER` activo é outro — ver a nota sobre bundles em [providers.md](providers.md#cada-provider-expõe-o-seu-bundle).
+
+## O que sai: createPageRequest
+
+Por omissão o pedido é o caminho, e mais nada:
+
+| Página do site          | Pedido à API                     |
+| ----------------------- | -------------------------------- |
+| `/`                     | `{API_URL}/`                     |
+| `/sobre-nos`            | `{API_URL}/sobre-nos`            |
+| `/en/about-us`          | `{API_URL}/en/about-us`          |
+| `/servicos/consultoria` | `{API_URL}/servicos/consultoria` |
+
+O caminho vai inteiro, tal como está no browser. O provider não sabe que `en` é um idioma — para ele é o primeiro segmento de um caminho, e é a API que decide o que fazer com ele.
+
+Isto é a omissão, não uma regra. A função recebe `{ path, draft }` e devolve `{ endpoint, params?, headers? }`. Quando **este** projecto tiver uma API que precise de contexto, é aqui que se acrescenta:
+
+```ts
+export function createPageRequest({ path, draft }: PageRequestContext): ApiRequest {
+  return {
+    endpoint: `/pages/${path}`,
+    params: { lang: 'pt', preview: draft || undefined },
+    headers: { 'X-Site': 'super-bock' },
+  };
+}
+```
+
+Regras do transporte, para não haver surpresas:
+
+- **Params com valor `undefined` são omitidos.** Não sai `?preview=undefined`.
+- **Os headers do pedido ganham aos da configuração.** Até o `Authorization` do `API_TOKEN` se pode trocar por pedido.
+- **A base e o caminho são juntos sem duplicar barras.** `API_URL` com ou sem barra final dá o mesmo URL.
+
+Se a API precisar de algo que não caiba em caminho, params ou headers — um `POST` com corpo, por exemplo — é o `ApiClient` que ganha um método e o `ApiRequest` um campo. A source continua a não saber de nada.
+
+## O que entra: mapApiPage
+
+**Este ficheiro está por escrever**, porque o formato da resposta não é conhecido. Quando for, é a única coisa que interessa escrever.
+
+Arranca com `PROVIDER=api pnpm dev` e abre uma página. O provider vai buscá-la e pára com um erro assim:
+
+```
+ApiContractError: mapApiPage() has no mapping yet, so the page cannot be built.
+The API returned an object with keys: metadata, navigationHeader, sections.
+Write the translation in src/providers/api/mappers/mapApiPage.ts — see docs/api.md.
+```
+
+Isso é o desenho, não uma falha: a mensagem traz as chaves do topo do corpo verdadeiro, que é o ponto de partida do mapeamento. Quem a produz é o [describeBody](../src/providers/api/mappers/describeBody.ts), que descreve um corpo desconhecido numa linha — objecto e chaves, array e tamanho, `null` ou primitivo.
+
+### O que tem de sair de lá
+
+```ts
+{
+  meta: { locale, title?, description?, ogTitle?, ogDescription?, noIndex?, noFollow? },
+  navigation?: ModuleInstance,
+  main: ModuleInstance[],
+  footer?: ModuleInstance,
+}
+```
+
+Cada `ModuleInstance` é `{ id, alias, data, name? }`, e o **`alias` tem de ser igual ao `alias` de um módulo registado** em [src/modules/](../src/modules/) — é por ele que o renderer encontra o componente. O `data` não precisa de ser validado aqui: o schema do módulo valida-o a seguir. Ver [modules.md](modules.md) e [renderer.md](renderer.md).
+
+Nada é obrigatório além do `main`, que pode ser um array vazio. O `meta.locale` é o que vai para o `lang` do `<html>`.
+
+### Exemplo completo
+
+Supõe que a API responde isto:
+
+```json
+{
+  "metadata": {
+    "language": "pt-PT",
+    "seoTitle": "Sobre nós",
+    "seoDescription": null,
+    "hideFromRobots": "true"
+  },
+  "sections": [
+    {
+      "contentType": "heroBanner",
+      "key": "a7f2",
+      "values": { "headline": "Sobre nós", "sublabel": "" }
+    }
+  ]
+}
+```
+
+Nada disto encaixa no `PageDefinition`. **Primeiro descreve-se o que vem**, num `ApiPage.schema.ts` ao lado do mapper — como o `Hero.schema.ts` faz para o módulo. O corpo vem de fora do TypeScript, logo o `typecheck` não diz nada sobre ele:
+
+```ts
+import { z } from 'zod';
+
+const apiSectionSchema = z.object({
+  contentType: z.string(),
+  key: z.string(),
+  values: z.record(z.string(), z.unknown()).nullish(),
+});
+
+export const apiPageSchema = z.object({
+  metadata: z
+    .object({
+      language: z.string().nullish(),
+      seoTitle: z.string().nullish(),
+      seoDescription: z.string().nullish(),
+      hideFromRobots: z.unknown(),
+    })
+    .nullish(),
+
+  sections: z.array(apiSectionSchema).nullish(),
+});
+
+export type ApiSection = z.infer<typeof apiSectionSchema>;
+```
+
+O `.nullish()` é intencional: qualquer CMS distingue "campo vazio" de "campo ausente", e o `core` não.
+
+**Depois traduz-se**, e é aqui que vivem as decisões:
+
+```ts
+const ALIASES: Record<string, string> = {
+  heroBanner: 'hero',
+};
+
+export function mapApiPage(raw: unknown): PageDefinition {
+  const result = apiPageSchema.safeParse(raw);
+
+  if (!result.success) {
+    throw new ApiContractError(
+      `The API page response does not match the expected contract.\n${z.prettifyError(result.error)}`,
+      { cause: result.error },
+    );
+  }
+
+  const page = result.data;
+
+  return {
+    meta: {
+      locale: optionalText(page.metadata?.language) ?? 'pt-PT',
+      title: optionalText(page.metadata?.seoTitle),
+      description: optionalText(page.metadata?.seoDescription),
+      noIndex: optionalFlag(page.metadata?.hideFromRobots),
+    },
+
+    main: (page.sections ?? []).flatMap(mapSection),
+  };
+}
+
+function mapSection(section: ApiSection): ModuleInstance[] {
+  const alias = ALIASES[section.contentType];
+
+  if (!alias) {
+    return [];
+  }
+
+  return [{ id: section.key, alias, data: section.values ?? {} }];
+}
+```
+
+Cinco coisas que valem a pena reparar:
+
+**O `locale` vem da resposta.** É a API que sabe em que idioma respondeu, e é este valor que vai para o `lang` do `<html>` — ver [routing.md](routing.md#o-idioma-do-html). Se a resposta não o declarar, põe-se aqui o do projecto.
+
+**`null` e `""` não podem passar.** Um `null` que chegue a um componente aparece na página como texto. O [normalize.ts](../src/providers/api/mappers/normalize.ts) existe para isso, e é independente do formato — serve qualquer API:
+
+| Função         | Faz                                                    |
+| -------------- | ------------------------------------------------------ |
+| `optionalText` | `null`, `''` e espaços → `undefined`; o resto é trim   |
+| `optionalFlag` | `true`, `'true'` e `1` → `true`; tudo o mais é `false` |
+| `optionalList` | `null`, ausente ou um objecto único → sempre um array  |
+
+**O mapa de aliases é explícito.** Uma convenção implícita (`contentType` === `alias`) parece mais curta até chegar um tipo novo da API e o renderer falhar sem dizer porquê. Com o mapa, um tipo desconhecido é uma linha que falta — visível.
+
+**`flatMap` em vez de `map`.** Deixa cair o que não interessa sem `undefined` no meio do array. A API vai trazer coisas que este site não usa, e o mapper é o sítio onde isso morre.
+
+**Validar é obrigatório, e falhar é melhor do que adivinhar.** Um `ApiContractError` com o caminho do campo distingue "a API mudou de forma" de "o site está estranho". Sem isso, um campo renomeado do outro lado aparece como uma página em branco.
+
+### Testes
+
+Quando o mapper estiver escrito, [mapApiPage.test.ts](../src/providers/api/mappers/mapApiPage.test.ts) troca os casos de "sem mapeamento" pelos do formato real: a meta, os blocos, os `null` do CMS e um corpo fora do contrato.
+
+É o teste que mais vale a pena ter neste provider. O mapper é a fronteira onde os dados mudam de forma, e é onde um bug passa sem dar erro.
+
+## Erros
+
+| Erro                                                                | Quando                                               |
+| ------------------------------------------------------------------- | ---------------------------------------------------- |
+| [ApiRequestError](../src/providers/api/errors/ApiRequestError.ts)   | rede em baixo, resposta não-OK, corpo que não é JSON |
+| [ApiContractError](../src/providers/api/errors/ApiContractError.ts) | a API respondeu, mas o corpo não é o esperado        |
+
+A distinção é deliberada: um é infraestrutura, o outro é contrato. O `ApiRequestError` traz o `url` e o `status`; o `ApiContractError` traz a causa e, na mensagem, o caminho do campo.
+
+Um `404` **não** é erro: o cliente devolve `undefined`, o `getPage` devolve `undefined`, e a aplicação decide o `notFound()`. Um corpo `null` conta como o mesmo. Se a API responder `404` com um corpo para renderizar — uma página de erro própria — é na [ApiPageSource](../src/providers/api/sources/ApiPageSource.ts) que se decide devolvê-lo em vez de `undefined`.
+
+## Cache
+
+Páginas publicadas usam o cache do Next com o `revalidate` configurado, e etiquetas por caminho:
+
+```ts
+tags: ['pages', 'page:/sobre-nos'];
+```
+
+Isso permite revalidar tudo ou uma página só, quando existir um webhook do CMS a fazê-lo.
+
+Rascunhos (`draft: true`) passam a `cache: 'no-store'`. Quem grava precisa de ver o que gravou, e não uma resposta de há um minuto.
+
+## Idiomas
+
+**O provider não tem noção de idioma.** O caminho vai inteiro, e se tiver um `/en` à frente é a API que o interpreta. O `locale` que o `getPage` recebe é ignorado.
+
+Onde é que o idioma existe, então:
+
+- **No `lang` do `<html>`** — vem da `meta.locale` que o mapper produz, ou seja da resposta da API. Ver [routing.md](routing.md#o-idioma-do-html).
+- **No `resolveRoute`** — que precisa de saber quais os primeiros segmentos que são idiomas, para os separar do caminho. Olhando para `/en/about-us` não há como adivinhar se `en` é um idioma ou o primeiro segmento de um caminho.
+
+A [ApiSiteSource](../src/providers/api/sources/ApiSiteSource.ts) responde a esse segundo ponto com um idioma só:
+
+```ts
+return {
+  name: 'Site',
+  locales: ['pt-PT'],
+};
+```
+
+Com um único idioma na lista, nada é reconhecido como prefixo e **o caminho passa inteiro** — que é exactamente o que se quer. Este é o ficheiro a editar se um projecto precisar de o frontend distinguir idiomas (para gerar links com prefixo, ou um selector). Não é configuração de ambiente porque não é do transporte: é uma característica do site, como o `enabledLocales` do global `Site` é no provider Payload.
+
+Se a API que aparecer expuser definições de site, troca-se esta classe por um `client.get()` e um mapper, como a de páginas faz.
+
+## O que não tem
+
+**`preview`.** Pré-visualizar é um mecanismo do CMS remoto — que URL assinar, que cookie ler, como avisar o browser — e não se sabe qual é. O contrato `Provider` tem-no opcional, logo a aplicação não renderiza nada e não há condicionais espalhadas. Quando o CMS for escolhido, o componente entra no bundle e mais nada muda.
+
+**Navegação e footer.** O `PageDefinition` prevê-os, e o mapper pode preenchê-los a partir do que a resposta trouxer — muitas APIs de página mandam o header e o footer no mesmo corpo. Nenhum provider o faz ainda.
+
+## Ligar uma API nova, por passos
+
+1. `API_URL` no `.env.local`, e `PROVIDER=api`.
+2. `pnpm dev`, abre uma página, lê as chaves na mensagem de erro.
+3. Se a API precisar de contexto no pedido, [createPageRequest.ts](../src/providers/api/createPageRequest.ts).
+4. Descreve o corpo num `ApiPage.schema.ts` e traduz em [mapApiPage.ts](../src/providers/api/mappers/mapApiPage.ts).
+5. Garante que cada `alias` que produzes existe em [src/modules/](../src/modules/). Um bloco da API sem módulo é uma linha no mapa de aliases, ou um módulo novo.
+6. Testa o mapper com um corpo verdadeiro copiado da API.
+
+O `core` não muda. O renderer não muda. Os módulos não mudam.

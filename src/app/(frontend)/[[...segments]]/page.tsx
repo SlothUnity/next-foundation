@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
-import { draftMode } from 'next/headers';
 
 import { notFound } from 'next/navigation';
 
 import { foundation } from '@/core/foundation/foundation';
 import { PageRenderer } from '@/core/renderer';
-import { resolveRoute } from '@/core/routing';
 
 import { createMetadata } from '../createMetadata';
+
+import { resolvePage } from './resolvePage';
 
 interface PageProps {
   params: Promise<{
@@ -15,54 +15,26 @@ interface PageProps {
   }>;
 }
 
-async function resolvePage({ params }: PageProps) {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { segments = [] } = await params;
-  const { isEnabled: isDraft } = await draftMode();
 
-  const site = await foundation.site.getSite();
+  const resolved = await resolvePage(segments);
 
-  const route = resolveRoute({
-    segments,
-    locales: site.locales,
-  });
-
-  if (!route) {
-    return undefined;
-  }
-
-  const page = await foundation.page.getPage(route.path, route.locale, { draft: isDraft });
-
-  if (!page) {
-    return undefined;
-  }
-
-  return {
-    page,
-    route,
-    site,
-  };
-}
-
-export async function generateMetadata(props: PageProps): Promise<Metadata> {
-  const result = await resolvePage(props);
-
-  if (!result) {
+  if (!resolved) {
     return {};
   }
 
-  return createMetadata(result.page.meta);
+  return createMetadata(resolved.page.meta);
 }
 
-export default async function Page(props: PageProps) {
-  const result = await resolvePage(props);
+export default async function Page({ params }: PageProps) {
+  const { segments = [] } = await params;
 
-  if (!result) {
+  const resolved = await resolvePage(segments);
+
+  if (!resolved) {
     notFound();
   }
 
-  return (
-    <>
-      <PageRenderer page={result.page} foundation={foundation} />
-    </>
-  );
+  return <PageRenderer page={resolved.page} foundation={foundation} />;
 }

@@ -25,6 +25,9 @@ export function createProvider(): Provider {
   const name = process.env.PROVIDER ?? 'payload';
 
   switch (name) {
+    case 'api':
+      return apiProvider;
+
     case 'mock':
       return mockProvider;
 
@@ -56,6 +59,8 @@ providers/
 ├── provider.ts              ← o singleton
 ├── payload/
 │   └── provider.ts          ← export const payloadProvider
+├── api/
+│   └── provider.ts          ← export const apiProvider
 └── mocks/
     └── provider.ts          ← export const mockProvider
 ```
@@ -71,7 +76,7 @@ export const payloadProvider: Provider = {
 
 Assim o `createProvider` fica só com a decisão, e cada pasta de provider é autodescritiva.
 
-Nota: os bundles são `const` de módulo, logo **ambos** são instanciados quando o `createProvider` é importado. Hoje é irrelevante — os sources não guardam estado e o `getPayload({ config })` memoiza internamente. Se um provider passar a abrir conexões no construtor, converte-os em factories (`createPayloadProvider()`) chamadas dentro do `case`.
+Nota: os bundles são `const` de módulo, logo **todos** são instanciados quando o `createProvider` é importado. Hoje é irrelevante — os sources não guardam estado, o `getPayload({ config })` memoiza internamente, e o provider `api` só lê o ambiente dentro do pedido, precisamente para que importar o bundle não rebente quando o `PROVIDER` activo é outro. Se um provider passar a abrir conexões no construtor, converte-os em factories (`createPayloadProvider()`) chamadas dentro do `case`.
 
 ## Adicionar um provider
 
@@ -118,6 +123,23 @@ Cada bloco tem de produzir uma `ModuleInstance` com `alias` igual ao `alias` de 
 **4. Exportar o bundle** em `<nome>/provider.ts` e acrescentar o `case` ao `createProvider`.
 
 O core não muda. O renderer não muda. Os módulos não mudam.
+
+## O provider api
+
+[providers/api/](../src/providers/api/) serve conteúdo de uma API HTTP externa, escrita por alguém que não conhece esta estrutura.
+
+O pedido vai a cru — `API_URL` mais o caminho onde estamos — e a resposta, que não se sabe qual é, é traduzida para o contrato interno. São duas costuras, uma por direcção, e são os únicos ficheiros a editar:
+
+| Direcção | Ficheiro                                                            |
+| -------- | ------------------------------------------------------------------- |
+| Sai      | [createPageRequest.ts](../src/providers/api/createPageRequest.ts)   |
+| Entra    | [mappers/mapApiPage.ts](../src/providers/api/mappers/mapApiPage.ts) |
+
+O `mapApiPage` está deliberadamente por escrever: arranca com `PROVIDER=api` e o erro do primeiro pedido diz as chaves que a API devolveu.
+
+Não declara `preview`, por isso é — como o `mocks` — um caso de teste do `preview` opcional.
+
+**Documentação completa: [api.md](api.md).**
 
 ## O provider mock
 

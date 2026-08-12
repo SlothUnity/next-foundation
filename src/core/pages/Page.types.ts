@@ -1,7 +1,7 @@
 import type { ModuleInstance } from '@/core/modules';
 
 export interface Meta {
-  locale: string;
+  locale?: string;
 
   title?: string;
   description?: string;

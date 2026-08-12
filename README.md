@@ -24,16 +24,20 @@ Se alterares uma collection e arrancares com `pnpm dev`, os tipos gerados ficam 
 `.env.local`:
 
 ```
-PROVIDER=payload                            # payload | mock
+PROVIDER=payload                            # payload | api | mock
 DATABASE_URL=postgres://…
 PAYLOAD_SECRET=…
 NEXT_PUBLIC_SERVER_URL=http://localhost:3000
 PREVIEW_SECRET=…
+
+API_URL=https://cms.exemplo.pt/api          # só com PROVIDER=api
+API_TOKEN=…                                 # opcional
+API_REVALIDATE=60                           # opcional, segundos, 60 por omissão
 ```
 
 O `NEXT_PUBLIC_SERVER_URL` **não pode ter barra final** — é usado como `targetOrigin` de `postMessage` no Live Preview, e a comparação é de string exacta.
 
-Com `PROVIDER=mock` o site arranca sem base de dados, servido por fixtures em [src/providers/mocks/](src/providers/mocks/).
+Com `PROVIDER=mock` o site arranca sem base de dados, servido por fixtures em [src/providers/mocks/](src/providers/mocks/). Com `PROVIDER=api` o conteúdo vem de uma API HTTP externa — ver [docs/api.md](docs/api.md).
 
 ### Scripts
 
@@ -83,6 +87,7 @@ O `pnpm build` não corre verificações. Num CI, invoca `lint`, `typecheck` e `
 | [renderer.md](docs/renderer.md)         | Como funciona a renderização e os erros     |
 | [providers.md](docs/providers.md)       | Como ligo outro CMS                         |
 | [payload.md](docs/payload.md)           | Como está configurado o Payload             |
+| [api.md](docs/api.md)                   | Como ligo uma API externa                   |
 | [routing.md](docs/routing.md)           | Como funcionam URLs, locales e metadata     |
 | [TODO.md](docs/TODO.md)                 | Estado e próximos passos                    |
 
