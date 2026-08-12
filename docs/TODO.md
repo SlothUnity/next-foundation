@@ -1,164 +1,71 @@
-# TODO
+# Estado e próximos passos
 
-## Estado atual
+## Feito
 
-### Foundation
+### Core
 
-- [x] `Foundation`
-- [x] `createFoundation`
-- [x] `ModuleRegistry`
-- [x] `PageSource`
-- [x] `MockPageSource`
+- `Foundation`, `createFoundation`, singleton fora do barrel
+- `PageSource` com `GetPageOptions.draft`, `SiteSource`
+- `PageDefinition`, `Meta`, `SiteDefinition`, `ModuleInstance`
+- `Registry` genérico + `ModuleRegistry`
+- `PageRenderer`, `ModuleRenderer`, `ModuleErrorFallback`
+- validação de runtime por schema, com comportamento distinto dev/prod
+- `resolveRoute`, `createPagePath`, `getLocaleSegment`
+- tipos colocados junto dos donos, com sufixo `.types.ts`
 
-### Modules
+### Módulos
 
-- [x] `ModuleProps`
-- [x] `ModuleComponent`
-- [x] `Module`
-- [x] `ModuleSchema`
-- [x] `defineModule`
-- [x] `createModuleComponent`
-- [x] schemas de módulos
-- [x] registo automático dos módulos
+- `defineModule`, `createModuleComponent`
+- registo automático a partir de `src/modules/index.ts`
+- módulo `hero` como referência
 
-### Rendering
+### Providers
 
-- [x] `PageRenderer`
-- [x] `ModuleRenderer`
-- [x] `ModuleErrorFallback`
-- [x] validação runtime com schema
-- [x] tratamento dev/prod
-- [x] testes do renderer
+- contrato `Provider` com `preview` opcional
+- `createProvider` por variável `PROVIDER`, singleton em `provider.ts`
+- provider `mocks` — site completo sem base de dados
+- provider `payload`
 
-### Pages
+### Payload
 
-- [x] `PageDefinition`
-- [x] `Meta`
-- [x] `ModuleInstance`
-- [x] `PageSource`
-- [x] `MockPageSource`
-- [x] página inexistente representada por `undefined`
-- [x] `notFound()` tratado na camada Next.js
+- collections `Pages`, `Media`, `Users`; global `Site`
+- localização com `filterAvailableLocales` a partir do global `Site`
+- hierarquia e breadcrumbs (`nestedDocs`), slugs por `createSlug`
+- SEO com `ogTitle`, `ogDescription`, `noIndex`, `noFollow`
+- validação de homepage única (`isHome`)
+- campo de admin `PageUrl`
+- rascunhos com autosave a 375ms
+- Live Preview server-side: `RefreshRouteOnSave`, `next/preview`, `next/exit-preview`
 
-### Testing
+### Qualidade
 
-- [x] `Registry`
-- [x] `ModuleRegistry`
-- [x] `ModuleRenderer`
-- [x] `PageRenderer`
-- [x] `ModuleErrorFallback`
-- [x] `MockPageSource`
-- [x] isolamento entre testes
-- [x] typecheck verde
-- [x] suite de testes verde
+- `typecheck`, `lint` e 31 testes verdes
+- testes sem carregar o `payload.config.ts`
 
 ## Próximos passos
 
-### 1. Payload
+### 1. Falhas silenciosas
 
-- [ ] Pesquisar a arquitetura atual do Payload.
-- [ ] Integrar Payload no projeto.
-- [ ] Criar collection `pages`.
-- [ ] Definir campos de página.
-- [ ] Definir como o Payload representa `navigation`, `main` e `footer`.
-- [ ] Definir os blocos/módulos disponíveis.
-- [ ] Configurar localization.
-- [ ] Configurar publicação/drafts conforme necessário.
+Três sítios tratam a ausência de `site.enabledLocales` como "nada a mostrar", sem log: o `url` do Live Preview, o campo `PageUrl` e o `resolveRoute`. Um `logger.warn` no primeiro e uma mensagem explícita no segundo tornariam o problema diagnosticável em vez de invisível.
 
-### 2. Adapter Payload
+### 2. Limpeza pendente
 
-Criar uma implementação de:
+- [ModuleErrorFallback.tsx](../src/core/renderer/ModuleErrorFallback.tsx) tem um `console.error(process.env.NODE_ENV === 'development')` que é debug esquecido.
+- O [PageUrl.tsx](../src/providers/payload/components/PageUrl.tsx) ignora o `isHome`, logo mostra `/slug-da-home` onde o Live Preview abre `/`. A regra de derivação de path devia ser partilhada com o `getLivePreviewUrl`.
+- O `vitest.config.ts` usa `__dirname`, que o Vite já sinaliza como não suportado no futuro `configLoader: 'native'`.
 
-```ts
-class PayloadPageSource extends PageSource
-```
+### 3. Módulos
 
-Responsabilidades:
+Só existe o `hero`. Os próximos exercitam partes do contrato que ainda não foram usadas: um com relações (para validar o `depth: 2`), um com media (para validar uploads), e um com uma lista de itens (para validar arrays no schema).
 
-- receber `slug`;
-- receber `locale`;
-- consultar Payload;
-- transformar o resultado externo em `PageDefinition`;
-- devolver `undefined` quando a página não existir.
+### 4. Navigation e footer
 
-Não deve:
+O `PageDefinition` já os prevê, mas nenhum provider os preenche. Falta decidir onde vivem no CMS — provavelmente globals — e mapeá-los.
 
-- chamar `notFound()`;
-- conhecer `PageRenderer`;
-- conhecer o router;
-- alterar o contrato `PageDefinition`.
+### 5. Tema
 
-### 3. Transformação de dados
+Ainda não existe sistema de tema nem estilos. A decisão está aberta.
 
-- [ ] Definir o tipo dos documentos externos do Payload.
-- [ ] Criar transformação Payload → `PageDefinition`.
-- [ ] Testar a transformação isoladamente.
-- [ ] Testar páginas sem navigation.
-- [ ] Testar páginas sem footer.
-- [ ] Testar `main` vazio.
-- [ ] Testar módulos diferentes dentro de `main`.
-- [ ] Testar alias de módulos desconhecidos.
+### 6. Cobertura
 
-### 4. Routing
-
-- [x] Tratar `undefined` com `notFound()` na aplicação.
-- [ ] Criar rota dinâmica para páginas vindas do CMS.
-- [ ] Extrair slug da rota.
-- [ ] Integrar locale da rota/request.
-- [ ] Criar `not-found.tsx` quando a camada visual do 404 for definida.
-
-### 5. Qualidade
-
-- [ ] `pnpm typecheck`
-- [ ] `pnpm lint`
-- [ ] `pnpm format:check`
-- [ ] `pnpm exec vitest run`
-- [ ] manter todos verdes antes de avançar para a próxima alteração estrutural.
-
-## Decisões arquiteturais fechadas
-
-### PageDefinition não usa `regions`
-
-Mantemos:
-
-```ts
-export interface PageDefinition {
-  meta: Meta;
-  navigation?: ModuleInstance;
-  main: ModuleInstance[];
-  footer?: ModuleInstance;
-}
-```
-
-O CMS deve adaptar os seus dados para este contrato.
-
-### O core não conhece Payload
-
-Payload será uma implementação de `PageSource`.
-
-### O core não conhece Next.js
-
-`notFound()` pertence à aplicação.
-
-### O sistema não assume módulos específicos
-
-Não existe dependência obrigatória de `hero`, `navigation`, `gallery` ou qualquer outro módulo concreto.
-
-### Página inexistente não é erro do renderer
-
-`PageSource` devolve:
-
-```ts
-undefined;
-```
-
-e a aplicação decide apresentar 404.
-
-## Comandos de validação
-
-```bash
-pnpm typecheck
-pnpm lint
-pnpm format:check
-pnpm exec vitest run
-```
+O `core` está testado. Não há testes para os mappers do Payload nem para o `resolvePayloadPage`, que são a fronteira onde os dados mudam de forma — é o sítio mais provável para um bug silencioso.

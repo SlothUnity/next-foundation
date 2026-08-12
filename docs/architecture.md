@@ -1,166 +1,168 @@
-# Architecture
+# Arquitectura
 
-## Visão geral
+## A ideia
 
-O projeto separa aquisição de conteúdo, contrato interno, registry e renderização.
+Uma página não é código — é dados. O CMS produz um documento, um adaptador traduz esse documento para um contrato interno fixo (`PageDefinition`), e o renderer resolve cada bloco desses dados para um componente React através de um registry.
 
-```text
-Next.js App Router
+Nada no caminho de renderização sabe que CMS está por baixo.
+
+## Camadas
+
+```
+┌─────────────────────────────────────────────┐
+│  app/          Next.js: routing, metadata,  │
+│                draftMode, 404               │
+└──────────────────────┬──────────────────────┘
+                       │
+       ┌───────────────┴───────────────┐
+       ▼                               ▼
+┌──────────────┐              ┌─────────────────┐
+│  core/       │◄─────────────│  providers/     │
+│  domínio     │              │  adaptadores    │
+│              │              │  de CMS         │
+│  PageSource  │              │  ┌───────────┐  │
+│  SiteSource  │              │  │  payload  │  │
+│  Registry    │              │  │  mocks    │  │
+│  Renderer    │              │  └───────────┘  │
+└──────▲───────┘              └─────────────────┘
+       │
+┌──────┴───────┐
+│  modules/    │  componentes de conteúdo
+└──────────────┘
+```
+
+**A direcção das dependências é a regra mais importante do projecto:** tudo aponta para o `core`, e o `core` não aponta para ninguém.
+
+| Camada       | Conhece                      | Não pode conhecer                   |
+| ------------ | ---------------------------- | ----------------------------------- |
+| `core/`      | nada além de React           | Next.js, Payload, módulos concretos |
+| `providers/` | `core` + o SDK do CMS        | `app`                               |
+| `modules/`   | `core`                       | providers, CMS                      |
+| `app/`       | `core`, `providers`, Next.js | estrutura interna do CMS            |
+
+Se um dia `core/` precisar de importar de `providers/`, é sinal de que um conceito está na camada errada.
+
+## Fluxo de um pedido
+
+```
+URL /en/servicos/consultoria
         │
         ▼
-   Foundation
-   ┌────┴────┐
-   │         │
- PageSource Modules
-   │         │
-   ▼         ▼
- CMS/Mock  Registry
-   │         │
-   └────┬────┘
+resolveRoute({ segments, locales })          app → core
+        │  { locale: 'en-GB', path: 'servicos/consultoria' }
         ▼
- PageDefinition
+provider.site.getSite()                      → SiteDefinition
         │
         ▼
- PageRenderer
+provider.page.getPage(path, locale, { draft })
+        │
+        │   ┌─────────────────────────────┐
+        │   │ PayloadPageSource           │  providers
+        │   │  resolvePayloadPage() ─ find │
+        │   │  mapPayloadPage()   ─ traduz │
+        │   └─────────────────────────────┘
+        ▼
+PageDefinition | undefined
+        │
+        ├── undefined → notFound()                   app
         │
         ▼
- ModuleRenderer
-        │
+PageRenderer                                 core
+        │  navigation? / main[] / footer?
         ▼
- React Module
+ModuleRenderer  (por instância)
+        │  registry.getByAlias(alias)
+        │  schema.parse(data)
+        ▼
+Componente React                             modules
 ```
 
 ## Princípios
 
-### 1. O CMS não define a arquitetura interna
+### 1. O CMS não define a arquitectura interna
 
-O CMS fornece dados externos.
+O CMS fornece dados externos; o contrato interno é fixo e é o `core` que o define.
 
-A Foundation define o contrato que o frontend utiliza.
-
-```text
-CMS document
-    ↓
-adapter
-    ↓
-PageDefinition
+```
+documento do CMS  →  mapper  →  PageDefinition
 ```
 
-Isto permite trocar Payload por outra fonte sem alterar `PageRenderer` ou `ModuleRenderer`.
+Nunca o inverso. Se um campo do Payload não encaixa no `PageDefinition`, é o mapper que se adapta — não o contrato.
 
 ### 2. O routing pertence à aplicação
 
-`PageSource` não sabe o que é Next.js.
-
-Uma página inexistente retorna:
+O `PageSource` recebe um `path` e um `locale` e devolve dados ou `undefined`. Não conhece Next.js, não chama `notFound()`, não sabe o que é um segmento de URL.
 
 ```ts
-undefined;
-```
+const page = await foundation.page.getPage(route.path, route.locale, { draft });
 
-A aplicação trata isso:
-
-```ts
 if (!page) {
   notFound();
 }
 ```
 
-### 3. Módulos são descobertos pelo alias
+### 3. Os módulos são descobertos por alias
 
-Uma `ModuleInstance` contém:
+Uma `ModuleInstance` traz `alias`, e o renderer pergunta ao registry quem responde a esse alias. Não existe lista de módulos no `PageRenderer`.
 
-```text
-id
-alias
-data
-```
-
-O renderer usa `alias` para consultar o `ModuleRegistry`.
-
-Não existe uma lista hardcoded de módulos no `PageRenderer`.
-
-### 4. Módulos são opcionais
-
-Uma página não precisa de ter Hero, Navigation ou Footer.
-
-O contrato suporta:
+### 4. Nada é obrigatório
 
 ```ts
 navigation?: ModuleInstance;
-main: ModuleInstance[];
+main: ModuleInstance[];      // pode ser vazio
 footer?: ModuleInstance;
 ```
 
-O `main` pode conter zero ou vários módulos.
+Uma página sem navegação, sem footer e sem módulos é válida.
 
-### 5. Validação acontece no renderer
+### 5. A validação é uma fronteira de runtime
 
-O registry guarda a definição do módulo.
+O TypeScript garante tipos em desenvolvimento; o schema valida os dados **reais** que vêm do CMS. São problemas diferentes e ambos precisam de resposta.
 
-Se existir schema:
-
-```text
-ModuleInstance.data
-       ↓
-schema.parse()
-       ↓
-dados validados
-       ↓
-component
+```
+ModuleInstance.data → schema.parse() → dados validados → componente
 ```
 
-Em desenvolvimento, erros são lançados para facilitar diagnóstico.
+Em desenvolvimento um erro é lançado, para o vermos. Em produção cai num fallback, para não derrubar a página inteira por causa de um bloco mal preenchido.
 
-Em produção, erros de módulo podem usar o fallback definido pelo renderer.
+### 6. Os barrels não podem ter efeitos secundários
+
+O `core/foundation/foundation.ts` instancia o provider — e portanto o Payload — no momento do import. Por isso **não está no barrel**:
+
+```ts
+// core/foundation/index.ts — só coisas puras
+export * from './createFoundation';
+export * from './Foundation.types';
+```
+
+Quem quer o singleton importa-o pelo caminho explícito, e assume a consequência:
+
+```ts
+import { foundation } from '@/core/foundation/foundation';
+```
+
+Isto não é cosmética. Enquanto o singleton estava no barrel, os testes unitários do renderer carregavam o `payload.config.ts` só por importarem `createFoundation` — duplicando a duração da suite.
 
 ## Foundation
 
-A criação da Foundation centraliza as implementações:
+A `Foundation` agrega o que a aplicação precisa para renderizar:
 
 ```ts
-export function createFoundation(): Foundation {
-  const foundation: Foundation = {
-    modules: new ModuleRegistry(),
-    page: new MockPageSource(),
-  };
-
-  registerModules(foundation);
-
-  return foundation;
+export interface Foundation {
+  modules: ModuleRegistry;
+  page: PageSource;
+  site: SiteSource;
 }
 ```
 
-A implementação concreta de `page` poderá posteriormente ser substituída por `PayloadPageSource`.
+Repara no que **não** está aqui: nada de preview, nada de CMS, nada de Next.js. A `Foundation` é o contrato de domínio. Funcionalidades específicas de um provider (como o Live Preview do Payload) vivem no contrato `Provider` — ver [providers.md](providers.md).
 
-## Estado atual
-
-Já existem:
-
-- `Foundation`
-- `PageSource`
-- `MockPageSource`
-- `ModuleRegistry`
-- `PageRenderer`
-- `ModuleRenderer`
-- `ModuleErrorFallback`
-- schemas de módulos
-- testes de registry e renderer
-
-## Payload
-
-O Payload será tratado como infraestrutura/adaptador.
-
-A intenção é:
-
-```text
-Payload
-  ↓
-PayloadPageSource
-  ↓
-transformação
-  ↓
-PageDefinition
+```ts
+// core/foundation/foundation.ts
+export const foundation = createFoundation({
+  page: provider.page,
+  site: provider.site,
+});
 ```
 
-Não devemos alterar `PageDefinition` para imitar o Payload.
+O `createFoundation` cria o registry e corre o `registerModules`, que registra tudo o que [src/modules/index.ts](../src/modules/index.ts) exportar.

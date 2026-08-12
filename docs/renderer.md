@@ -1,8 +1,10 @@
 # Renderer
 
+Duas responsabilidades separadas: o `PageRenderer` organiza a página, o `ModuleRenderer` resolve um módulo. Nenhum dos dois conhece módulos concretos ou o CMS.
+
 ## PageRenderer
 
-`PageRenderer` recebe uma `PageDefinition` e uma `Foundation`.
+[core/renderer/PageRenderer.tsx](../src/core/renderer/PageRenderer.tsx)
 
 ```ts
 interface PageRendererProps {
@@ -11,19 +13,7 @@ interface PageRendererProps {
 }
 ```
 
-A responsabilidade do `PageRenderer` é apenas organizar as regiões fixas da página:
-
-```text
-navigation?
-main[]
-footer?
-```
-
-Não conhece módulos concretos.
-
-## Estrutura
-
-O renderer segue esta forma:
+Organiza as três regiões e delega tudo o resto:
 
 ```tsx
 <>
@@ -41,114 +31,67 @@ O renderer segue esta forma:
 </>
 ```
 
-O `Fragment` não adiciona um wrapper DOM.
-
-A chave usa `module.id`, que pertence à instância da página.
+O `Fragment` evita um wrapper no DOM. A chave é o `module.id`, que pertence à instância e vem do CMS — não o índice, para que reordenar blocos no admin não force React a recriar a árvore toda.
 
 ## ModuleRenderer
 
-`ModuleRenderer` resolve uma instância através do alias:
+[core/renderer/ModuleRenderer.tsx](../src/core/renderer/ModuleRenderer.tsx)
 
-```text
-ModuleInstance.alias
-        ↓
-ModuleRegistry.getByAlias()
-        ↓
-Module definition
+Três passos: resolver, validar, renderizar.
+
+```
+module.alias
+     ↓
+foundation.modules.getByAlias(alias)     ← resolver
+     ↓
+definition.schema?.parse(module.data)    ← validar
+     ↓
+<Component {...data} />                  ← renderizar
 ```
 
-### Módulo não registado
+Repara que só usa `foundation.modules`. Recebe a `Foundation` inteira por conveniência, mas não toca em `page` nem em `site`.
 
-Em desenvolvimento:
+## Erros
 
-```text
-ModuleRenderError
-```
+Dois pontos de falha, com o mesmo padrão: **em desenvolvimento lança, em produção degrada.**
 
-Em produção:
+| Situação                | Desenvolvimento         | Produção                |
+| ----------------------- | ----------------------- | ----------------------- |
+| alias não registado     | `ModuleRenderError`     | `<ModuleErrorFallback>` |
+| `schema.parse()` falhou | `ModuleValidationError` | `<ModuleErrorFallback>` |
 
-```text
-ModuleErrorFallback
-```
+A razão da assimetria: em desenvolvimento um bloco mal ligado é um bug e queremos vê-lo imediatamente; em produção um bloco mal preenchido por um editor não deve derrubar a página inteira.
 
-### Validação
-
-Se o módulo possuir schema:
+O `ModuleValidationError` guarda o erro original em `cause`, por isso o detalhe do zod não se perde:
 
 ```ts
-data = definition.schema.parse(module.data);
+throw new ModuleValidationError(`Module "${module.alias}" data validation failed.`, {
+  cause: error,
+});
 ```
 
-Se a validação falhar:
+### ModuleErrorFallback
 
-- desenvolvimento: lança `ModuleValidationError`;
-- produção: usa o comportamento de fallback definido pelo renderer.
+[core/renderer/ModuleErrorFallback.tsx](../src/core/renderer/ModuleErrorFallback.tsx)
 
-### Renderização
+Em desenvolvimento mostra o alias que falhou. Em produção devolve `null` — falha silenciosa e sem expor nomes internos.
 
-Depois da resolução e validação:
+## Cobertura de testes
 
-```tsx
-const Component = definition.component;
+O renderer é a parte mais testada do projecto. [ModuleRenderer.test.tsx](../src/core/renderer/ModuleRenderer.test.tsx) · [PageRenderer.test.tsx](../src/core/renderer/PageRenderer.test.tsx) · [ModuleErrorFallback.test.tsx](../src/core/renderer/ModuleErrorFallback.test.tsx)
 
-return <Component {...data} />;
-```
+- módulo registado com dados válidos
+- dados inválidos em desenvolvimento e em produção
+- alias desconhecido em desenvolvimento e em produção
+- presença e ausência de `navigation` e `footer`
+- `main` com zero, um e vários módulos
 
-## ModuleErrorFallback
+Os testes manipulam `process.env.NODE_ENV` para cobrir os dois comportamentos, e devem manter-se independentes entre si — cada um constrói a sua `Foundation`.
 
-O fallback é uma fronteira de apresentação de erros de módulo.
+## Fronteiras
 
-Em desenvolvimento apresenta informação útil para diagnóstico.
+**PageRenderer** — estrutura da página e delegação. Não descobre módulos, não valida schemas, não conhece o CMS.
 
-Em produção pode não apresentar conteúdo visível.
+**ModuleRenderer** — resolução por alias, validação, renderização, fallback. Não obtém páginas, não faz routing, não conhece a estrutura do CMS.
 
-Isto evita expor detalhes internos do sistema em produção.
-
-## Responsabilidades
-
-### PageRenderer
-
-Responsável por:
-
-- estrutura da página;
-- navigation opcional;
-- main;
-- footer opcional;
-- delegar cada módulo.
-
-Não é responsável por:
-
-- descobrir módulos;
-- validar schemas;
-- conhecer Payload;
-- conhecer módulos concretos.
-
-### ModuleRenderer
-
-Responsável por:
-
-- resolver alias;
-- validar dados;
-- renderizar o componente;
-- tratar erro/fallback.
-
-Não é responsável por:
-
-- obter páginas;
-- routing;
-- conhecer a estrutura do CMS.
-
-## Testes atuais
-
-O renderer tem cobertura para:
-
-- módulo registado com dados válidos;
-- dados inválidos em desenvolvimento;
-- alias desconhecido em desenvolvimento;
-- fallback de módulo desconhecido em produção;
-- navigation;
-- main;
-- footer;
-- ausência de navigation/footer.
-
-Os testes devem continuar independentes entre si.
+Se aparecer um `if (module.alias === 'hero')` em qualquer um dos dois, algo foi feito ao contrário.
