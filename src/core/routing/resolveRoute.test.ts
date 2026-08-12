@@ -13,7 +13,7 @@ describe('resolveRoute', () => {
       }),
     ).toEqual({
       locale: 'pt-PT',
-      slug: 'sobre-nos',
+      path: 'sobre-nos',
     });
   });
 
@@ -25,11 +25,11 @@ describe('resolveRoute', () => {
       }),
     ).toEqual({
       locale: 'en-GB',
-      slug: 'about-us',
+      path: 'about-us',
     });
   });
 
-  it('resolves nested slugs', () => {
+  it('resolves nested paths', () => {
     expect(
       resolveRoute({
         segments: ['en', 'company', 'team'],
@@ -37,7 +37,7 @@ describe('resolveRoute', () => {
       }),
     ).toEqual({
       locale: 'en-GB',
-      slug: 'company/team',
+      path: 'company/team',
     });
   });
 
@@ -49,7 +49,7 @@ describe('resolveRoute', () => {
       }),
     ).toEqual({
       locale: 'pt-PT',
-      slug: '',
+      path: '',
     });
   });
 

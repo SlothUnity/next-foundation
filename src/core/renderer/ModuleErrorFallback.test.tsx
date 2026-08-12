@@ -2,8 +2,16 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createFoundation } from '@/core/foundation';
+import { MockPageSource, MockSiteSource } from '@/provider/mocks';
 
 import { ModuleRenderer } from './ModuleRenderer';
+
+function createTestFoundation() {
+  return createFoundation({
+    page: new MockPageSource(),
+    site: new MockSiteSource(),
+  });
+}
 
 describe('ModuleRenderer', () => {
   beforeEach(() => {
@@ -15,7 +23,7 @@ describe('ModuleRenderer', () => {
   });
 
   it('renders a registered module with validated data', () => {
-    const foundation = createFoundation();
+    const foundation = createTestFoundation();
 
     render(
       <ModuleRenderer
@@ -23,6 +31,7 @@ describe('ModuleRenderer', () => {
         module={{
           id: 'hero-1',
           alias: 'hero',
+          name: 'Hero',
           data: {
             title: 'Hello Foundation',
             subtitle: 'Testing the renderer',
@@ -41,7 +50,7 @@ describe('ModuleRenderer', () => {
   });
 
   it('throws when module data is invalid in development', () => {
-    const foundation = createFoundation();
+    const foundation = createTestFoundation();
 
     expect(() =>
       render(
@@ -50,6 +59,7 @@ describe('ModuleRenderer', () => {
           module={{
             id: 'hero-1',
             alias: 'hero',
+            name: 'Hero',
             data: {
               subtitle: 'Missing title',
             },
@@ -60,7 +70,7 @@ describe('ModuleRenderer', () => {
   });
 
   it('throws when module alias is not registered in development', () => {
-    const foundation = createFoundation();
+    const foundation = createTestFoundation();
 
     expect(() =>
       render(
@@ -69,6 +79,7 @@ describe('ModuleRenderer', () => {
           module={{
             id: 'unknown-1',
             alias: 'does-not-exist',
+            name: 'Unknown',
             data: {},
           }}
         />,
@@ -79,7 +90,7 @@ describe('ModuleRenderer', () => {
   it('renders nothing when module alias is unknown in production', () => {
     vi.stubEnv('NODE_ENV', 'production');
 
-    const foundation = createFoundation();
+    const foundation = createTestFoundation();
 
     const { container } = render(
       <ModuleRenderer
@@ -87,6 +98,7 @@ describe('ModuleRenderer', () => {
         module={{
           id: 'unknown-1',
           alias: 'does-not-exist',
+          name: 'Unknown',
           data: {},
         }}
       />,
@@ -98,7 +110,7 @@ describe('ModuleRenderer', () => {
   it('renders nothing when module data is invalid in production', () => {
     vi.stubEnv('NODE_ENV', 'production');
 
-    const foundation = createFoundation();
+    const foundation = createTestFoundation();
 
     const { container } = render(
       <ModuleRenderer
@@ -106,6 +118,7 @@ describe('ModuleRenderer', () => {
         module={{
           id: 'hero-invalid-1',
           alias: 'hero',
+          name: 'Hero',
           data: {
             subtitle: 'Missing title',
           },
