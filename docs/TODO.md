@@ -35,6 +35,7 @@
 - SEO com `ogTitle`, `ogDescription`, `noIndex`, `noFollow`
 - validação de homepage única (`isHome`)
 - campo de admin `PageUrl`
+- CMS fechado atrás de login, com leitura de `Media` aberta; o frontend lê pela Local API e a query filtra por `_status`
 - rascunhos com autosave a 375ms
 - Live Preview server-side: `RefreshRouteOnSave`, `next/preview`, `next/exit-preview`
 

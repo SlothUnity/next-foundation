@@ -1,4 +1,4 @@
-import type { Payload } from 'payload';
+import type { Payload, Where } from 'payload';
 
 import type { Page } from '@payload-types';
 import type { SupportedLocale } from '@/providers/payload/locales';
@@ -9,13 +9,19 @@ export async function resolvePayloadPage(
   locale: SupportedLocale,
   draft = false,
 ): Promise<Page | undefined> {
+  const byPath: Where = !path
+    ? { isHome: { equals: true } }
+    : { 'breadcrumbs.url': { equals: `/${path}` } };
+
+  const where: Where = draft ? byPath : { and: [byPath, { _status: { equals: 'published' } }] };
+
   const result = await payload.find({
     collection: 'pages',
     locale,
     fallbackLocale: false,
     draft,
-    overrideAccess: draft,
-    where: !path ? { isHome: { equals: true } } : { 'breadcrumbs.url': { equals: `/${path}` } },
+    overrideAccess: true,
+    where,
     limit: 1,
     depth: 2,
   });

@@ -144,9 +144,27 @@ O caminho do componente é uma **string** na config — ver o aviso em [conventi
 
 ## Media e Users
 
-[Media.ts](../src/providers/payload/collections/Media.ts) — `upload: true`, sem campos próprios.
+[Media.ts](../src/providers/payload/collections/Media.ts) — `upload: true`, sem campos próprios. Leitura pública: é a única collection aberta, porque as imagens de um site público têm de ser carregadas pelo browser.
 
 [Users.ts](../src/providers/payload/collections/Users.ts) — `auth: true`, usada como `admin.user`. É a autenticação que a rota de preview valida.
+
+## Access control
+
+**O default do Payload é `({ req: { user } }) => Boolean(user)`.** Uma collection sem `access` declarado exige utilizador para tudo, incluindo ler — e é isso que se quer aqui: o CMS e a sua REST API ficam fechados.
+
+A única excepção é a leitura de `Media`, porque o browser tem de conseguir carregar as imagens:
+
+```ts
+access: {
+  read: () => true,
+}
+```
+
+O frontend não passa por access control nenhum: lê pela Local API com `overrideAccess: true`, como consumidor de confiança que corre no servidor. Não é um atalho — é a distinção entre "quem chega pela rede" e "o nosso próprio render".
+
+O que isto obriga, e é a parte a não perder: **é a query que tem de excluir o que não está publicado.** Com `overrideAccess: true` não há filtro implícito, e uma página em rascunho tem uma linha na tabela principal como qualquer outra. Ver [Sources](#sources).
+
+Consequência a ter presente: uma página que nunca foi publicada dá 404 em público, mesmo existindo. Com autosave ligado, uma página criada e nunca publicada fica em `_status: 'draft'` — é preciso premir Publish.
 
 ## Plugins
 
@@ -183,17 +201,18 @@ await payload.find({
   locale,
   fallbackLocale: false,
   draft,
-  overrideAccess: draft,
-  where: !path ? { isHome: { equals: true } } : { 'breadcrumbs.url': { equals: `/${path}` } },
+  overrideAccess: true,
+  where, // caminho + `_status: 'published'` quando não é rascunho
   limit: 1,
   depth: 2,
 });
 ```
 
-Quatro decisões que importam:
+Cinco decisões que importam:
 
 - **`fallbackLocale: false`** — uma página sem tradução devolve 404 em vez de conteúdo no idioma errado.
-- **`overrideAccess: draft`** — necessário porque não passamos `user` ao `find`; sem isto a query de rascunhos era rejeitada por access control. Está atrás do `draftMode`, que só é activado por um utilizador autenticado.
+- **`overrideAccess: true`** — a Local API não lê o cookie de sessão, e não lhe passamos `user`: com access control ligado, um visitante anónimo não é "um utilizador não autenticado", é _nenhum_ utilizador, e o `find` devolve zero documentos. O frontend é um consumidor de confiança — ver [Access control](#access-control).
+- **`_status: 'published'` fora do modo de rascunho** — é isto que substitui o access control como guarda. Sem ele, uma página em rascunho com breadcrumb ficaria visível em público.
 - **`where` bifurcado** — path vazio resolve pela homepage; o resto resolve pelo breadcrumb.
 - **`depth: 2`** — popula relações e media. Com `depth: 0` os blocos com relações chegariam como IDs.
 
