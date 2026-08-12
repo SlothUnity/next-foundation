@@ -3,11 +3,11 @@ import { draftMode } from 'next/headers';
 
 import { notFound } from 'next/navigation';
 
-import { foundation } from '@/core/foundation';
+import { foundation } from '@/core/foundation/foundation';
 import { PageRenderer } from '@/core/renderer';
 import { resolveRoute } from '@/core/routing';
 
-import { createMetadata } from '@/utils/createMetadata';
+import { createMetadata } from '../createMetadata';
 
 interface PageProps {
   params: Promise<{

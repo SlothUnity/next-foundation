@@ -1,4 +1,4 @@
-import type { PageDefinition } from '@/types';
+import type { PageDefinition } from './Page.types';
 
 export interface GetPageOptions {
   draft?: boolean;

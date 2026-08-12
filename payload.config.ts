@@ -4,14 +4,14 @@ import { fileURLToPath } from 'node:url';
 import { buildConfig } from 'payload';
 import { postgresAdapter } from '@payloadcms/db-postgres';
 
-import { nestedDocs, seo } from '@/provider/payload/plugins';
+import { nestedDocs, seo } from '@/providers/payload/plugins';
 
-import { payloadLocales } from '@/provider/payload/config/locales';
+import { payloadLocales } from '@/providers/payload/locales';
 
-import { Site } from '@/provider/payload/globals/website/Site';
-import { Users } from '@/provider/payload/collections/administration/Users';
-import { Pages } from '@/provider/payload/collections/content/Pages';
-import { Media } from '@/provider/payload/collections/content/Media';
+import { Site } from '@/providers/payload/globals/Site';
+import { Users } from '@/providers/payload/collections/Users';
+import { Pages } from '@/providers/payload/collections/Pages';
+import { Media } from '@/providers/payload/collections/Media';
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);

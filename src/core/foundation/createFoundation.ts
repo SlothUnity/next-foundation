@@ -3,7 +3,7 @@ import { registerModules } from '@/core/setup';
 
 import type { PageSource } from '@/core/pages';
 import type { SiteSource } from '@/core/site';
-import type { Foundation } from '@/types';
+import type { Foundation } from './Foundation.types';
 
 interface CreateFoundationOptions {
   page: PageSource;

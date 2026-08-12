@@ -20,7 +20,6 @@
     ],
     "types": ["vitest/globals", "@testing-library/jest-dom"],
     "paths": {
-      "@types/*": ["./src/*"],
       "@/*": ["./src/*"],
       "@payload-config": ["./payload.config.ts"],
       "@payload-types": ["./payload-types.ts"]

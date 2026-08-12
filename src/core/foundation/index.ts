@@ -1,2 +1,2 @@
 export * from './createFoundation';
-export * from './foundation';
+export * from './Foundation.types';

@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 
-import type { PageDefinition, Foundation } from '@/types';
+import type { Foundation } from '@/core/foundation';
+import type { PageDefinition } from '@/core/pages';
 
 import { ModuleRenderer } from './ModuleRenderer';
 

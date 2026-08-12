@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createFoundation } from '@/core/foundation';
-import { MockPageSource, MockSiteSource } from '@/provider/mocks';
+import { MockPageSource, MockSiteSource } from '@/providers/mocks';
 
 import { ModuleRenderer } from './ModuleRenderer';
 

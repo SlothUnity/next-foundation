@@ -1,6 +1,6 @@
 import * as modules from '@/modules';
 
-import type { Foundation } from '@/types';
+import type { Foundation } from '@/core/foundation';
 
 export function registerModules(foundation: Foundation): void {
   Object.values(modules).forEach((module) => {

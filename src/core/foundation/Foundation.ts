@@ -1,8 +1,8 @@
-import { providers } from '@/provider/providers';
+import { provider } from '@/providers/provider';
 
 import { createFoundation } from './createFoundation';
 
 export const foundation = createFoundation({
-  page: providers.page,
-  site: providers.site,
+  page: provider.page,
+  site: provider.site,
 });

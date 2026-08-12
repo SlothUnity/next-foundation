@@ -1,11 +1,11 @@
 import { draftMode } from 'next/headers';
 
-import { providers } from '@/provider/providers';
+import { provider } from '@/providers/provider';
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { isEnabled: isDraft } = await draftMode();
 
-  const Preview = providers.preview;
+  const Preview = provider.preview;
 
   return (
     <html>

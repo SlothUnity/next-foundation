@@ -1,3 +1,3 @@
-export * from './module';
-export * from './components/Hero';
-export * from './types/Hero';
+export * from './Hero';
+export * from './Hero.module';
+export * from './Hero.types';

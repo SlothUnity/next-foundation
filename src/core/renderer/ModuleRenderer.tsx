@@ -1,6 +1,7 @@
 import { ModuleRenderError, ModuleValidationError } from '@/core/errors';
 
-import type { ModuleInstance, Foundation } from '@/types';
+import type { Foundation } from '@/core/foundation';
+import type { ModuleInstance } from '@/core/modules';
 
 import { ModuleErrorFallback } from './ModuleErrorFallback';
 

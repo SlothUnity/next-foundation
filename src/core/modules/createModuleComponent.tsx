@@ -1,4 +1,4 @@
-import type { ModuleComponent, ModuleProps, RuntimeModuleComponent } from '@/types';
+import type { ModuleComponent, ModuleProps, RuntimeModuleComponent } from './Module.types';
 
 export function createModuleComponent<TProps extends ModuleProps>(
   Component: ModuleComponent<TProps>,
