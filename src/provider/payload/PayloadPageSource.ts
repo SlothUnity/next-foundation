@@ -1,6 +1,6 @@
 import { getPayload } from 'payload';
 
-import config from '@payload-config';
+import config from '../../../payload.config';
 
 import { PageSource } from '@/core/pages/PageSource';
 import type { PageDefinition } from '@/types';

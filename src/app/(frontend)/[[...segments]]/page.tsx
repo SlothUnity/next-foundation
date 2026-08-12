@@ -1,7 +1,11 @@
-import { PageRenderer } from '@/core/renderer';
-import { foundation } from '@/core/foundation';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+
+import { foundation } from '@/core/foundation';
+import { PageRenderer } from '@/core/renderer';
 import { resolveRoute } from '@/core/routing';
+
+import { createMetadata } from '@/utils/createMetadata';
 
 interface PageProps {
   params: Promise<{
@@ -9,7 +13,7 @@ interface PageProps {
   }>;
 }
 
-export default async function Page({ params }: PageProps) {
+async function resolvePage({ params }: PageProps) {
   const { segments = [] } = await params;
 
   const site = await foundation.site.getSite();
@@ -20,14 +24,38 @@ export default async function Page({ params }: PageProps) {
   });
 
   if (!route) {
-    notFound();
+    return undefined;
   }
 
   const page = await foundation.page.getPage(route.path, route.locale);
 
   if (!page) {
+    return undefined;
+  }
+
+  return {
+    page,
+    route,
+    site,
+  };
+}
+
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const result = await resolvePage(props);
+
+  if (!result) {
+    return {};
+  }
+
+  return createMetadata(result.page.meta);
+}
+
+export default async function Page(props: PageProps) {
+  const result = await resolvePage(props);
+
+  if (!result) {
     notFound();
   }
 
-  return <PageRenderer page={page} foundation={foundation} />;
+  return <PageRenderer page={result.page} foundation={foundation} />;
 }

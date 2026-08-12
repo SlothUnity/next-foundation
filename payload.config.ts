@@ -3,15 +3,15 @@ import { fileURLToPath } from 'node:url';
 
 import { buildConfig } from 'payload';
 import { postgresAdapter } from '@payloadcms/db-postgres';
-import { nestedDocsPlugin } from '@payloadcms/plugin-nested-docs';
 
-import { createSlug } from './src/provider/payload/utils/createSlug';
-import { payloadLocales } from './src/provider/payload/config/locales';
+import { nestedDocs, seo } from '@/provider/payload/plugins';
 
-import { Site } from './src/provider/payload/globals/website/Site';
-import { Users } from './src/provider/payload/collections/administration/Users';
-import { Pages } from './src/provider/payload/collections/content/Pages';
-import { Media } from './src/provider/payload/collections/content/Media';
+import { payloadLocales } from '@/provider/payload/config/locales';
+
+import { Site } from '@/provider/payload/globals/website/Site';
+import { Users } from '@/provider/payload/collections/administration/Users';
+import { Pages } from '@/provider/payload/collections/content/Pages';
+import { Media } from '@/provider/payload/collections/content/Media';
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -57,28 +57,5 @@ export default buildConfig({
     },
   }),
 
-  plugins: [
-    nestedDocsPlugin({
-      collections: ['pages'],
-
-      generateLabel: (_, doc) => {
-        return typeof doc.title === 'string' ? doc.title : '';
-      },
-
-      generateURL: (docs) => {
-        const segments = docs
-          .filter((doc) => !doc.isHome)
-          .map((doc) => {
-            if (typeof doc.title !== 'string') {
-              return '';
-            }
-
-            return createSlug(doc.title);
-          })
-          .filter(Boolean);
-
-        return `/${segments.join('/')}`;
-      },
-    }),
-  ],
+  plugins: [nestedDocs, seo],
 });

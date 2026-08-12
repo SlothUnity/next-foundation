@@ -64,7 +64,6 @@ export type SupportedTimezones =
 export interface Config {
   auth: {
     users: UserAuthOperations;
-    media: MediaAuthOperations;
   };
   blocks: {};
   collections: {
@@ -102,31 +101,13 @@ export interface Config {
   widgets: {
     collections: CollectionsWidget;
   };
-  user: User | Media;
+  user: User;
   jobs: {
     tasks: unknown;
     workflows: unknown;
   };
 }
 export interface UserAuthOperations {
-  forgotPassword: {
-    email: string;
-    password: string;
-  };
-  login: {
-    email: string;
-    password: string;
-  };
-  registerFirstUser: {
-    email: string;
-    password: string;
-  };
-  unlock: {
-    email: string;
-    password: string;
-  };
-}
-export interface MediaAuthOperations {
   forgotPassword: {
     email: string;
     password: string;
@@ -180,11 +161,6 @@ export interface Page {
    */
   isHome?: boolean | null;
   title: string;
-  main?: HeroBlock[] | null;
-  seoTitle?: string | null;
-  seoDescription?: string | null;
-  noIndex?: boolean | null;
-  parent?: (number | null) | Page;
   breadcrumbs?:
     | {
         doc?: (number | null) | Page;
@@ -193,6 +169,32 @@ export interface Page {
         id?: string | null;
       }[]
     | null;
+  main?: HeroBlock[] | null;
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+    /**
+     * Optional. Overrides the SEO title when sharing this page on social platforms.
+     */
+    ogTitle?: string | null;
+    /**
+     * Optional. Overrides the SEO description when sharing this page on social platforms.
+     */
+    ogDescription?: string | null;
+    /**
+     * Prevent search engines from indexing this page.
+     */
+    noIndex?: boolean | null;
+    /**
+     * Tell search engines not to follow links on this page.
+     */
+    noFollow?: boolean | null;
+  };
+  parent?: (number | null) | Page;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -225,22 +227,6 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
-  email: string;
-  resetPasswordToken?: string | null;
-  resetPasswordExpiration?: string | null;
-  salt?: string | null;
-  hash?: string | null;
-  loginAttempts?: number | null;
-  lockUntil?: string | null;
-  sessions?:
-    | {
-        id: string;
-        createdAt?: string | null;
-        expiresAt: string;
-      }[]
-    | null;
-  password?: string | null;
-  collection: 'media';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -279,15 +265,10 @@ export interface PayloadLockedDocument {
         value: number | Media;
       } | null);
   globalSlug?: string | null;
-  user:
-    | {
-        relationTo: 'users';
-        value: number | User;
-      }
-    | {
-        relationTo: 'media';
-        value: number | Media;
-      };
+  user: {
+    relationTo: 'users';
+    value: number | User;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -297,15 +278,10 @@ export interface PayloadLockedDocument {
  */
 export interface PayloadPreference {
   id: number;
-  user:
-    | {
-        relationTo: 'users';
-        value: number | User;
-      }
-    | {
-        relationTo: 'media';
-        value: number | Media;
-      };
+  user: {
+    relationTo: 'users';
+    value: number | User;
+  };
   key?: string | null;
   value?:
     | {
@@ -359,15 +335,6 @@ export interface UsersSelect<T extends boolean = true> {
 export interface PagesSelect<T extends boolean = true> {
   isHome?: T;
   title?: T;
-  main?:
-    | T
-    | {
-        hero?: T | HeroBlockSelect<T>;
-      };
-  seoTitle?: T;
-  seoDescription?: T;
-  noIndex?: T;
-  parent?: T;
   breadcrumbs?:
     | T
     | {
@@ -376,6 +343,23 @@ export interface PagesSelect<T extends boolean = true> {
         label?: T;
         id?: T;
       };
+  main?:
+    | T
+    | {
+        hero?: T | HeroBlockSelect<T>;
+      };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+        ogTitle?: T;
+        ogDescription?: T;
+        noIndex?: T;
+        noFollow?: T;
+      };
+  parent?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -406,20 +390,6 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
-  email?: T;
-  resetPasswordToken?: T;
-  resetPasswordExpiration?: T;
-  salt?: T;
-  hash?: T;
-  loginAttempts?: T;
-  lockUntil?: T;
-  sessions?:
-    | T
-    | {
-        id?: T;
-        createdAt?: T;
-        expiresAt?: T;
-      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

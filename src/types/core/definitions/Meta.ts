@@ -1,4 +1,12 @@
 export interface Meta {
   locale: string;
-  seo?: Record<string, unknown>;
+
+  title?: string;
+  description?: string;
+
+  ogTitle?: string;
+  ogDescription?: string;
+
+  noIndex?: boolean;
+  noFollow?: boolean;
 }

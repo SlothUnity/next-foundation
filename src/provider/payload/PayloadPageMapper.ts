@@ -36,7 +36,14 @@ export function mapPayloadPage(page: Page, locale: string): PageDefinition {
   return {
     meta: {
       locale,
+      title: page.meta?.title ?? undefined,
+      description: page.meta?.description ?? undefined,
+      ogTitle: page.meta?.ogTitle ?? undefined,
+      ogDescription: page.meta?.ogDescription ?? undefined,
+      noIndex: page.meta?.noIndex ?? false,
+      noFollow: page.meta?.noFollow ?? false,
     },
+
     main: (page.main ?? []).map(mapBlock),
   };
 }
