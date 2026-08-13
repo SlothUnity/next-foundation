@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import homePage from './homePage';
+import { mockHomePage } from './mockHomePage';
 
 import { MockPageSource } from './MockPageSource';
 
@@ -10,7 +10,7 @@ describe('MockPageSource', () => {
 
     const page = await source.getPage('');
 
-    expect(page).toBe(homePage);
+    expect(page).toBe(mockHomePage);
   });
 
   it('accepts a locale', async () => {
@@ -18,7 +18,7 @@ describe('MockPageSource', () => {
 
     const page = await source.getPage('', 'pt-PT');
 
-    expect(page).toBe(homePage);
+    expect(page).toBe(mockHomePage);
   });
 
   it('returns undefined for an unknown path', async () => {

@@ -111,6 +111,7 @@ Isto **esteve** errado e já não está. Fica registado por duas razões: a expl
   - [11.4 Testes, lint e o hook de pre-commit](#114-testes-lint-e-o-hook-de-pre-commit)
   - [11.5 As variáveis de ambiente, uma a uma](#115-as-variáveis-de-ambiente-uma-a-uma)
   - [11.6 As convenções de ficheiros](#116-as-convenções-de-ficheiros)
+    - [Porque é que `SiteSource.ts` não é `Site.source.ts`](#porque-é-que-sitesourcets-não-é-sitesourcets)
 - [Cap. 12 — O provider `api`](#cap-12--o-provider-api)
 - [Apêndice A — Mapa de um pedido](#apêndice-a--mapa-de-um-pedido)
 - [Apêndice B — Adicionar um módulo do zero](#apêndice-b--adicionar-um-módulo-do-zero)
@@ -1234,7 +1235,7 @@ E há um segundo benefício, mais subtil: a **inferência**. Como `TProps` é in
 
 ## 6.4 `createModuleComponent`: o adaptador, e onde ele mente
 
-`src/core/modules/CreateModuleComponent.tsx`:
+`src/core/modules/createModuleComponent.tsx`:
 
 ```tsx
 export function createModuleComponent<TProps extends ModuleProps>(
@@ -2351,7 +2352,15 @@ Vale notar o contraste com o `mapPayloadPage`, que atira um `Error` normal quand
 - **`error.tsx`** apanha qualquer erro lançado ao desenhar a página. Tem de ser Client Component (`'use client'`) porque recebe um `reset()` que se liga a um botão — é exigência do Next, não escolha. Em produção o Next **não** envia a mensagem do erro para o browser; envia um `digest`, e é por ele que se encontra o stack trace real nos logs do servidor. Daí o guia mostrá-lo na página.
 - **`not-found.tsx`** é o que o `notFound()` de [1.5](#15-pagetsx-linha-a-linha) desenha. Sem ele, um 404 caía na página genérica do Next, **fora** do layout do site.
 
-Ambos ficam dentro de `[[...segments]]/`, ao lado do `layout.tsx` — é o que os faz aparecer dentro do `<html>`/`<body>` do projeto em vez de fora dele.
+Ambos ficam dentro de `[[...segments]]/`, ao lado do `layout.tsx`.
+
+> ⚠ **Estes dois ficheiros existem mas ainda não são usados**
+>
+> Verificado a correr: um pedido a uma rota inexistente responde 404 com `<html id="__next_error__">` — o invólucro interno do Next —, não com o `not-found.tsx` deste projeto.
+>
+> A causa é estrutural. Quando se usam **route groups como raízes separadas**, o Next exige o layout de raiz **no topo do grupo**. O `(payload)` cumpre (`app/(payload)/layout.tsx`); o `(frontend)` **não tem** `app/(frontend)/layout.tsx` — o seu layout está um nível abaixo, dentro de `[[...segments]]`. Sem layout de raiz no grupo, o boundary do not-found não tem `<html>` onde renderizar, e o Next cai no seu próprio.
+>
+> É o preço concreto da decisão descrita em [1.4](#14-layouttsx-linha-a-linha) — pôr o `<html>` dentro do segmento dinâmico para o `lang` poder vir da página. Resolver implica escolher: subir o `<html>` para o topo do grupo e perder o `lang` por página, ou passar o locale a segmento real de rota (`app/[locale]/`), que é como a maioria dos projetos multilingues em Next o faz. Está no [`TODO.md`](TODO.md).
 
 Continua a não haver uso de `<Suspense>` nem `loading.tsx`: cada pedido bloqueia na consulta completa antes de emitir HTML. Como o `PageRenderer` já isola os módulos, Suspense por região encaixa naturalmente quando isso passar a doer.
 
@@ -2571,6 +2580,35 @@ E as regras à volta:
 - **Ordem dos imports:** externos → alias `@/` → relativos, separados por linha em branco.
 
 Vale a pena segui-las mesmo quando parecem excessivas: a razão de o projeto se ler bem com 100 ficheiros é não haver duas maneiras de fazer a mesma coisa.
+
+### Porque é que `SiteSource.ts` não é `Site.source.ts`
+
+É a pergunta que a pasta `core/site/` levanta a quem chega, porque tem os dois sistemas lado a lado:
+
+```
+core/site/
+├── Site.types.ts    → SiteDefinition   (contrato)
+└── SiteSource.ts    → class SiteSource  (coisa)
+```
+
+Não é incoerência — são dois sistemas com âmbitos diferentes. **`<Assunto>.<papel>.ts`** é para ficheiros que _descrevem_ um assunto (`Site.types.ts`, `Hero.schema.ts`). **`<NomeDoExport>.ts`** é para ficheiros que _são_ uma coisa com nome próprio (`SiteSource.ts`, `Registry.ts`, `createSlug.ts`). `SiteSource` é uma classe que se instancia e se estende; `SiteDefinition` é a forma de um dado. Papéis diferentes, sistemas diferentes. E `source` não entra no vocabulário de sufixos, que é fechado de propósito.
+
+A mesma pergunta aparece nos tipos: **porque é que uns estão em `.types.ts` e outros não?** O critério é se o tipo **viaja**. `PageDefinition`, `SiteDefinition`, `Foundation`, `Provider` atravessam camadas — são contratos, e têm ficheiro próprio. `GetPageOptions`, `ResolvedRoute`, `ResolvedPage`, `PageRequestContext` descrevem só o input ou o output de **uma** função, e ficam ao lado dela: separá-los da função tirava-lhes o contexto que lhes dá sentido.
+
+Há ainda um terceiro caso, mais raro: um ficheiro que junta ajudantes irmãos sem que nenhum domine leva um nome colectivo — `locales.ts`, `normalize.ts`. É excepção, não porta aberta.
+
+> ⚠ **Uma armadilha do Windows que parte o build no Vercel**
+>
+> O git corre aqui com `core.ignorecase = true`. Consequência: **renomear um ficheiro só na caixa não é detectado**. O disco fica `Foo.ts`, o índice do git continua `foo.ts`, e localmente corre tudo bem — mas o Linux do Vercel faz checkout de `foo.ts`, o `import './Foo'` não resolve, e o build parte sem nada ter avisado antes.
+>
+> Já aconteceu duas vezes neste repositório (`foundation.ts` e `createModuleComponent.tsx`). Corrige-se forçando o índice, não renomeando:
+>
+> ```sh
+> git rm --cached src/caminho/Antigo.ts
+> git add src/caminho/antigo.ts
+> ```
+>
+> Para detectar, compara `git ls-files` com os nomes reais da árvore — **a comparação tem de ser sensível a maiúsculas**, senão não vês nada.
 
 ---
 

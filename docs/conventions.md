@@ -27,6 +27,52 @@ Não existe uma pasta `src/types/`. O `PageDefinition` vive em [core/pages/Page.
 
 O sufixo `.types.ts` é o que torna isto legível: ao olhar para uma pasta vê-se logo o que é contrato e o que é implementação.
 
+#### Que tipos vão para o `.types.ts`
+
+Nem todos. O critério é se o tipo **viaja**:
+
+- **Atravessa camadas → `.types.ts`.** `PageDefinition`, `Meta`, `SiteDefinition`, `Foundation`, `Provider`, os tipos de `Module`. São contratos: mais do que um sítio depende deles, e ter um ficheiro só para eles é o que permite importá-los sem arrastar implementação atrás.
+- **Descreve o input ou o output de uma função → fica ao lado dela.** `GetPageOptions` em [PageSource.ts](../src/core/pages/PageSource.ts), `ResolvedRoute` em [resolveRoute.ts](../src/core/routing/resolveRoute.ts), `ResolvedPage` em `resolvePage.ts`, `PageRequestContext` em `createPageRequest.ts`. Exilá-los para um `.types.ts` separava-os da única coisa que lhes dá sentido.
+
+Um teste rápido: se o tipo só é mencionado na assinatura de uma função e por quem a chama, fica com a função. Se é a forma de um dado que passa de mão em mão, é um contrato e leva ficheiro próprio.
+
+### Dois sistemas de nome, e quando se usa cada um
+
+Isto costuma confundir à primeira leitura, porque em `core/site/` os dois aparecem lado a lado:
+
+```
+core/site/
+├── Site.types.ts    → SiteDefinition   (contrato)
+└── SiteSource.ts    → class SiteSource  (coisa)
+```
+
+Parece incoerente e não é — são dois sistemas, cada um para o seu caso:
+
+| Sistema                | Para                                     | Exemplos                                            |
+| ---------------------- | ---------------------------------------- | --------------------------------------------------- |
+| `<Assunto>.<papel>.ts` | ficheiros que **descrevem** um assunto   | `Site.types.ts`, `Hero.schema.ts`, `Hero.module.ts` |
+| `<NomeDoExport>.ts`    | ficheiros que **são** uma coisa com nome | `SiteSource.ts`, `Registry.ts`, `createSlug.ts`     |
+| `<colectivo>.ts`       | um punhado de ajudantes irmãos           | `locales.ts`, `normalize.ts`                        |
+
+`SiteSource` é uma coisa — uma classe, com nome próprio, que se instancia e se estende. `SiteDefinition` é a forma de um dado, e o ficheiro existe para a descrever. Daí `SiteSource.ts` e não `Site.source.ts`: o vocabulário de sufixos é fechado, e `source` não entra nele.
+
+A mesma leitura explica o resto do `core`: `PageSource.ts`, `ModuleRegistry.ts`, `PageRenderer.tsx` são coisas; `Page.types.ts`, `Module.types.ts`, `Foundation.types.ts` descrevem.
+
+O terceiro caso é a excepção honesta: quando um ficheiro junta um punhado de ajudantes irmãos e **nenhum domina**, dá-se-lhe um nome colectivo em vez de escolher um export ao acaso ou criar um ficheiro por função. É o caso do [locales.ts](../src/providers/payload/locales.ts) (a lista, o tipo derivado, o adaptador e o type guard, todos sobre locales) e do [normalize.ts](../src/providers/api/mappers/normalize.ts) (`optionalText`, `optionalFlag`, `optionalList`). Usa-o com parcimónia: se o ficheiro começar a juntar coisas sem relação entre si, o nome colectivo passa a ser uma desculpa.
+
+### Cuidado com a caixa dos nomes em Windows
+
+O `core.ignorecase` do git está a `true` em Windows, o que significa que **renomear um ficheiro só na caixa não é detectado**: o disco fica com `Foo.ts`, o índice do git continua com `foo.ts`, e localmente tudo funciona. Num sistema de ficheiros sensível a maiúsculas — o Linux do CI ou do Vercel — o `import` deixa de resolver e o build parte, sem que nada tenha avisado antes.
+
+Já aconteceu duas vezes neste repositório. Para corrigir, força o índice em vez de renomear:
+
+```sh
+git rm --cached src/caminho/Antigo.ts
+git add src/caminho/antigo.ts
+```
+
+Para confirmar que o disco e o git concordam, compara `git ls-files` com os nomes reais da árvore — a comparação tem de ser sensível a maiúsculas.
+
 ### Testes ficam colocados
 
 Ao lado do que testam, não numa pasta `__tests__/`. Ler uma unidade não deve obrigar a navegar duas árvores, e o `.test` no nome já os distingue à vista.

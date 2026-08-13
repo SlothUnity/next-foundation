@@ -1,12 +1,9 @@
-import { getPayload } from 'payload';
-
-import config from '@payload-config';
-
 import type { PageDefinition } from '@/core/pages';
 
 import { PageSource } from '@/core/pages/PageSource';
 import type { GetPageOptions } from '@/core/pages/PageSource';
 
+import { getPayloadClient } from '@/providers/payload/getPayloadClient';
 import { isSupportedLocale, type SupportedLocale } from '@/providers/payload/locales';
 
 import { mapPayloadPage } from '@/providers/payload/mappers/mapPayloadPage';
@@ -24,9 +21,7 @@ export class PayloadPageSource extends PageSource {
 
     const payloadLocale: SupportedLocale = locale;
 
-    const payload = await getPayload({
-      config,
-    });
+    const payload = await getPayloadClient();
 
     const page = await resolvePayloadPage(payload, path, payloadLocale, options?.draft ?? false);
 

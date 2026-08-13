@@ -1,6 +1,6 @@
 import type { PageDefinition } from '@/core/pages';
 
-const homePage: PageDefinition = {
+export const mockHomePage: PageDefinition = {
   meta: {
     locale: 'pt-PT',
   },
@@ -15,5 +15,3 @@ const homePage: PageDefinition = {
     },
   ],
 };
-
-export default homePage;
