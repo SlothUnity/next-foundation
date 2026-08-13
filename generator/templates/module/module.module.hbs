@@ -1,0 +1,7 @@
+import { createModuleComponent, defineModule } from '@/core/modules'; import {
+{{pascalCase name}}
+} from './{{pascalCase name}}'; import {
+{{camelCase name}}Schema } from './{{pascalCase name}}.schema'; export const
+{{camelCase name}}Module = defineModule({ alias: '{{camelCase name}}', name: '{{pascalCase name}}',
+schema:
+{{camelCase name}}Schema, component: createModuleComponent({{pascalCase name}}), });

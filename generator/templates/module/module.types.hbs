@@ -1,0 +1,5 @@
+import { z } from 'zod';
+
+import { {{camelCase name}}Schema } from './{{pascalCase name}}.schema';
+
+export type {{pascalCase name}}Props = z.infer<typeof {{camelCase name}}Schema>;

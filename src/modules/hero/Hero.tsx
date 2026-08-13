@@ -1,4 +1,5 @@
 import type { HeroProps } from './Hero.types';
+import './Hero.style.scss';
 
 export function Hero({ title, subtitle }: HeroProps) {
   return (

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm lint && pnpm typecheck && next dev",
-    "dev:payload": "pnpm generate:payload && pnpm run dev",
+    "dev:payload": "pnpm run payload:generate && pnpm run dev",
     "build": "pnpm lint && pnpm typecheck && pnpm test --run && next build",
     "start": "next start",
     "lint": "eslint .",
@@ -14,9 +14,10 @@
     "format:check": "prettier --check .",
     "prepare": "husky",
     "test": "vitest",
-    "generate:types": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:types",
-    "generate:importMap": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:importmap",
-    "generate:payload": "pnpm run generate:types && pnpm run generate:importMap"
+    "generate": "cross-env NODE_OPTIONS=\"--import tsx\" plop --plopfile=generator/plopfile.ts",
+    "payload:types": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:types",
+    "payload:importMap": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:importmap",
+    "payload:generate": "pnpm run payload:types && pnpm run payload:importMap"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,md,yml,yaml}": [
@@ -50,7 +51,9 @@
     "husky": "^9.1.7",
     "jsdom": "^30.0.1",
     "lint-staged": "^17.3.0",
+    "plop": "^4.0.5",
     "prettier": "^3.9.6",
+    "tsx": "^4.23.12",
     "typescript": "^5",
     "vitest": "^4.1.10"
   },
