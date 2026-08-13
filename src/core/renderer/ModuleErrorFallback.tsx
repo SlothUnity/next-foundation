@@ -3,11 +3,13 @@ interface ModuleErrorFallbackProps {
 }
 
 export function ModuleErrorFallback({ alias }: ModuleErrorFallbackProps) {
-  console.error(process.env.NODE_ENV === 'development');
   if (process.env.NODE_ENV === 'development') {
     return (
       <div>
-        <h1>Module Error</h1>
+        <p>
+          <strong>Module Error</strong>
+        </p>
+
         <p>Failed to load module: {alias}</p>
       </div>
     );

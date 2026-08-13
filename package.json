@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "pnpm lint && pnpm typecheck && next dev",
     "dev:payload": "pnpm generate:payload && pnpm run dev",
-    "build": "next build",
+    "build": "pnpm lint && pnpm typecheck && pnpm test --run && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

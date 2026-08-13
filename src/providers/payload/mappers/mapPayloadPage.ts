@@ -20,16 +20,23 @@ function mapBlock(block: PayloadPageBlock): ModuleInstance {
   return returnModule;
 }
 
+function cleanValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.filter((item) => item !== null).map(cleanValue);
+  }
+
+  if (value && typeof value === 'object') {
+    return removeNullValues(value as Record<string, unknown>);
+  }
+
+  return value;
+}
+
 function removeNullValues(data: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(data)
       .filter(([, value]) => value !== null)
-      .map(([key, value]) => [
-        key,
-        value && typeof value === 'object' && !Array.isArray(value)
-          ? removeNullValues(value as Record<string, unknown>)
-          : value,
-      ]),
+      .map(([key, value]) => [key, cleanValue(value)]),
   );
 }
 

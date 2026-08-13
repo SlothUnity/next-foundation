@@ -21,6 +21,8 @@ Se alterares uma collection e arrancares com `pnpm dev`, os tipos gerados ficam 
 
 ### Variáveis de ambiente
 
+Copia o [.env.example](.env.example) para `.env.local` e preenche. O `DATABASE_URL` e o `PAYLOAD_SECRET` são obrigatórios: em falta, a aplicação **não arranca** — configuração em falta deve falhar, não degradar em silêncio.
+
 `.env.local`:
 
 ```
@@ -41,17 +43,17 @@ Com `PROVIDER=mock` o site arranca sem base de dados, servido por fixtures em [s
 
 ### Scripts
 
-| Script                      | O que faz                                          |
-| --------------------------- | -------------------------------------------------- |
-| `pnpm dev`                  | `lint` + `typecheck` e arranca o Next              |
-| `pnpm dev:payload`          | `generate:payload` e depois o `dev`                |
-| `pnpm build` / `pnpm start` | build e servidor de produção                       |
-| `pnpm typecheck`            | `tsc --noEmit`                                     |
-| `pnpm lint`                 | eslint                                             |
-| `pnpm test`                 | vitest (em watch; `pnpm test --run` corre uma vez) |
-| `pnpm format`               | prettier em toda a árvore                          |
-| `pnpm format:check`         | verifica sem escrever                              |
-| `pnpm generate:payload`     | `generate:types` + `generate:importMap`            |
+| Script                      | O que faz                                                    |
+| --------------------------- | ------------------------------------------------------------ |
+| `pnpm dev`                  | `lint` + `typecheck` e arranca o Next                        |
+| `pnpm dev:payload`          | `generate:payload` e depois o `dev`                          |
+| `pnpm build` / `pnpm start` | `lint` + `typecheck` + testes + build / servidor de produção |
+| `pnpm typecheck`            | `tsc --noEmit`                                               |
+| `pnpm lint`                 | eslint                                                       |
+| `pnpm test`                 | vitest (em watch; `pnpm test --run` corre uma vez)           |
+| `pnpm format`               | prettier em toda a árvore                                    |
+| `pnpm format:check`         | verifica sem escrever                                        |
+| `pnpm generate:payload`     | `generate:types` + `generate:importMap`                      |
 
 Corre `pnpm generate:payload` (ou arranca com `pnpm dev:payload`) sempre que mudares collections, globals, campos ou o caminho de um componente de admin.
 
@@ -61,7 +63,7 @@ Corre `pnpm generate:payload` (ou arranca com `pnpm dev:payload`) sempre que mud
 | --------------------------------------------------- | ----------------------------------------------------------- |
 | `pnpm dev`                                          | `lint`, `typecheck`                                         |
 | pre-commit ([.husky/pre-commit](.husky/pre-commit)) | `lint-staged` (prettier), `lint`, `typecheck`, `test --run` |
-| `pnpm build`                                        | nada                                                        |
+| `pnpm build`                                        | `lint`, `typecheck`, `test --run`, e depois `next build`    |
 
 O commit é a barreira completa: nada entra no histórico sem passar eslint, TypeScript e a suite de testes. O `pnpm dev` fica com a versão rápida — lint e typecheck, sem testes — para não atrasar o arranque do servidor.
 
@@ -74,22 +76,23 @@ pnpm typecheck
 pnpm test --run
 ```
 
-O `pnpm build` não corre verificações. Num CI, invoca `lint`, `typecheck` e `test --run` explicitamente — um hook local não protege quem faz push com `--no-verify`.
+**O `build` é o portão real.** Não há CI neste repositório e o deploy vai para o Vercel; como um `git commit --no-verify` contorna o hook por inteiro, o `pnpm build` corre as verificações explicitamente antes do `next build`. Nada chega a produção sem as passar. O preço são alguns segundos por deploy.
 
 ## Documentação
 
-| Documento                               | Responde a                                  |
-| --------------------------------------- | ------------------------------------------- |
-| [architecture.md](docs/architecture.md) | Como está organizado e porquê               |
-| [conventions.md](docs/conventions.md)   | Onde ponho um ficheiro novo e como o nomeio |
-| [core.md](docs/core.md)                 | Quais são os contratos internos             |
-| [modules.md](docs/modules.md)           | Como crio um módulo de conteúdo             |
-| [renderer.md](docs/renderer.md)         | Como funciona a renderização e os erros     |
-| [providers.md](docs/providers.md)       | Como ligo outro CMS                         |
-| [payload.md](docs/payload.md)           | Como está configurado o Payload             |
-| [api.md](docs/api.md)                   | Como ligo uma API externa                   |
-| [routing.md](docs/routing.md)           | Como funcionam URLs, locales e metadata     |
-| [TODO.md](docs/TODO.md)                 | Estado e próximos passos                    |
+| Documento                               | Responde a                                                                              |
+| --------------------------------------- | --------------------------------------------------------------------------------------- |
+| [guia.md](docs/guia.md)                 | **Começa aqui.** Percorre o projeto de ponta a ponta e explica o porquê de cada decisão |
+| [architecture.md](docs/architecture.md) | Como está organizado e porquê                                                           |
+| [conventions.md](docs/conventions.md)   | Onde ponho um ficheiro novo e como o nomeio                                             |
+| [core.md](docs/core.md)                 | Quais são os contratos internos                                                         |
+| [modules.md](docs/modules.md)           | Como crio um módulo de conteúdo                                                         |
+| [renderer.md](docs/renderer.md)         | Como funciona a renderização e os erros                                                 |
+| [providers.md](docs/providers.md)       | Como ligo outro CMS                                                                     |
+| [payload.md](docs/payload.md)           | Como está configurado o Payload                                                         |
+| [api.md](docs/api.md)                   | Como ligo uma API externa                                                               |
+| [routing.md](docs/routing.md)           | Como funcionam URLs, locales e metadata                                                 |
+| [TODO.md](docs/TODO.md)                 | Estado e próximos passos                                                                |
 
 ## Stack
 

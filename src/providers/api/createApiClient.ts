@@ -1,3 +1,5 @@
+import { requireEnv } from '@/providers/requireEnv';
+
 import { ApiClient } from './ApiClient';
 
 const DEFAULT_REVALIDATE = 60;
@@ -19,11 +21,7 @@ function readRevalidate(): number {
 }
 
 export function createApiClient(): ApiClient {
-  const url = process.env.API_URL;
-
-  if (!url) {
-    throw new Error('Missing API_URL. It is required by the "api" provider.');
-  }
+  const url = requireEnv('API_URL', 'the "api" provider');
 
   return new ApiClient({
     url,

@@ -36,7 +36,6 @@ export const Pages: CollectionConfig = {
 
         return getLivePreviewUrl({
           breadcrumbs: data?.breadcrumbs,
-          isHome: data?.isHome,
           locale: locale.code,
           defaultLocale,
         });
@@ -45,7 +44,7 @@ export const Pages: CollectionConfig = {
   },
 
   fields: [
-    // Tabls
+    // Tabs
     {
       type: 'tabs',
       tabs: [

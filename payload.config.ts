@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { buildConfig } from 'payload';
 import { postgresAdapter } from '@payloadcms/db-postgres';
 
+import { requireEnv } from '@/providers/requireEnv';
+
 import { nestedDocs, seo } from '@/providers/payload/plugins';
 
 import { payloadLocales } from '@/providers/payload/locales';
@@ -17,7 +19,7 @@ const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
 
 export default buildConfig({
-  secret: process.env.PAYLOAD_SECRET || '',
+  secret: requireEnv('PAYLOAD_SECRET', 'Payload to sign session tokens'),
 
   serverURL: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
 
@@ -63,7 +65,7 @@ export default buildConfig({
 
   db: postgresAdapter({
     pool: {
-      connectionString: process.env.DATABASE_URL || '',
+      connectionString: requireEnv('DATABASE_URL', 'the Postgres adapter'),
     },
   }),
 

@@ -23,6 +23,14 @@ export function ModuleRenderer({ module, foundation }: ModuleRendererProps) {
 
   let data = module.data;
 
+  if (!definition.schema && process.env.NODE_ENV === 'development') {
+    // Sem schema não há validação nenhuma, e o cast `props as TProps` do
+    // createModuleComponent passa a ser uma afirmação sem nada por trás.
+    console.warn(
+      `Module "${module.alias}" has no schema: its data reaches the component unvalidated.`,
+    );
+  }
+
   if (definition.schema) {
     try {
       data = definition.schema.parse(module.data);

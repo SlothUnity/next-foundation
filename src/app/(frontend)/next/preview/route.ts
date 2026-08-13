@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { getPayload } from 'payload';
 import config from '@payload-config';
 
+import { isSafeRedirectPath } from './isSafeRedirectPath';
+
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
 
@@ -14,7 +16,7 @@ export async function GET(request: Request): Promise<Response> {
     return new Response('Invalid preview secret', { status: 403 });
   }
 
-  if (!path?.startsWith('/') || path.startsWith('//')) {
+  if (!isSafeRedirectPath(path)) {
     return new Response('Invalid path', { status: 400 });
   }
 

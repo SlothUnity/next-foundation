@@ -13,7 +13,11 @@ interface PageRendererProps {
 export function PageRenderer({ page, foundation }: PageRendererProps) {
   return (
     <>
-      {page.navigation && <ModuleRenderer module={page.navigation} foundation={foundation} />}
+      {page.navigation && (
+        <nav>
+          <ModuleRenderer module={page.navigation} foundation={foundation} />
+        </nav>
+      )}
 
       <main>
         {page.main.map((module) => (
@@ -23,7 +27,11 @@ export function PageRenderer({ page, foundation }: PageRendererProps) {
         ))}
       </main>
 
-      {page.footer && <ModuleRenderer module={page.footer} foundation={foundation} />}
+      {page.footer && (
+        <footer>
+          <ModuleRenderer module={page.footer} foundation={foundation} />
+        </footer>
+      )}
     </>
   );
 }
