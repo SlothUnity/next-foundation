@@ -3,6 +3,7 @@ import { getLocaleSegment } from './getLocaleSegment';
 interface ResolveRouteOptions {
   segments: string[];
   locales: string[];
+  defaultLocale: string;
 }
 
 export interface ResolvedRoute {
@@ -13,13 +14,8 @@ export interface ResolvedRoute {
 export function resolveRoute({
   segments,
   locales,
-}: ResolveRouteOptions): ResolvedRoute | undefined {
-  const defaultLocale = locales[0];
-
-  if (!defaultLocale) {
-    return undefined;
-  }
-
+  defaultLocale,
+}: ResolveRouteOptions): ResolvedRoute {
   const [firstSegment, ...rest] = segments;
 
   const requestedLocale = locales.find(

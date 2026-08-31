@@ -8,7 +8,7 @@ import type { ResolvedRoute } from '@/core/routing';
 import { resolveRoute } from '@/core/routing';
 import type { SiteDefinition } from '@/core/site';
 
-import { resolveSite } from './resolveSite';
+import { resolveSite } from '../resolveSite';
 
 export interface ResolvedPage {
   page: PageDefinition;
@@ -24,11 +24,8 @@ const resolve = cache(async (path: string): Promise<ResolvedPage | undefined> =>
   const route = resolveRoute({
     segments: path ? path.split('/') : [],
     locales: site.locales,
+    defaultLocale: site.defaultLocale,
   });
-
-  if (!route) {
-    return undefined;
-  }
 
   const page = await foundation.page.getPage(route.path, route.locale, { draft: isDraft });
 

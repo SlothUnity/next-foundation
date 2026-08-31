@@ -1,7 +1,7 @@
 import type { Provider } from '@/providers/Provider.types';
 
-import { MockPageSource } from './MockPageSource';
-import { MockSiteSource } from './MockSiteSource';
+import { MockPageSource } from './sources/MockPageSource';
+import { MockSiteSource } from './sources/MockSiteSource';
 
 export const mockProvider: Provider = {
   page: new MockPageSource(),

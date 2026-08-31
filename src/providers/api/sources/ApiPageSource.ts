@@ -7,8 +7,11 @@ import type { ApiClient } from '../ApiClient';
 import { createApiClient } from '../createApiClient';
 import { createPageRequest } from '../createPageRequest';
 import { mapApiPage } from '../mappers/mapApiPage';
+import { ApiSiteSource } from './ApiSiteSource';
 
 export class ApiPageSource extends PageSource {
+  private readonly site = new ApiSiteSource();
+
   constructor(private readonly client?: ApiClient) {
     super();
   }
@@ -18,9 +21,9 @@ export class ApiPageSource extends PageSource {
     locale?: string,
     options?: GetPageOptions,
   ): Promise<PageDefinition | undefined> {
-    void locale;
+    const resolvedLocale = locale ?? (await this.site.getSite()).defaultLocale;
 
-    const request = createPageRequest({ path, draft: options?.draft });
+    const request = createPageRequest({ path, locale: resolvedLocale, draft: options?.draft });
 
     const client = this.client ?? createApiClient();
 

@@ -6,6 +6,7 @@ export class ApiSiteSource extends SiteSource {
     return {
       name: 'Site',
       locales: ['pt-PT'],
+      defaultLocale: 'pt-PT',
     };
   }
 }

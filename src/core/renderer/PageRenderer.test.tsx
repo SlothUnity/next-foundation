@@ -39,6 +39,7 @@ function createTestFoundation(): Foundation {
         return {
           name: 'Test Site',
           locales: ['pt-PT'],
+          defaultLocale: 'pt-PT',
         };
       },
     },

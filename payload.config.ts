@@ -8,7 +8,7 @@ import { requireEnv } from '@/providers/requireEnv';
 
 import { nestedDocs, seo } from '@/providers/payload/plugins';
 
-import { payloadLocales } from '@/providers/payload/locales';
+import { payloadDefaultLocale, payloadLocales } from '@/providers/payload/locales';
 
 import { Site } from '@/providers/payload/globals/Site';
 import { Users } from '@/providers/payload/collections/Users';
@@ -25,7 +25,7 @@ export default buildConfig({
 
   localization: {
     locales: payloadLocales,
-    defaultLocale: 'pt-PT',
+    defaultLocale: payloadDefaultLocale,
     fallback: false,
 
     filterAvailableLocales: async ({ locales, req }) => {

@@ -1,2 +1,5 @@
-export * from './MockPageSource';
-export * from './MockSiteSource';
+export * from './sources/MockPageSource';
+export * from './sources/MockSiteSource';
+
+export * from './definePage';
+export * from './mockSite';
