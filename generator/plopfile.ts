@@ -1,8 +1,20 @@
 import type { NodePlopAPI } from 'plop';
 
+/**
+ * Gerador de módulos.
+ *
+ * Cobre os quatro passos de `docs/modules.md`: os ficheiros do módulo, o registo no
+ * barrel, o bloco do Payload e a entrada em `pageBlocks`. O passo que **não** cobre é
+ * o `pnpm generate:payload`, que tem de correr a seguir para os tipos do Payload
+ * apanharem o bloco novo.
+ *
+ * Os templates vivem em `generator/templates/` e estão no `.prettierignore`: o parser
+ * de handlebars do Prettier reescreve os `.hbs` e destrói a indentação do código que
+ * eles geram.
+ */
 export default function generator(plop: NodePlopAPI): void {
   plop.setGenerator('Module', {
-    description: 'Generate a new module with schema, types, and component files',
+    description: 'Generate a new module: component, schema, types, styles, test and Payload block',
 
     prompts: [
       {
@@ -16,10 +28,11 @@ export default function generator(plop: NodePlopAPI): void {
     ],
 
     actions: [
+      // --- O módulo ---
       {
         type: 'add',
-        path: '../src/modules/{{pascalCase name}}/{{pascalCase name}}.module.ts',
-        templateFile: './templates/module/module.module.hbs',
+        path: '../src/modules/{{pascalCase name}}/{{pascalCase name}}.tsx',
+        templateFile: './templates/module/module.hbs',
       },
       {
         type: 'add',
@@ -28,18 +41,23 @@ export default function generator(plop: NodePlopAPI): void {
       },
       {
         type: 'add',
+        path: '../src/modules/{{pascalCase name}}/{{pascalCase name}}.types.ts',
+        templateFile: './templates/module/module.types.hbs',
+      },
+      {
+        type: 'add',
+        path: '../src/modules/{{pascalCase name}}/{{pascalCase name}}.module.ts',
+        templateFile: './templates/module/module.module.hbs',
+      },
+      {
+        type: 'add',
         path: '../src/modules/{{pascalCase name}}/{{pascalCase name}}.style.scss',
         templateFile: './templates/module/module.style.hbs',
       },
       {
         type: 'add',
-        path: '../src/modules/{{pascalCase name}}/{{pascalCase name}}.tsx',
-        templateFile: './templates/module/module.hbs',
-      },
-      {
-        type: 'add',
-        path: '../src/modules/{{pascalCase name}}/{{pascalCase name}}.types.ts',
-        templateFile: './templates/module/module.types.hbs',
+        path: '../src/modules/{{pascalCase name}}/{{pascalCase name}}.test.tsx',
+        templateFile: './templates/module/module.test.hbs',
       },
       {
         type: 'add',
@@ -49,9 +67,38 @@ export default function generator(plop: NodePlopAPI): void {
       {
         type: 'append',
         path: '../src/modules/index.ts',
-        template: 'export { {{camelCase name}}Module } from "./{{pascalCase name}}"',
+        // Separador vazio e quebra de linha no fim: o append por omissão deixaria o
+        // ficheiro sem newline final, e o `format:check` reprova-o.
+        separator: '',
+        template: "export { {{camelCase name}}Module } from './{{pascalCase name}}';\n",
         unique: true,
       },
+
+      // --- O bloco do Payload ---
+      {
+        type: 'add',
+        path: '../src/providers/payload/blocks/{{pascalCase name}}Block.ts',
+        templateFile: './templates/module/block.hbs',
+      },
+      {
+        // As âncoras `// plop: …` em blocks/index.ts existem porque aqui são precisas
+        // duas inserções no mesmo ficheiro — o import e a entrada no array — e um
+        // append cego só sabe escrever no fim.
+        type: 'append',
+        path: '../src/providers/payload/blocks/index.ts',
+        pattern: /\/\/ plop: import/,
+        template: "import { {{pascalCase name}}Block } from './{{pascalCase name}}Block';",
+        unique: true,
+      },
+      {
+        type: 'append',
+        path: '../src/providers/payload/blocks/index.ts',
+        pattern: /\/\/ plop: block/,
+        template: '  {{pascalCase name}}Block,',
+        unique: true,
+      },
+
+      () => 'Falta correr `pnpm generate:payload` para os tipos do Payload apanharem o bloco novo.',
     ],
   });
 }

@@ -93,7 +93,7 @@ export * from './Hero.types';
 
 Quatro passos, nenhum deles toca no renderer.
 
-> Há um gerador para os passos 1 e 2: `pnpm generate`. Faz metade do trabalho e tem arestas conhecidas — ver [O gerador](#o-gerador) no fim deste documento antes de o usares.
+> **Há um gerador que faz os quatro:** `pnpm generate`. Vale a pena ler os passos à mão uma vez para perceber o que ele escreve e porquê — depois disso, usa o gerador. Ver [O gerador](#o-gerador).
 
 **1. Criar a pasta** em `src/modules/<Nome>/` com os ficheiros acima.
 
@@ -167,24 +167,55 @@ Um módulo que precise de interactividade marca-se com `'use client'` normalment
 
 ## O gerador
 
-[generator/plopfile.ts](../generator/plopfile.ts) — um gerador Plop.js ligado ao script `pnpm generate`.
+[generator/plopfile.ts](../generator/plopfile.ts), ligado ao script `pnpm generate`.
 
 ```
 $ pnpm generate
 ? Module name: (e.g., Cta Block -> ctaBlock)  Cta
 ```
 
-Escreve os cinco ficheiros do módulo em `src/modules/Cta/`, mais o `index.ts`, e acrescenta a linha de export a [src/modules/index.ts](../src/modules/index.ts). Os nomes derivam todos da resposta: `PascalCase` para ficheiros e componente, `camelCase` para o alias e o schema.
+Ou, sem prompt: `pnpm generate Module Cta`.
 
-**Cobre os passos 1 e 2 desta página, não os 3 e 4.** O bloco do Payload — o `<Nome>Block.ts` com `slug` igual ao alias, e a entrada em `pageBlocks` — continua a ser trabalho manual, e é o passo onde a ligação entre o CMS e o frontend se faz. Um módulo gerado e não ligado ao CMS não tem como aparecer numa página.
+**Cobre os quatro passos acima.** Escreve os sete ficheiros do módulo, regista-o no barrel, cria o bloco do Payload e mete-o no `pageBlocks`:
 
-Três arestas a conhecer antes de o usares:
+```
+src/modules/Cta/
+├── Cta.tsx              o componente, já a desenhar o title
+├── Cta.schema.ts        z.object({ title: z.string() })
+├── Cta.types.ts         z.infer do schema
+├── Cta.module.ts        alias 'cta', name 'Cta'
+├── Cta.style.scss       .cta { }
+├── Cta.test.tsx         renderiza e procura o heading
+└── index.ts
 
-- **Os templates estão mal formatados**, e o código gerado sai numa linha só. A causa é o `pnpm format` correr Prettier sobre os `.hbs` — o `.prettierignore` não exclui a pasta `generator/`, e o parser de handlebars do Prettier reescreve-os. O código é válido; corre `pnpm format` depois de gerar.
-- **O componente gerado ignora os props.** Sai `export function Cta(module: CtaProps)` — o parâmetro chama-se `module`, não é destruturado, e o `<section>` fica vazio. O schema pede um `title` que o componente nunca desenha.
-- **Não gera teste**, e o `className` que põe no `<section>` não corresponde a convenção nenhuma do projeto: o `Hero.style.scss` estiliza por elemento, não por classe.
+src/modules/index.ts                              + export { ctaModule }
+src/providers/payload/blocks/CtaBlock.ts          slug 'cta'
+src/providers/payload/blocks/index.ts             + CtaBlock em pageBlocks
+```
 
-Está registado no [TODO.md](TODO.md).
+O `alias` do módulo e o `slug` do bloco saem ambos do `camelCase` do nome que deste, por isso **coincidem por construção** — que é o erro mais fácil de cometer à mão e o mais difícil de diagnosticar.
+
+**Falta um passo, e é de propósito:** correr `pnpm generate:payload` a seguir, para os tipos do Payload apanharem o bloco novo. O gerador lembra-te no fim.
+
+O que sai é código pronto a correr, não um esqueleto vazio: o `pnpm typecheck`, o `pnpm lint` e o teste gerado passam sem se tocar em nada. A partir daí acrescentas campos ao schema e ao bloco, aos pares.
+
+### As duas coisas invulgares que vais notar
+
+**As âncoras `// plop:` no [blocks/index.ts](../src/providers/payload/blocks/index.ts).**
+
+```ts
+import { HeroBlock } from './HeroBlock';
+// plop: import
+
+export const pageBlocks = [
+  HeroBlock,
+  // plop: block
+];
+```
+
+Este é o único ficheiro que precisa de **duas** inserções — o import e a entrada no array — e um append cego só sabe escrever no fim. As âncoras dizem ao Plop onde pôr cada uma. O `src/modules/index.ts` não precisa delas porque só tem exports, e o fim do ficheiro serve.
+
+**Os templates estão no [.prettierignore](../.prettierignore).** O Prettier tem parser de handlebars e, se lhe deixarem ver um `.hbs`, reescreve-o como se fosse markup — o que destrói a indentação do código que o template gera. Já aconteceu neste repositório: os templates estiveram meses a produzir ficheiros numa linha só. Se um dia o código gerado voltar a sair mal formatado, é aqui que se olha primeiro.
 
 ## Regras
 
@@ -192,3 +223,13 @@ Está registado no [TODO.md](TODO.md).
 - Um módulo não importa de `providers/`. Recebe dados via props; não sabe de onde vieram.
 - O `PageDefinition` não importa tipos de módulos concretos. Trabalha com `ModuleInstance`.
 - Se um módulo precisar de dados que não estão nos seus `data`, o sítio para os obter é o mapper do provider — não o componente.
+
+## O que a foundation não decide por ti
+
+Duas coisas ficam ao critério de quem escreve o módulo, porque dependem da página onde ele vai cair e a foundation não tem como as adivinhar.
+
+**O nível do título.** O gerador emite `<h2>`, que é o que costuma estar certo: uma página tem um `<h1>` e os módulos vêm abaixo dele. Mas o [Hero.tsx](../src/modules/Hero/Hero.tsx) emite `<h1>` — dois heros na mesma página dariam dois `<h1>`, o que é um erro de estrutura de documento. O `Hero` é um exemplo para provar que o mecanismo funciona, não um modelo a copiar nesse ponto.
+
+Se um projecto precisar de o resolver a sério, o módulo tem de saber a sua posição na página, e isso **altera o contrato dos módulos** — ou o `ModuleRenderer` passa a dar o índice, ou o nível vem de um campo do CMS. É uma decisão do projecto.
+
+**O nome acessível do `<section>`.** Um `<section>` sem nome não conta como landmark para um leitor de ecrã. Dar-lhe um `aria-labelledby` a apontar para o próprio título é o que o torna navegável, e implica gerar um `id` único — outra vez, informação que vive na instância e não no componente.

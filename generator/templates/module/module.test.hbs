@@ -1,0 +1,13 @@
+import { describe, expect, it } from 'vitest';
+
+import { render, screen } from '@testing-library/react';
+
+import { {{pascalCase name}} } from './{{pascalCase name}}';
+
+describe('{{pascalCase name}}', () => {
+  it('renders the title', () => {
+    render(<{{pascalCase name}} title="Um título" />);
+
+    expect(screen.getByRole('heading', { name: 'Um título' })).toBeInTheDocument();
+  });
+});

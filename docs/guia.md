@@ -1370,9 +1370,13 @@ Nenhuma validação (já foi feita), nenhum `useState` (é um Server Component, 
 
 O `{subtitle && <p>...</p>}` é o padrão normal de renderização condicional. Funciona bem com strings opcionais; se algum dia condicionares por um **número**, cuidado com o `0`, que desenharia um `0` no ecrã — nesse caso usa-se `x != null &&` ou um ternário.
 
-> ⚠ **Lapso, não decisão**
+> 🎯 **Decisão**
 >
-> O `<h1>` é incondicional. Dois heros na mesma página dão dois `<h1>`, o que é incorreto em HTML e confunde leitores de ecrã e motores de busca. O nível do título devia depender da posição (o primeiro módulo leva `h1`, os outros `h2`) ou vir por prop. Além disso, um `<section>` sem nome acessível não conta como _landmark_; faltava um `aria-labelledby` a apontar para o título.
+> O `<h1>` é incondicional, e o `Hero` é um exemplo — existe para provar que o mecanismo funciona, não para ser copiado neste ponto. Dois heros na mesma página dariam dois `<h1>`, o que é incorreto em HTML.
+>
+> **O nível do título é responsabilidade de quem escreve o módulo, não da foundation.** Ela não tem como adivinhar em que página o módulo vai cair. É por isso que o gerador emite `<h2>`, que é o que costuma estar certo. Um projecto que precise de o resolver a sério tem de dar ao módulo a sua posição na página, e isso **altera o contrato dos módulos** — ver [modules.md](modules.md#o-que-a-foundation-não-decide-por-ti).
+>
+> A mesma leitura vale para o `<section>`: sem nome acessível não conta como _landmark_, e dar-lhe um `aria-labelledby` implica um `id` único que vive na instância, não no componente.
 
 **`Hero.module.ts`** — a definição, a juntar as peças:
 

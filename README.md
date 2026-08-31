@@ -26,7 +26,7 @@ O [guia.md](docs/guia.md) tem 2900 linhas e percorre o projeto ficheiro a fichei
 
 | Vais fazer                     | Vai a                                                                       |
 | ------------------------------ | --------------------------------------------------------------------------- |
-| um módulo de conteúdo novo     | [modules.md](docs/modules.md) — e `pnpm generate` para o esqueleto          |
+| um módulo de conteúdo novo     | `pnpm generate` — e [modules.md](docs/modules.md) para perceber o que gerou |
 | ligar outro CMS                | [providers.md](docs/providers.md)                                           |
 | ligar uma API externa          | [api.md](docs/api.md)                                                       |
 | mexer em collections ou campos | [payload.md](docs/payload.md)                                               |
@@ -104,7 +104,7 @@ A direcção das dependências é a regra mais importante do projeto:
 Duas regras de pastas que evitam a maior parte das dúvidas:
 
 - **Dentro de `app/` só ficheiros de rota.** O resto vai para `_lib/`, que o prefixo `_` tira do router. O que é puro e não depende do Next sai de `app/` de vez.
-- **Um módulo é uma pasta em `modules/`** com o componente, o schema, os tipos e o registo. Acrescentar um não obriga a tocar no renderer.
+- **Um módulo é uma pasta em `modules/`** com o componente, o schema, os tipos, os estilos, o teste e o registo. Acrescentar um não obriga a tocar no renderer — e o `pnpm generate` escreve-o todo, incluindo o bloco correspondente no Payload.
 
 ## Scripts
 
@@ -118,7 +118,7 @@ Duas regras de pastas que evitam a maior parte das dúvidas:
 | `pnpm test`                 | vitest (em watch; `pnpm test --run` corre uma vez)           |
 | `pnpm format`               | prettier em toda a árvore                                    |
 | `pnpm format:check`         | verifica sem escrever                                        |
-| `pnpm generate`             | gera o esqueleto de um módulo novo (Plop)                    |
+| `pnpm generate`             | gera um módulo novo, com bloco do Payload incluído (Plop)    |
 | `pnpm generate:payload`     | `generate:types` + `generate:importMap`                      |
 
 Corre `pnpm generate:payload` (ou arranca com `pnpm dev:payload`) sempre que mudares collections, globals, campos ou o caminho de um componente de admin.

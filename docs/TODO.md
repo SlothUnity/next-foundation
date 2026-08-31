@@ -20,7 +20,9 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 
 - `defineModule`, `createModuleComponent`
 - registo automático a partir de `src/modules/index.ts`
-- gerador de esqueleto de módulo (`pnpm generate`, Plop) — a meio, ver ponto 7
+- **gerador de módulos** (`pnpm generate`, Plop) — escreve os sete ficheiros do módulo, o bloco do Payload, e regista os dois; o `alias` e o `slug` saem do mesmo nome, logo coincidem por construção
+- o código gerado passa `typecheck`, `lint` e o teste que ele próprio escreve, sem se tocar em nada
+- templates fora do alcance do Prettier, que os reescrevia como markup e destruía a indentação do código gerado
 - módulo `Hero` como referência, com `Hero.style.scss`
 
 ### Providers
@@ -68,20 +70,43 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 
 ### Qualidade
 
-- `typecheck`, `lint` e 126 testes verdes
+- `typecheck`, `lint` e 126 testes verdes (127 assim que existir um módulo gerado)
 - testes sem carregar o `payload.config.ts`
 - `pnpm build` corre `lint`, `typecheck` e testes antes do `next build` — sem CI, é este o portão antes de produção
 - `.env.example` na raiz
 
 ## Próximos passos
 
-### 1. Fechar o ponto 2 no browser
+### 1. O 404 não funciona — e subir o layout não chegou
 
-O layout de raiz, o `proxy` e os boundaries estão escritos e verdes no `typecheck`, no `lint` e nos testes, mas **ainda não foram corridos contra um servidor**. Falta:
+**Verificado contra o browser, em dev (Turbopack e webpack) e num build de produção.**
 
-- `PROVIDER=mock pnpm dev` e confirmar no HTML de origem que um 404 sai dentro do nosso `<html>`, sem `id="__next_error__"`;
-- confirmar que `/` serve `lang="pt-PT"` e `/en` serve `lang="en-GB"` — os mocks já servem os dois;
-- abrir o Live Preview no admin e confirmar que o `matcher` do proxy não engoliu o `/next/preview`.
+O que passa:
+
+- `/` serve `<html lang="pt-PT">` e `/en` serve `<html lang="en-GB">`. O layout de raiz no topo do grupo, o `proxy` com o `x-pathname` e os mocks bilingues funcionam.
+- O status HTTP de um 404 está correcto.
+
+O que **não** passa: o corpo de um 404 vem **vazio**. Não é «o invólucro do Next em vez do nosso», como este documento dizia antes — é uma página em branco. O HTML servido é `<html id="__next_error__"><body><div hidden></div></body></html>`, e o conteúdo do `not-found.tsx` existe só no payload RSC, dentro de `<script>`. Para um crawler, ou sem JS, não há nada.
+
+Causa: o `/_not-found` é uma rota da **camada de raiz** `app/`, e este projeto não tem `app/layout.tsx` — o `(frontend)` e o `(payload)` são duas raízes separadas, cada uma com o seu `<html>`, porque o admin do Payload traz o dele. Sem layout na camada de raiz, o Next usa o dele.
+
+Quatro coisas testadas e descartadas:
+
+| Tentativa                                                        | Resultado                                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Subir o layout para `app/(frontend)/layout.tsx`                  | o layout **corre** no 404, mas o `<html>` é substituído                                    |
+| `not-found.tsx` mais fundo, em `[[...segments]]/`                | igual                                                                                      |
+| `experimental.globalNotFound` + `app/global-not-found.tsx`       | compila, mas nunca é usado: só serve a rota `/_not-found`, e o catch-all apanha tudo antes |
+| `app/layout.tsx` pass-through + `app/not-found.tsx` com `<html>` | o conteúdo passa a existir no payload RSC, o HTML continua vazio                           |
+
+Portanto a decisão do ponto 2 original — «subir o layout resolve os boundaries» — estava **errada**, e a documentação foi corrigida em conformidade. O que falta é decidir entre:
+
+- aceitar 404 sem HTML servido (mau para SEO e para quem não corre JS);
+- desistir do `notFound()` no frontend e desenhar o 404 dentro da árvore normal, com o custo de o status passar a 200 — inaceitável sem outra forma de o corrigir;
+- reestruturar para o frontend ser a camada de raiz, o que obriga a tirar o admin do Payload do mesmo `app/` — mudança grande;
+- abrir issue no Next: com duas raízes de route group, o `notFound()` não tem shell.
+
+Ainda por verificar, e independente disto: abrir o Live Preview no admin e confirmar que o `matcher` do proxy não engoliu o `/next/preview`. Precisa de base de dados.
 
 ### 2. Cache no provider payload
 
@@ -91,55 +116,37 @@ A forma correcta é `unstable_cache` (ou `'use cache'`) com tags por página, ma
 
 Ficou decidido que o frontend é **SSR** e não geração estática — ver [routing.md](routing.md#o-frontend-é-ssr). O desempenho resolve-se aqui, ao nível dos dados.
 
-### 3. Nível de título nos módulos
-
-O [Hero.tsx](../src/modules/Hero/Hero.tsx) emite `<h1>` incondicionalmente: dois heros na mesma página dão dois `<h1>`. Corrigir a sério implica o módulo saber a sua posição na página, e isso **altera o contrato dos módulos**.
-
-**Decidir isto antes do ponto 8.** Escrever três módulos novos com o contrato actual cimenta-o. As opções são passar o índice pelo `ModuleRenderer`, ou derivar o nível de um campo do CMS.
-
-Do mesmo lote: um `<section>` sem nome acessível não conta como landmark, falta-lhe um `aria-labelledby` a apontar para o título.
-
-### 4. Falhas silenciosas
+### 3. Falhas silenciosas
 
 O caso mais grave — o `resolveRoute` devolver `undefined` com a lista de locales vazia, fazendo o site inteiro responder 404 — **está resolvido**: a função resolve sempre, e o `mapPayloadSite` cai no `payloadDefaultLocale` quando o global está por preencher.
 
 Fica um: o `url` do Live Preview em [Pages.ts](../src/providers/payload/collections/Pages.ts) devolve `undefined` quando o `enabledLocales` está vazio, o que desliga o preview sem dizer porquê.
 
-### 5. O campo `PageUrl`
+### 4. O campo `PageUrl`
 
 O [PageUrl.tsx](../src/providers/payload/components/PageUrl.tsx) tem três problemas no `useEffect`: os `if (!res.ok) return;` desistem sem mostrar nada ao editor nem registar o erro; não há `AbortController`, logo trocar de idioma a meio de um pedido pode escrever no estado a partir de uma resposta obsoleta; e o `void loadData()` descarta a promise, transformando uma falha de rede numa unhandled rejection. São ainda dois pedidos sequenciais em cada render.
 
-### 6. `PREVIEW_SECRET` fora do URL
+### 5. `PREVIEW_SECRET` fora do URL
 
 O segredo viaja na query string do iframe do Live Preview, logo fica no DOM do admin, no histórico do browser e em qualquer `Referer` que a página previsualizada envie. Um token curto e assinado resolvia. Não é urgente porque a rota valida também a sessão com `payload.auth()`.
 
-### 7. O gerador de módulos
+### 6. Módulos
 
-O [generator/plopfile.ts](../generator/plopfile.ts) e o script `pnpm generate` existem e funcionam, mas ficaram a meio e sem documentação — só entraram nos docs depois de alguém perguntar por eles. Três coisas por fazer:
+Só existe o `Hero`. Os próximos exercitam partes do contrato ainda não usadas: um com relações (para validar o `depth: 2`), um com media (para validar uploads), e um com uma lista de itens. Arranca-os com `pnpm generate` e acrescenta os campos ao schema e ao bloco, aos pares.
 
-- **Os templates `.hbs` são reescritos pelo `pnpm format`.** O `.prettierignore` não exclui a pasta `generator/`, e o parser de handlebars do Prettier destrói a formatação — o código gerado sai numa linha só. Acrescentar `generator/templates` ao `.prettierignore` e reformatar os templates à mão é o essencial.
-- **O componente gerado ignora os props:** `export function Cta(module: CtaProps)`, com o parâmetro por destruturar e o `<section>` vazio, enquanto o schema pede um `title`. Devia sair já a desenhar o `title`, como o `Hero`.
-- **Não gera o bloco do Payload.** Cobre os passos 1 e 2 de [modules.md](modules.md#criar-um-módulo-novo) e deixa de fora o 3 e o 4 — que são precisamente onde o `slug` tem de coincidir com o `alias`. Gerar também o `<Nome>Block.ts` e a entrada em `pageBlocks` fecharia o ciclo.
-
-Falta ainda um template de teste, e o `className` que põe no `<section>` não corresponde a convenção nenhuma do projeto.
-
-### 8. Módulos
-
-Só existe o `Hero`. Os próximos exercitam partes do contrato ainda não usadas: um com relações (para validar o `depth: 2`), um com media (para validar uploads), e um com uma lista de itens. Ver o ponto 3 antes de começar.
-
-### 9. Navigation e footer
+### 7. Navigation e footer
 
 O `PageDefinition` já os prevê e o `PageRenderer` já os envolve em `<nav>`/`<footer>`, mas nenhum provider os preenche.
 
 **É uma decisão de projecto, não da foundation.** O que a foundation garante são os landmarks; onde o conteúdo deles vive no CMS — provavelmente globals — é de quem monta o site. Nota para quem os escrever: **o módulo não deve trazer o seu próprio `<nav>`**, o renderer já o põe.
 
-### 10. Tema e estilos
+### 8. Tema e estilos
 
 Não existe sistema de tema. **Também é decisão de projecto.** A foundation não impõe nenhum, e a colisão de nomes que se temia está resolvida: o ficheiro de estilos de um módulo é `Hero.style.scss`, não `Hero.module.scss`, para não colidir com o `Hero.module.ts` que é a definição do módulo.
 
 Nota de dependências: o `sass` **não está no `package.json`** — vem por arrasto do `@payloadcms/ui`. Compila hoje por acidente. Declará-lo como devDependency é uma linha.
 
-### 11. Mapeamento do provider api
+### 9. Mapeamento do provider api
 
 O transporte está feito e o `mapApiPage` está deliberadamente por escrever: arranca com `PROVIDER=api`, e o erro do primeiro pedido diz as chaves que a API devolveu. Ver [api.md](api.md).
 
@@ -151,19 +158,19 @@ Pendências conhecidas, todas por resolver antes de servir um site multilingue:
 - não há `AbortSignal` nem timeout — um upstream pendurado pendura o render;
 - o `createPageRequest` recebe o `locale` já resolvido mas ainda não o põe no pedido.
 
-### 12. TypeScript
+### 10. TypeScript
 
 **`noUncheckedIndexedAccess`** não está ligado no `tsconfig.json`. Ligá-lo apanha a classe de bugs que este projeto mais tem — `locales[0]`, `docs[0]`, `split('-')[0]` compilam hoje sem guarda. É mecânico, e vale a pena fazê-lo **antes** das rondas grandes, senão escrevem-se as guardas duas vezes.
 
 **`Meta.locale` obrigatório.** Hoje é opcional e nenhum consumidor depende dele — o `<html lang>` passou a sair do locale da rota — mas todos os mappers o preenchem. Torná-lo obrigatório fecha a divergência entre o que o tipo permite e o que a realidade faz.
 
-### 13. Cobertura e E2E
+### 11. Cobertura e E2E
 
 Não há cobertura configurada nem framework de E2E — 126 testes, todos unitários. Os componentes de admin não têm testes.
 
 O cenário que interessa é o editorial: publicado A, preview mostra B, público continua A, publicar, público passa a B. Vale a pena corrê-lo à mão ao fechar o ponto 2, e automatizá-lo depois como ronda própria — instalar e configurar Playwright com uma base de dados com estado é trabalho a sério.
 
-### 14. Providers realmente permutáveis
+### 12. Providers realmente permutáveis
 
 Resolvido o essencial: o `payload.config.ts` já não é avaliado com `PROVIDER=mock`, porque o [getPayloadClient.ts](../src/providers/payload/getPayloadClient.ts) o importa dinamicamente. Há teste de regressão em `createProvider.test.ts`.
 

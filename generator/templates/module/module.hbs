@@ -1,9 +1,11 @@
-import type {
-{{pascalCase name}}Props } from './{{pascalCase name}}.types'; import './{{pascalCase
-  name
-}}.style.scss'; export function
-{{pascalCase name}}(module:
-{{pascalCase name}}Props) { return (
-<section className='{{camelCase name}}'>
-</section>
-); }
+import type { {{pascalCase name}}Props } from './{{pascalCase name}}.types';
+
+import './{{pascalCase name}}.style.scss';
+
+export function {{pascalCase name}}({ title }: {{pascalCase name}}Props) {
+  return (
+    <section className="{{camelCase name}}">
+      <h2>{title}</h2>
+    </section>
+  );
+}
