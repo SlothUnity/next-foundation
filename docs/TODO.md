@@ -20,6 +20,7 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 
 - `defineModule`, `createModuleComponent`
 - registo automático a partir de `src/modules/index.ts`
+- gerador de esqueleto de módulo (`pnpm generate`, Plop) — a meio, ver ponto 7
 - módulo `Hero` como referência, com `Hero.style.scss`
 
 ### Providers
@@ -94,7 +95,7 @@ Ficou decidido que o frontend é **SSR** e não geração estática — ver [rou
 
 O [Hero.tsx](../src/modules/Hero/Hero.tsx) emite `<h1>` incondicionalmente: dois heros na mesma página dão dois `<h1>`. Corrigir a sério implica o módulo saber a sua posição na página, e isso **altera o contrato dos módulos**.
 
-**Decidir isto antes do ponto 7.** Escrever três módulos novos com o contrato actual cimenta-o. As opções são passar o índice pelo `ModuleRenderer`, ou derivar o nível de um campo do CMS.
+**Decidir isto antes do ponto 8.** Escrever três módulos novos com o contrato actual cimenta-o. As opções são passar o índice pelo `ModuleRenderer`, ou derivar o nível de um campo do CMS.
 
 Do mesmo lote: um `<section>` sem nome acessível não conta como landmark, falta-lhe um `aria-labelledby` a apontar para o título.
 
@@ -112,23 +113,33 @@ O [PageUrl.tsx](../src/providers/payload/components/PageUrl.tsx) tem três probl
 
 O segredo viaja na query string do iframe do Live Preview, logo fica no DOM do admin, no histórico do browser e em qualquer `Referer` que a página previsualizada envie. Um token curto e assinado resolvia. Não é urgente porque a rota valida também a sessão com `payload.auth()`.
 
-### 7. Módulos
+### 7. O gerador de módulos
+
+O [generator/plopfile.ts](../generator/plopfile.ts) e o script `pnpm generate` existem e funcionam, mas ficaram a meio e sem documentação — só entraram nos docs depois de alguém perguntar por eles. Três coisas por fazer:
+
+- **Os templates `.hbs` são reescritos pelo `pnpm format`.** O `.prettierignore` não exclui a pasta `generator/`, e o parser de handlebars do Prettier destrói a formatação — o código gerado sai numa linha só. Acrescentar `generator/templates` ao `.prettierignore` e reformatar os templates à mão é o essencial.
+- **O componente gerado ignora os props:** `export function Cta(module: CtaProps)`, com o parâmetro por destruturar e o `<section>` vazio, enquanto o schema pede um `title`. Devia sair já a desenhar o `title`, como o `Hero`.
+- **Não gera o bloco do Payload.** Cobre os passos 1 e 2 de [modules.md](modules.md#criar-um-módulo-novo) e deixa de fora o 3 e o 4 — que são precisamente onde o `slug` tem de coincidir com o `alias`. Gerar também o `<Nome>Block.ts` e a entrada em `pageBlocks` fecharia o ciclo.
+
+Falta ainda um template de teste, e o `className` que põe no `<section>` não corresponde a convenção nenhuma do projeto.
+
+### 8. Módulos
 
 Só existe o `Hero`. Os próximos exercitam partes do contrato ainda não usadas: um com relações (para validar o `depth: 2`), um com media (para validar uploads), e um com uma lista de itens. Ver o ponto 3 antes de começar.
 
-### 8. Navigation e footer
+### 9. Navigation e footer
 
 O `PageDefinition` já os prevê e o `PageRenderer` já os envolve em `<nav>`/`<footer>`, mas nenhum provider os preenche.
 
 **É uma decisão de projecto, não da foundation.** O que a foundation garante são os landmarks; onde o conteúdo deles vive no CMS — provavelmente globals — é de quem monta o site. Nota para quem os escrever: **o módulo não deve trazer o seu próprio `<nav>`**, o renderer já o põe.
 
-### 9. Tema e estilos
+### 10. Tema e estilos
 
 Não existe sistema de tema. **Também é decisão de projecto.** A foundation não impõe nenhum, e a colisão de nomes que se temia está resolvida: o ficheiro de estilos de um módulo é `Hero.style.scss`, não `Hero.module.scss`, para não colidir com o `Hero.module.ts` que é a definição do módulo.
 
 Nota de dependências: o `sass` **não está no `package.json`** — vem por arrasto do `@payloadcms/ui`. Compila hoje por acidente. Declará-lo como devDependency é uma linha.
 
-### 10. Mapeamento do provider api
+### 11. Mapeamento do provider api
 
 O transporte está feito e o `mapApiPage` está deliberadamente por escrever: arranca com `PROVIDER=api`, e o erro do primeiro pedido diz as chaves que a API devolveu. Ver [api.md](api.md).
 
@@ -140,19 +151,19 @@ Pendências conhecidas, todas por resolver antes de servir um site multilingue:
 - não há `AbortSignal` nem timeout — um upstream pendurado pendura o render;
 - o `createPageRequest` recebe o `locale` já resolvido mas ainda não o põe no pedido.
 
-### 11. TypeScript
+### 12. TypeScript
 
 **`noUncheckedIndexedAccess`** não está ligado no `tsconfig.json`. Ligá-lo apanha a classe de bugs que este projeto mais tem — `locales[0]`, `docs[0]`, `split('-')[0]` compilam hoje sem guarda. É mecânico, e vale a pena fazê-lo **antes** das rondas grandes, senão escrevem-se as guardas duas vezes.
 
 **`Meta.locale` obrigatório.** Hoje é opcional e nenhum consumidor depende dele — o `<html lang>` passou a sair do locale da rota — mas todos os mappers o preenchem. Torná-lo obrigatório fecha a divergência entre o que o tipo permite e o que a realidade faz.
 
-### 12. Cobertura e E2E
+### 13. Cobertura e E2E
 
 Não há cobertura configurada nem framework de E2E — 126 testes, todos unitários. Os componentes de admin não têm testes.
 
 O cenário que interessa é o editorial: publicado A, preview mostra B, público continua A, publicar, público passa a B. Vale a pena corrê-lo à mão ao fechar o ponto 2, e automatizá-lo depois como ronda própria — instalar e configurar Playwright com uma base de dados com estado é trabalho a sério.
 
-### 13. Providers realmente permutáveis
+### 14. Providers realmente permutáveis
 
 Resolvido o essencial: o `payload.config.ts` já não é avaliado com `PROVIDER=mock`, porque o [getPayloadClient.ts](../src/providers/payload/getPayloadClient.ts) o importa dinamicamente. Há teste de regressão em `createProvider.test.ts`.
 

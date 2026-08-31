@@ -93,6 +93,8 @@ export * from './Hero.types';
 
 Quatro passos, nenhum deles toca no renderer.
 
+> Há um gerador para os passos 1 e 2: `pnpm generate`. Faz metade do trabalho e tem arestas conhecidas — ver [O gerador](#o-gerador) no fim deste documento antes de o usares.
+
 **1. Criar a pasta** em `src/modules/<Nome>/` com os ficheiros acima.
 
 **2. Exportar do barrel** [src/modules/index.ts](../src/modules/index.ts):
@@ -162,6 +164,27 @@ Adapta um componente tipado (`HeroProps`) ao contrato genérico que o registry g
 O `Hero.tsx` não tem `'use client'`, logo é um Server Component. Isso é o esperado: o `PageRenderer` corre no servidor e os módulos são renderizados lá.
 
 Um módulo que precise de interactividade marca-se com `'use client'` normalmente. Nesse caso os `data` que recebe têm de ser serializáveis — o que já são, porque vêm de JSON do CMS.
+
+## O gerador
+
+[generator/plopfile.ts](../generator/plopfile.ts) — um gerador Plop.js ligado ao script `pnpm generate`.
+
+```
+$ pnpm generate
+? Module name: (e.g., Cta Block -> ctaBlock)  Cta
+```
+
+Escreve os cinco ficheiros do módulo em `src/modules/Cta/`, mais o `index.ts`, e acrescenta a linha de export a [src/modules/index.ts](../src/modules/index.ts). Os nomes derivam todos da resposta: `PascalCase` para ficheiros e componente, `camelCase` para o alias e o schema.
+
+**Cobre os passos 1 e 2 desta página, não os 3 e 4.** O bloco do Payload — o `<Nome>Block.ts` com `slug` igual ao alias, e a entrada em `pageBlocks` — continua a ser trabalho manual, e é o passo onde a ligação entre o CMS e o frontend se faz. Um módulo gerado e não ligado ao CMS não tem como aparecer numa página.
+
+Três arestas a conhecer antes de o usares:
+
+- **Os templates estão mal formatados**, e o código gerado sai numa linha só. A causa é o `pnpm format` correr Prettier sobre os `.hbs` — o `.prettierignore` não exclui a pasta `generator/`, e o parser de handlebars do Prettier reescreve-os. O código é válido; corre `pnpm format` depois de gerar.
+- **O componente gerado ignora os props.** Sai `export function Cta(module: CtaProps)` — o parâmetro chama-se `module`, não é destruturado, e o `<section>` fica vazio. O schema pede um `title` que o componente nunca desenha.
+- **Não gera teste**, e o `className` que põe no `<section>` não corresponde a convenção nenhuma do projeto: o `Hero.style.scss` estiliza por elemento, não por classe.
+
+Está registado no [TODO.md](TODO.md).
 
 ## Regras
 
