@@ -56,15 +56,16 @@ Isto **esteve** errado e já não está. Fica registado por duas razões: a expl
   - [1.3 `[[...segments]]`: uma rota para o site inteiro](#13-segments-uma-rota-para-o-site-inteiro)
   - [1.4 `layout.tsx`, linha a linha](#14-layouttsx-linha-a-linha)
   - [1.5 `page.tsx`, linha a linha](#15-pagetsx-linha-a-linha)
+  - [1.6 `proxy.ts`: o caminho até ao layout](#16-proxyts-o-caminho-até-ao-layout)
 - [Cap. 2 — `resolvePage` e o `cache()` do React](#cap-2--resolvepage-e-o-cache-do-react)
-  - [2.1 O problema: três sítios, a mesma pergunta](#21-o-problema-três-sítios-a-mesma-pergunta)
+  - [2.1 O problema: vários sítios, a mesma pergunta](#21-o-problema-vários-sítios-a-mesma-pergunta)
   - [2.2 O que o `cache()` garante — e o que não garante](#22-o-que-o-cache-garante--e-o-que-não-garante)
   - [2.3 Porque há duas funções e não uma](#23-porque-há-duas-funções-e-não-uma)
   - [2.4 A forma do `ResolvedPage`](#24-a-forma-do-resolvedpage)
 - [Cap. 3 — `resolveRoute`: da URL para `{locale, path}`](#cap-3--resolveroute-da-url-para-locale-path)
   - [3.1 A função, linha a linha](#31-a-função-linha-a-linha)
   - [3.2 `getLocaleSegment`: de `pt-PT` para `pt`](#32-getlocalesegment-de-pt-pt-para-pt)
-  - [3.3 O locale por omissão é o primeiro da lista](#33-o-locale-por-omissão-é-o-primeiro-da-lista)
+  - [3.3 O locale por omissão é declarado, não adivinhado](#33-o-locale-por-omissão-é-declarado-não-adivinhado)
 
 - [Cap. 4 — `Foundation`, o centro de composição](#cap-4--foundation-o-centro-de-composição)
   - [4.1 O objeto de três campos](#41-o-objeto-de-três-campos)
@@ -193,7 +194,7 @@ export abstract class SiteSource {
 
 **O que é.** `extends` liga uma classe a outra: a filha herda o que a mãe tem e é obrigada a preencher o que a mãe deixou por preencher. «Polimorfismo» é a palavra grande para a consequência: quem recebe a mãe pode receber qualquer filha, sem saber qual.
 
-**Como aparece.** `src/providers/payload/sources/PayloadPageSource.ts:15`:
+**Como aparece.** `src/providers/payload/sources/PayloadPageSource.ts:13`:
 
 ```ts
 export class PayloadPageSource extends PageSource {
@@ -395,7 +396,7 @@ export function PageRenderer({ page, foundation }: PageRendererProps) {
 
 O `PageRenderer` precisa do registo de módulos para saber que componente desenhar. Podia importá-lo — `import { foundation } from '@/core/foundation/foundation'` — e não recebia nada por props. Não o faz: recebe-o. E passa-o a seguir ao `ModuleRenderer` (`PageRenderer.tsx:21`), que também o recebe em vez de o importar.
 
-Quem faz a ligação é a camada de cima, em `page.tsx:39`:
+Quem faz a ligação é a camada de cima, em `page.tsx:38`:
 
 ```tsx
 return <PageRenderer page={resolved.page} foundation={foundation} />;
@@ -505,29 +506,40 @@ O percurso começa aqui. Alguém escreveu `https://osite.pt/en/sobre-nos` no bro
 No App Router, **a estrutura de pastas é o routing**. Não há ficheiro de rotas nenhum: o caminho da pasta é o caminho da URL. Vale a pena ter o mapa todo à frente, porque é pequeno:
 
 ```
-src/app/
-├── (frontend)/                     ← o site público
-│   ├── favicon.ico
-│   ├── createMetadata.ts           ← não é rota; é um helper
-│   ├── next/
-│   │   ├── preview/route.ts        ← liga o modo rascunho
-│   │   └── exit-preview/route.ts   ← desliga
-│   └── [[...segments]]/
-│       ├── layout.tsx              ← o <html> do site
-│       ├── page.tsx                ← a página
-│       └── resolvePage.ts          ← não é rota; é um helper
-└── (payload)/                      ← o admin do CMS (gerado)
-    ├── layout.tsx
-    ├── custom.scss
-    ├── admin/
-    │   ├── [[...segments]]/page.tsx, not-found.tsx
-    │   └── importMap.js
-    └── api/[...slug]/route.ts      ← a API REST do Payload
+src/
+├── proxy.ts                        ← corre antes de tudo; ver 1.6
+└── app/
+    ├── (frontend)/                     ← o site público
+    │   ├── favicon.ico
+    │   ├── layout.tsx                  ← o <html> do site
+    │   ├── not-found.tsx               ← o 404
+    │   ├── error.tsx                   ← erro dentro da página
+    │   ├── global-error.tsx            ← erro no próprio layout
+    │   ├── _lib/                       ← não são rotas
+    │   │   ├── createMetadata.ts
+    │   │   ├── resolvePage.ts
+    │   │   └── resolveSite.ts
+    │   ├── next/
+    │   │   ├── preview/route.ts        ← liga o modo rascunho
+    │   │   └── exit-preview/route.ts   ← desliga
+    │   └── [[...segments]]/
+    │       └── page.tsx                ← a página
+    └── (payload)/                      ← o admin do CMS (gerado)
+        ├── layout.tsx
+        ├── custom.scss
+        ├── admin/
+        │   ├── [[...segments]]/page.tsx, not-found.tsx
+        │   └── importMap.js
+        └── api/[...slug]/route.ts      ← a API REST do Payload
 ```
 
-Treze ficheiros, e o site público inteiro cabe em três deles.
+Só ficheiros com **nomes especiais** viram rotas: `page.tsx` (uma página), `layout.tsx` (o invólucro), `route.ts` (um endpoint sem UI), mais os três boundaries `not-found`, `error` e `global-error`.
 
-Só ficheiros com **nomes especiais** viram rotas: `page.tsx` (uma página), `layout.tsx` (o invólucro), `route.ts` (um endpoint sem UI). Os outros — `createMetadata.ts`, `resolvePage.ts` — vivem aqui só por estarem perto de quem os usa, e o Next ignora-os.
+> 🎯 **Decisão**
+>
+> Os helpers estão numa pasta `_lib/`, e o prefixo `_` é o mecanismo do Next para tirar uma pasta do router. A alternativa era deixá-los soltos ao lado dos ficheiros de rota, que foi como estiveram — e o problema é que um `.ts` qualquer no meio das rotas não se distingue à vista de uma convenção do Next cujo nome ainda não reconheces. A regra passou a ser: **em `app/` só ficheiros de rota; o resto em `_lib/`**.
+>
+> O que é puro e não depende do Next não fica sequer no `_lib` — sai de `app/` de vez. Foi o caso do `isSafeRedirectPath`, que hoje vive em `core/routing/` ao lado das outras funções sobre caminhos.
 
 > 📐 **Imposto pelo Next.js**
 >
@@ -561,49 +573,61 @@ Para `/en/sobre-nos`, o Next entrega `segments = ['en', 'sobre-nos']`. Para `/`,
 
 ## 1.4 `layout.tsx`, linha a linha
 
-`src/app/(frontend)/[[...segments]]/layout.tsx` — 31 linhas que vale a pena ler com calma:
+`src/app/(frontend)/layout.tsx` — o layout de raiz do grupo. Antes de o ler, é preciso perceber **porque está onde está**, porque já esteve noutro sítio e a mudança custou o desenho de duas outras peças.
+
+### Porque é que o layout está no topo do grupo
+
+> 📐 **Imposto pelo Next.js**
+>
+> Quando se usam route groups como raízes separadas, o Next só monta o boundary do `not-found` e do `error` se encontrar um layout de raiz **no topo do grupo**.
+
+O layout viveu durante algum tempo dentro do `[[...segments]]`, para poder ler os `params` e tirar de lá o idioma. Funcionava para as páginas — e não funcionava para mais nada: um 404 respondia com o invólucro interno do Next, `<html id="__next_error__">`, em vez do nosso. O `not-found.tsx` estava escrito e nunca aparecia.
+
+Subir o layout resolve os boundaries e cria um problema: **a este nível não há `params`**. Um layout acima de qualquer segmento dinâmico não sabe que caminho está a ser servido, e portanto não sabe que idioma declarar no `<html lang>`.
+
+A saída está em 1.6, e é um `proxy` que põe o caminho num header.
+
+### O ficheiro
 
 ```tsx
 interface LayoutProps {
   children: React.ReactNode;
-  params: Promise<{
-    segments?: string[];
-  }>;
 }
 ```
 
-- **`children`** — o que o Next injeta cá dentro: neste caso, o `page.tsx`. O tipo `React.ReactNode` cobre tudo o que se pode desenhar (elementos, texto, `null`, listas). Repara que não há `import React` no ficheiro: os tipos do React declaram um namespace `React` global, por isso `React.ReactNode` resolve sem import — o `jsx: 'react-jsx'` do `tsconfig` trata do resto.
-- **`params: Promise<...>`** — é uma **Promise**. Não é engano.
-
-  > 📐 **Imposto pelo Next.js**
-  >
-  > A partir do Next 15, `params`, `searchParams`, `cookies()`, `headers()` e `draftMode()` são assíncronos. A razão é o streaming: o Next quer começar a mandar HTML antes de saber tudo sobre o pedido. Nada disto é escolha do projeto — é o que o framework passa.
-
-- **`segments?: string[]`** — opcional, porque na raiz não vem nada (ver 1.3).
+- **`children`** — o que o Next injeta cá dentro. O tipo `React.ReactNode` cobre tudo o que se pode desenhar (elementos, texto, `null`, listas). Repara que não há `import React` no ficheiro: os tipos do React declaram um namespace `React` global, por isso `React.ReactNode` resolve sem import — o `jsx: 'react-jsx'` do `tsconfig` trata do resto.
+- **Não há `params`.** É a consequência de estar no topo do grupo.
 
 Agora o corpo:
 
 ```tsx
-export default async function RootLayout({ children, params }: LayoutProps) {
-  const { segments = [] } = await params;
+export default async function RootLayout({ children }: LayoutProps) {
   const { isEnabled: isDraft } = await draftMode();
 
-  const resolved = await resolvePage(segments);
+  const site = await resolveSite();
 
-  const Preview = provider.preview;
+  const pathname = (await headers()).get(PATHNAME_HEADER) ?? '';
 ```
 
 - **`async function`** — um Server Component pode ser assíncrono ([0.11](#011-server-components-e-client-components)). Um componente de browser não pode.
-- **`const { segments = [] } = await params`** — destructuring com valor por omissão. Na raiz, `segments` vem `undefined` e passa a `[]`. Evita um `if` e evita um crash.
 - **`const { isEnabled: isDraft } = await draftMode()`** — destructuring **com renomeação**: tira-se `isEnabled` e passa a chamar-se `isDraft` cá dentro. É só legibilidade: `isDraft` diz o que é; `isEnabled`, sozinho, não diz de quê. O modo rascunho é o que faz a diferença entre ver o site publicado e ver o que está por publicar (Cap. 9).
-- **`await resolvePage(segments)`** — o layout vai buscar a página. Sim, o layout. Fica estranho e é intencional; a explicação está duas linhas abaixo, no `<html>`.
-- **`const Preview = provider.preview`** — e repara na **maiúscula**. Não é estética: em JSX, `<preview />` seria interpretado como uma etiqueta HTML chamada `preview`, e `<Preview />` como um componente. Guardar numa variável com maiúscula é a forma de renderizar um componente que se recebeu como dado. O `provider.preview` é opcional — só o provider do Payload traz um (Cap. 7).
+
+  > 📐 **Imposto pelo Next.js**
+  >
+  > A partir do Next 15, `params`, `searchParams`, `cookies()`, `headers()` e `draftMode()` são assíncronos. A razão é o streaming: o Next quer começar a mandar HTML antes de saber tudo sobre o pedido.
+
+- **`headers().get(PATHNAME_HEADER)`** — o caminho do pedido, posto lá pelo `proxy`. O `?? ''` cobre o caso de o header não existir, que acontece se alguém mexer no `matcher`.
 
 E o que sai:
 
 ```tsx
-const site = await resolveSite();
-const locale = resolved?.page.meta.locale ?? site.locales[0];
+const { locale } = resolveRoute({
+  segments: pathname.split('/').filter(Boolean),
+  locales: site.locales,
+  defaultLocale: site.defaultLocale,
+});
+
+const Preview = provider.preview;
 
 return (
   <html lang={locale}>
@@ -616,16 +640,32 @@ return (
 );
 ```
 
-- **`<html>` dentro de um segmento dinâmico** é invulgar — o normal é estar num `app/layout.tsx` na raiz. Está aqui de propósito: o atributo `lang` tem de ser o idioma da página, e o idioma só se sabe depois de resolver a rota. Um layout na raiz não tem acesso aos `segments`.
+- **`const Preview = provider.preview`** — e repara na **maiúscula**. Não é estética: em JSX, `<preview />` seria interpretado como uma etiqueta HTML chamada `preview`, e `<Preview />` como um componente. Guardar numa variável com maiúscula é a forma de renderizar um componente que se recebeu como dado. O `provider.preview` é opcional — só o provider do Payload traz um (Cap. 7).
 - **`{isDraft && Preview ? <Preview /> : null}`** — o componente de live preview só entra em modo rascunho, e só se o provider tiver um. Em produção, para um visitante normal, não vai nada disto para o HTML.
 
-**Porquê o fallback `?? site.locales[0]`.** Sem ele, `resolved?.page.meta.locale` era `undefined` em todos os 404, e `<html lang={undefined}>` renderiza `<html>` sem atributo nenhum — um leitor de ecrã fica sem saber em que língua ler, o que é uma falha de acessibilidade (WCAG 3.1.1) exatamente nas páginas mais indexadas.
+> 🎯 **Decisão**
+>
+> **O `lang` vem do locale da rota, não da página.** O layout podia chamar o `resolvePage` e usar `meta.locale`, que foi o que fez enquanto viveu dentro do segmento. Mas o `resolveRoute` é uma função pura sobre dados que o `resolveSite()` já trouxe — e assim o layout não paga uma consulta à página só para escrever um atributo.
+>
+> Há um segundo motivo, e é o que fecha a questão: quando a página **não** resolve, o que se desenha é o `not-found.tsx`. Não há `meta.locale` nenhum, e o locale da rota continua a descrever correctamente a página que o visitante pediu. Um `<html>` sem `lang` deixa um leitor de ecrã sem saber em que língua ler (WCAG 3.1.1), exatamente nas páginas mais indexadas.
 
-Repara no que **não** se usa aqui: o cabeçalho `Accept-Language` do visitante. É uma tentação, e está errada — o `lang` descreve a língua **do conteúdo**, não a preferência de quem visita. Quando a página não resolve, o que se desenha é o `not-found.tsx` deste projeto, escrito no locale por omissão do site; dizer `lang="en"` a um visitante inglês por causa de um cabeçalho faria o leitor de ecrã ler texto português com voz inglesa. (O `Accept-Language` tem um uso legítimo — negociar para que idioma **redirecionar** — mas isso é routing, e vive noutro sítio.)
+Repara no que **não** se usa aqui: o cabeçalho `Accept-Language` do visitante. É uma tentação, e está errada — o `lang` descreve a língua **do conteúdo**, não a preferência de quem visita. Dizer `lang="en"` a um visitante inglês por causa de um cabeçalho faria o leitor de ecrã ler texto português com voz inglesa. (O `Accept-Language` tem um uso legítimo — negociar para que idioma **redirecionar** — mas isso é routing, e vive noutro sítio.)
 
 O `resolveSite()` está envolvido no `cache()` do React ([2.2](#22-o-que-o-cache-garante--e-o-que-não-garante)) e é o mesmo que o `resolvePage` usa por dentro, portanto este `await` não custa uma segunda consulta.
 
-Há aqui um custo escondido que só se percebe mais tarde: **chamar `draftMode()` no layout torna todas as rotas dinâmicas**. O Next não pode gerar nada estaticamente se o resultado depende de um cookie. Guarda a ideia — voltamos a ela em [2.2](#22-o-que-o-cache-garante--e-o-que-não-garante).
+Há aqui um custo que vale a pena nomear já: **`draftMode()` e `headers()` tornam todas as rotas dinâmicas**. O Next não pode gerar nada estaticamente se o resultado depende de um cookie ou de um header. Guarda a ideia — voltamos a ela em [2.2](#22-o-que-o-cache-garante--e-o-que-não-garante).
+
+### Os três boundaries
+
+Ao lado do layout estão os três ficheiros que só funcionam por ele estar ali:
+
+| Ficheiro           | Apanha                                |
+| ------------------ | ------------------------------------- |
+| `not-found.tsx`    | o `notFound()` chamado pela página    |
+| `error.tsx`        | um erro dentro da página              |
+| `global-error.tsx` | um erro no **próprio layout de raiz** |
+
+O `global-error.tsx` é a única excepção à regra de que só o layout de raiz emite `<html>`: quando o layout rebenta, não há `<html>` onde desenhar o fallback, portanto ele traz o seu.
 
 ## 1.5 `page.tsx`, linha a linha
 
@@ -649,7 +689,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 `generateMetadata` é um nome reservado. O `return {}` quando não resolve deixa o Next usar os valores por omissão — não vale a pena inventar título para uma página que não existe.
 
-O `createMetadata` (`src/app/(frontend)/createMetadata.ts`) é a tradução entre o vocabulário do projeto e o do Next:
+O `createMetadata` (`src/app/(frontend)/_lib/createMetadata.ts`) é a tradução entre o vocabulário do projeto e o do Next:
 
 ```ts
 const openGraphTitle = meta.ogTitle ?? meta.title;
@@ -685,21 +725,57 @@ export default async function Page({ params }: PageProps) {
 - **`foundation`** é importado do caminho completo (`@/core/foundation/foundation`), não do barrel — é aqui que a aplicação real é tocada, exatamente como explicado em [0.9](#09-barrels-indexts-e-a-regra-dos-efeitos-secundários).
 - E é aqui que se vê a [injeção de dependências](#010-injeção-de-dependências) em ação: o `page.tsx` é a fronteira que conhece o singleton e o entrega ao `PageRenderer`, que a partir daí não sabe de onde veio.
 
-Repara no que acabámos de ver: **`resolvePage(segments)` foi chamado três vezes** para o mesmo pedido — uma no `layout.tsx`, uma no `generateMetadata`, uma no `Page`. É o assunto do próximo capítulo.
+Repara no que acabámos de ver: **`resolvePage(segments)` foi chamado duas vezes** para o mesmo pedido — uma no `generateMetadata`, outra no `Page`. E o `resolveSite()`, que o `resolvePage` usa por dentro, foi chamado uma terceira vez pelo layout. É o assunto do próximo capítulo.
+
+## 1.6 `proxy.ts`: o caminho até ao layout
+
+`src/proxy.ts` — o ficheiro que resolve o problema que 1.4 deixou em aberto.
+
+> 📐 **Imposto pelo Next.js**
+>
+> Em Next 16 a convenção `middleware` está **depreciada**. O ficheiro chama-se `proxy` e exporta uma função `proxy`. O Next avisa no arranque e oferece um codemod.
+
+```ts
+export const PATHNAME_HEADER = 'x-pathname';
+
+export function proxy(request: NextRequest) {
+  const headers = new Headers(request.headers);
+
+  headers.set(PATHNAME_HEADER, request.nextUrl.pathname);
+
+  return NextResponse.next({ request: { headers } });
+}
+```
+
+Cinco linhas, e o que importa é o que **não** faz.
+
+> 🎯 **Decisão**
+>
+> **O proxy não reescreve nem redirecciona.** A solução clássica para um site multilingue é reescrever `/sobre-nos` para `/pt/sobre-nos` e pôr o locale como segmento real de rota — assim o layout de raiz recebe-o em `params` e nada disto era preciso.
+>
+> Não foi o caminho escolhido, e a razão é o contrato dos providers: **o locale por omissão é uma resposta do provider** (Cap. 7). Para reescrever, o proxy teria de saber qual é — e teria de o saber sem perguntar ao provider, porque uma reescrita acontece antes de qualquer coisa correr. Isso obrigaria a lista de locales a sair do CMS para uma constante de build.
+>
+> Ao não decidir nada, o proxy não precisa de saber nada. O default continua a viver no provider, as URLs ficam como estão, e o `createPagePath` e os seus testes sobrevivem intactos.
+
+O `matcher` exclui o admin, a API do Payload, as rotas `next/`, os assets e os ficheiros com extensão. Como não se reescreve nada, apanhar o resto seria inofensivo — mas é trabalho por pedido a troco de nada.
+
+**A armadilha a conhecer:** se a exclusão de `next/` desaparecer do `matcher`, as rotas de preview passam a ser tocadas pelo proxy e o Live Preview deixa de funcionar sem dizer porquê.
 
 ---
 
 # Cap. 2 — `resolvePage` e o `cache()` do React
 
-Ficheiro: `src/app/(frontend)/[[...segments]]/resolvePage.ts`, 42 linhas.
+Ficheiro: `src/app/(frontend)/_lib/resolvePage.ts`.
 
-## 2.1 O problema: três sítios, a mesma pergunta
+## 2.1 O problema: vários sítios, a mesma pergunta
 
-O Next chama o `layout.tsx`, o `generateMetadata` e o `Page` de forma independente. Não há forma de lhes passar um valor de um para o outro: não são pai e filho, são três entradas separadas que o framework invoca.
+O Next chama o `layout.tsx`, o `generateMetadata` e o `Page` de forma independente. Não há forma de lhes passar um valor de um para o outro: não são pai e filho, são entradas separadas que o framework invoca.
 
-Só que os três precisam exatamente da mesma coisa. Sem defesa, seriam **três idas à base de dados por pedido** (e mais, porque cada resolução faz duas consultas: o site e a página). Para desenhar uma página.
+Só que precisam todos das mesmas respostas. O `generateMetadata` e o `Page` querem a página; o layout quer o site. Sem defesa, seriam várias idas à base de dados por pedido — e mais do que parece, porque cada resolução de página faz duas consultas: o site e a página. Para desenhar uma página.
 
-A solução, `resolvePage.ts:17`:
+São por isso **duas** funções em cache, e não uma: o [resolveSite](<../src/app/(frontend)/_lib/resolveSite.ts>), que o layout usa sozinho, e o [resolvePage](<../src/app/(frontend)/_lib/resolvePage.ts>), que o usa por dentro.
+
+A solução, `resolvePage.ts:19`:
 
 ```ts
 const resolve = cache(async (path: string): Promise<ResolvedPage | undefined> => {
@@ -717,11 +793,8 @@ const site = await foundation.site.getSite();
 const route = resolveRoute({
   segments: path ? path.split('/') : [],
   locales: site.locales,
+  defaultLocale: site.defaultLocale,
 });
-
-if (!route) {
-  return undefined;
-}
 
 const page = await foundation.page.getPage(route.path, route.locale, { draft: isDraft });
 
@@ -732,25 +805,35 @@ if (!page) {
 return { page, route, site };
 ```
 
-A ordem não é arbitrária, e é a coisa mais importante deste ficheiro: **é preciso saber o site antes de conseguir ler a URL**. Para perceber que `/en/sobre-nos` quer dizer «locale `en-GB`, caminho `sobre-nos`», é preciso saber que locales é que este site tem. Essa lista está no CMS. Daí `getSite()` primeiro, `resolveRoute` depois, `getPage()` no fim.
+A ordem não é arbitrária, e é a coisa mais importante deste ficheiro: **é preciso saber o site antes de conseguir ler a URL**. Para perceber que `/en/sobre-nos` quer dizer «locale `en-GB`, caminho `sobre-nos`», é preciso saber que locales é que este site tem, e qual deles não leva prefixo. Essas duas respostas estão no CMS. Daí `getSite()` primeiro, `resolveRoute` depois, `getPage()` no fim.
 
-Os dois `return undefined` distinguem-se: o primeiro é «esta URL não faz sentido para este site», o segundo é «faz sentido, mas não existe lá página nenhuma». Ambos acabam em 404, mas por caminhos diferentes.
+> ✅ **Corrigido**
+>
+> Houve aqui um segundo `if (!route) return undefined`. O `resolveRoute` devolvia `undefined` quando a lista de locales vinha vazia, e isso traduzia-se num 404 — indistinguível de «esta página não existe». Bastava o global do CMS estar por preencher para o **site inteiro** responder 404 em silêncio.
+>
+> Hoje o `resolveRoute` resolve sempre. Um locale que a origem não sirva falha à frente, no `getPage`, onde a falha é legível.
 
 ## 2.2 O que o `cache()` garante — e o que não garante
 
 Esta distinção é fácil de trocar e as consequências são grandes.
 
-**Garante:** dentro de **um pedido HTTP**, chamar `resolve('en/sobre-nos')` três vezes executa a função uma vez. As outras duas recebem a mesma Promise. Três chamadas, uma consulta.
+**Garante:** dentro de **um pedido HTTP**, chamar `resolve('en/sobre-nos')` duas vezes executa a função uma vez. A segunda recebe a mesma Promise. Duas chamadas, uma consulta. O mesmo vale para o `resolveSite`, que é chamado pelo layout e por dentro do `resolvePage`.
 
 **Não garante nada entre pedidos.** O próximo visitante começa do zero. Não é um cache de dados — é uma deduplicação com o tempo de vida de um pedido.
 
-Vale a pena dizer o que isto significa em conjunto com o que vimos em [1.4](#14-layouttsx-linha-a-linha): como o `layout.tsx` chama `draftMode()`, todas as rotas são dinâmicas; e como o provider do Payload não tem camada de cache nenhuma (não há `revalidate`, não há `unstable_cache`, não há `generateStaticParams` em lado nenhum do projeto), **cada visita a cada página faz duas consultas ao Postgres**. O `cache()` impede que sejam seis. Não impede que sejam duas.
+Vale a pena dizer o que isto significa em conjunto com o que vimos em [1.4](#14-layouttsx-linha-a-linha): como o `layout.tsx` chama `draftMode()` **e** `headers()`, todas as rotas são dinâmicas; e como o provider do Payload não tem camada de cache nenhuma (não há `revalidate`, não há `unstable_cache`, não há `generateStaticParams` em lado nenhum do projeto), **cada visita a cada página faz duas consultas ao Postgres**. O `cache()` impede que sejam mais. Não impede que sejam duas.
 
 Isto não é um bug — é o estado atual, consciente, de um projeto que ainda não chegou à fase de otimização. Mas é bom saberes-lo antes de pores isto em produção com tráfego a sério.
 
+> 🎯 **Decisão**
+>
+> **O frontend é SSR, e isso está decidido.** A alternativa — pôr o locale como segmento real de rota e pré-construir as páginas com `generateStaticParams` — foi ponderada e rejeitada: obrigava o locale por omissão a levar prefixo na URL.
+>
+> A consequência é que o desempenho se resolve com cache **ao nível dos dados**, com `unstable_cache` e `revalidateTag`, e não com HTML pré-construído. Ver [TODO.md](TODO.md).
+
 ## 2.3 Porque há duas funções e não uma
 
-No fim do ficheiro, `resolvePage.ts:40`:
+No fim do ficheiro, `resolvePage.ts:39`:
 
 ```ts
 export function resolvePage(segments: string[]): Promise<ResolvedPage | undefined> {
@@ -792,7 +875,7 @@ Sendo honesto sobre o estado atual: **hoje ninguém usa o `route` nem o `site`**
 
 # Cap. 3 — `resolveRoute`: da URL para `{locale, path}`
 
-Ficheiro: `src/core/routing/resolveRoute.ts`, 40 linhas. Repara na pasta: estamos no **`core`**. Esta função não sabe o que é o Next, o que é uma URL, nem o que é um CMS. Recebe um array de strings e uma lista de locales, e devolve um objeto. Podia correr num script de linha de comandos.
+Ficheiro: `src/core/routing/resolveRoute.ts`. Repara na pasta: estamos no **`core`**. Esta função não sabe o que é o Next, o que é uma URL, nem o que é um CMS. Recebe um array de strings, uma lista de locales e o locale por omissão, e devolve um objeto. Podia correr num script de linha de comandos.
 
 ## 3.1 A função, linha a linha
 
@@ -802,6 +885,7 @@ O que entra e o que sai:
 interface ResolveRouteOptions {
   segments: string[];
   locales: string[];
+  defaultLocale: string;
 }
 
 export interface ResolvedRoute {
@@ -810,17 +894,11 @@ export interface ResolvedRoute {
 }
 ```
 
-Um único parâmetro em forma de objeto, em vez de dois soltos. É o mesmo raciocínio do `GetPageOptions` ([0.2](#02-classe-abstrata-o-contrato-que-obriga)): no sítio da chamada lê-se `resolveRoute({ segments, locales })` e não há dúvida sobre qual é qual; e acrescentar um campo amanhã não parte as chamadas de hoje.
+Um único parâmetro em forma de objeto, em vez de três soltos. É o mesmo raciocínio do `GetPageOptions` ([0.2](#02-classe-abstrata-o-contrato-que-obriga)): no sítio da chamada lê-se `resolveRoute({ segments, locales, defaultLocale })` e não há dúvida sobre qual é qual; e acrescentar um campo amanhã não parte as chamadas de hoje. O `defaultLocale` foi precisamente um campo acrescentado assim.
 
 O corpo:
 
 ```ts
-const defaultLocale = locales[0];
-
-if (!defaultLocale) {
-  return undefined;
-}
-
 const [firstSegment, ...rest] = segments;
 
 const requestedLocale = locales.find(
@@ -868,25 +946,17 @@ O `createPagePath` — a outra função de routing, que constrói caminhos em ve
 
 (Se algum dia se ligar a opção `noUncheckedIndexedAccess` no `tsconfig` — está no [`TODO.md`](TODO.md) —, o TypeScript passa a exigir a guarda também aqui.)
 
-## 3.3 O locale por omissão é o primeiro da lista
+## 3.3 O locale por omissão é declarado, não adivinhado
 
-```ts
-const defaultLocale = locales[0];
-```
+O `defaultLocale` entra como argumento, e vem do `SiteDefinition` — ou seja, do provider. É o único locale que não leva prefixo no URL. Num site `['pt-PT', 'en-GB']` com `defaultLocale: 'pt-PT'`, o `/sobre-nos` é português e o `/en/sobre-nos` é inglês. Não existe `/pt/sobre-nos`.
 
-Não há campo `defaultLocale` em lado nenhum do contrato. A convenção é: **o primeiro locale da lista é o por omissão**, e é o único que não leva prefixo no URL. Num site `['pt-PT', 'en-GB']`, o `/sobre-nos` é português e o `/en/sobre-nos` é inglês. Não existe `/pt/sobre-nos`.
-
-Isto tem uma consequência a que convém estar atento: **reordenar os locales no CMS muda todos os URLs do site**. É uma decisão razoável (menos configuração, e a ordem é visível a quem edita), mas é uma que se paga em SEO se alguém a mexer sem saber.
-
-> ⚠ **Lapso, não decisão**
+> ✅ **Corrigido**
 >
-> ```ts
-> if (!defaultLocale) {
->   return undefined;
-> }
-> ```
+> Esta função fazia `const defaultLocale = locales[0]` e, se a lista viesse vazia, devolvia `undefined` — que o `resolvePage` traduzia num 404. Resultado: bastava o global do CMS estar por preencher para **o site inteiro responder 404, em silêncio**, de forma indistinguível de «esta página não existe». Era o pior sítio onde se podia estar quando algo assim acontece em produção.
 >
-> Se a lista de locales vier vazia, esta função devolve `undefined` — e o `resolvePage` traduz isso num 404. Resultado: **o site inteiro responde 404, em silêncio, sem um único log**. É indistinguível de «esta página não existe», que é o pior sítio onde se pode estar quando algo assim acontece em produção. Devia, no mínimo, escrever um aviso. O próprio [`docs/TODO.md`](TODO.md) identifica este ponto, junto com outros dois iguais.
+> Duas coisas mudaram. O `SiteDefinition` passou a **declarar** o `defaultLocale` em vez de o esconder atrás da convenção `locales[0]` — que era lida em quatro sítios diferentes, livres de divergir entre si. E esta função deixou de poder falhar: resolve sempre, e um locale que a origem não sirva falha à frente no `getPage`, onde a falha é legível.
+
+Continua a haver uma consequência a que convém estar atento: no provider Payload o `defaultLocale` **é** derivado da primeira posição de `enabledLocales`, que é um campo ordenável no admin. **Reordenar os locales no CMS muda todos os URLs do site.** É uma decisão razoável — a ordem é visível a quem edita, e o campo diz que o primeiro é o default — mas paga-se em SEO se alguém a mexer sem saber. A diferença face a antes é que agora isso é uma escolha declarada de um provider, e não uma regra escondida no `core`.
 
 Chegámos ao fim da resolução da rota. Temos `{ locale: 'en-GB', path: 'sobre-nos' }` e uma pergunta por responder: quem é o `foundation` a quem o `resolvePage` pediu o site e a página?
 
@@ -1443,7 +1513,31 @@ A anotação `: Provider` é o que garante que os três são intermutáveis: se 
 | `api`     | consumir uma API externa. O transporte está feito, o mapeamento está por escrever (Cap. 12) |
 | `mock`    | correr o site inteiro sem base de dados nenhuma                                             |
 
-**Porque é que o `mocks` merece existir.** Não é só para testes. É a **prova viva de que a abstração não vaza**: se algum dia alguém puser conhecimento de Payload no `core` ou nos módulos, o `mocks` deixa de funcionar. É um detetor de fugas que custa três ficheiros pequenos.
+**Porque é que o `mocks` merece existir.** Não é só para testes. É a **prova viva de que a abstração não vaza**: se algum dia alguém puser conhecimento de Payload no `core` ou nos módulos, o `mocks` deixa de funcionar. É um detetor de fugas que custa meia dúzia de ficheiros pequenos.
+
+E porque as páginas dele são escritas à mão, tem uma camada de autoria própria:
+
+```ts
+export const home = definePage({
+  'pt-PT': {
+    path: '',
+    main: [block(heroModule, { title: 'Next Foundation', subtitle: 'Primeiro render 🎉' })],
+  },
+
+  'en-GB': {
+    path: '',
+    main: [block(heroModule, { title: 'Next Foundation', subtitle: 'First render 🎉' })],
+  },
+});
+```
+
+> 🎯 **Decisão**
+>
+> **As traduções entram juntas, com o locale por chave.** Houve uma versão em que cada idioma era um ficheiro com um sufixo no nome (`mockHomePageEn.ts`) e mais uma entrada na lista. Acrescentar um idioma passou a ser acrescentar uma chave, e as duas versões ficam lado a lado, onde se vê logo se uma ficou para trás.
+>
+> **O `path` vive dentro de cada tradução** porque um slug traduz-se como qualquer outro conteúdo: `sobre-nos` em português é `about-us` em inglês.
+>
+> **O `block()` recebe a definição do módulo, não o alias em texto.** É a diferença entre um erro de escrita rebentar no editor e rebentar em runtime como «Module "heor" is not registered» — e dá autocomplete ao `data`, verificado contra o tipo desse módulo. Os `id` são derivados do alias e da posição (`hero-1`, `hero-2`), porque dois `hero-1` colados por copy-paste davam uma key repetida em React, que falha em silêncio.
 
 ---
 
@@ -1528,14 +1622,19 @@ E o mapeador, `mapPayloadSite.ts`:
 
 ```ts
 export function mapPayloadSite(site: Site): SiteDefinition {
+  const locales = site.enabledLocales ?? [];
+
   return {
     name: site.name,
-    locales: site.enabledLocales ?? [],
+    locales,
+    defaultLocale: locales[0] ?? payloadDefaultLocale,
   };
 }
 ```
 
-Duas linhas que fazem a tradução do vocabulário do CMS (`enabledLocales`) para o do projeto (`locales`). O `?? []` protege contra o campo estar por preencher.
+Faz a tradução do vocabulário do CMS (`enabledLocales`) para o do projeto (`locales`). O `?? []` protege contra o campo estar por preencher.
+
+E é aqui que este provider **responde** qual é o seu locale por omissão. O campo `enabledLocales` é ordenável no admin e a sua descrição promete que o primeiro é o default — é essa promessa que esta linha cumpre. Com o global por preencher não há resposta possível vinda dos dados, e cai-se no `payloadDefaultLocale`, a constante que o `payload.config.ts` também usa.
 
 ## 8.3 `PayloadPageSource.getPage`
 
@@ -1548,13 +1647,15 @@ export class PayloadPageSource extends PageSource {
     locale?: string,
     options?: GetPageOptions,
   ): Promise<PageDefinition | undefined> {
-    if (!locale || !isSupportedLocale(locale)) {
+    const requested = locale ?? (await this.getDefaultLocale());
+
+    if (!isSupportedLocale(requested)) {
       return undefined;
     }
 
-    const payloadLocale: SupportedLocale = locale;
+    const payloadLocale: SupportedLocale = requested;
 
-    const payload = await getPayload({ config });
+    const payload = await getPayloadClient();
 
     const page = await resolvePayloadPage(payload, path, payloadLocale, options?.draft ?? false);
 
@@ -1569,9 +1670,19 @@ export class PayloadPageSource extends PageSource {
 
 A assinatura é **exatamente** a da classe abstrata — não podia ser outra ([0.3](#03-extends-e-polimorfismo)).
 
-**A guarda de locale** é o sítio onde o type predicate de [8.1](#81-localests-uma-lista-três-formas) se paga. O `core` fala em `locale?: string` (qualquer string); o Payload só aceita os locales que conhece. Depois do `if`, o TypeScript já sabe que `locale` é um `SupportedLocale`, e a linha seguinte — `const payloadLocale: SupportedLocale = locale` — compila sem cast nenhum. Sem o predicate, era preciso escrever `locale as SupportedLocale`, uma afirmação por verificar.
+**Sem locale, a origem responde o seu.** O `getDefaultLocale` lê o global `Site` e passa-o pelo `mapPayloadSite`. Isto é o contrato do `PageSource`: omitir o locale significa «usa o teu default», não «desiste».
 
-Há aqui uma decisão discutível: um locale desconhecido dá `undefined`, que acaba em 404. É defensável (`/xx/sobre-nos` não é uma página deste site), mas é mais um dos sítios onde um problema de configuração fica indistinguível de uma página inexistente, sem log nenhum.
+> ✅ **Corrigido**
+>
+> A primeira linha era `if (!locale || !isSupportedLocale(locale)) return undefined`. Um `getPage` sem locale desistia — o que fazia desta source a única que não sabia responder à pergunta mais simples que se lhe pode fazer. Hoje resolve.
+>
+> A consulta extra só acontece quando quem chama omite o locale, o que o frontend nunca faz: o `resolvePage` passa-o sempre, vindo do `resolveRoute`. Vale mais isso do que acoplar esta source à `PayloadSiteSource`, que pagaria em todos os pedidos para poupar num que quase não acontece.
+
+**A guarda de locale** é o sítio onde o type predicate de [8.1](#81-localests-uma-lista-três-formas) se paga. O `core` fala em `locale?: string` (qualquer string); o Payload só aceita os locales que conhece. Depois do `if`, o TypeScript já sabe que `requested` é um `SupportedLocale`, e a linha seguinte compila sem cast nenhum. Sem o predicate, era preciso escrever `requested as SupportedLocale`, uma afirmação por verificar.
+
+Continua a haver uma decisão discutível: um locale desconhecido dá `undefined`, que acaba em 404. É defensável (`/xx/sobre-nos` não é uma página deste site), mas é um sítio onde um problema de configuração fica indistinguível de uma página inexistente, sem log nenhum.
+
+**O `getPayloadClient()`** importa o `payload.config.ts` dinamicamente, e é isso que permite ao provider `mocks` correr sem nunca avaliar a config — ver [7.x](#cap-7--sair-do-core-o-provider).
 
 E `options?.draft ?? false` — o encadeamento opcional para o caso de `options` não vir, e o `?? false` para o caso de vir sem `draft`. Duas defesas porque há dois níveis de opcionalidade.
 
@@ -2139,7 +2250,7 @@ redirect(path);
 
 A segunda validação existe para prevenir um **open redirect**: sem ela, `?path=https://sitemau.com` fazia o teu domínio reencaminhar visitantes para outro lado — útil para phishing.
 
-Vale a pena abrir o `isSafeRedirectPath` (no ficheiro ao lado), porque a armadilha não é óbvia:
+Vale a pena abrir o `isSafeRedirectPath` (em `src/core/routing/`), porque a armadilha não é óbvia:
 
 ```ts
 if (!path || !path.startsWith('/')) return false;
@@ -2153,6 +2264,8 @@ return new URL(path, PROBE_ORIGIN).origin === PROBE_ORIGIN;
 Rejeitar `//` não chega. Para esquemas especiais (`http`, `https`), a norma do WHATWG manda tratar `\` como `/` — portanto `/\sitemau.com` é normalizado por vários browsers para `//sitemau.com` e saía do domínio. A última linha é o cinto e os suspensórios: resolve o caminho contra uma origem de teste e confirma que a origem não mudou; se mudou, o caminho não era relativo.
 
 Está numa função à parte por dois motivos: fica testável sem levantar a rota (`isSafeRedirectPath.test.ts`), e a regra passa a ter um nome.
+
+E está no `core/routing` e não ao lado da rota porque é o mesmo género de coisa que o `createPagePath` e o `resolveRoute`: pura, sem dependências, sobre caminhos. O único consumidor é o preview, mas a regra não é sobre preview.
 
 Boa prática a notar: valida o segredo **e** a sessão (`payload.auth`). Nenhum dos dois sozinho chegaria; um segredo que vaza deixa de bastar se também for preciso ter sessão iniciada no admin.
 
@@ -2537,7 +2650,7 @@ Assim nada chega a produção sem passar eslint, TypeScript e a suite de testes 
 | `PROVIDER`               | `createProvider.ts:8`                                 | não                   | `payload` (omissão), `api` ou `mock`. Valor desconhecido derruba o arranque. |
 | `DATABASE_URL`           | `payload.config.ts`                                   | **sim**               | ligação ao Postgres. Via `requireEnv` — sem ela a aplicação não arranca.     |
 | `PAYLOAD_SECRET`         | `payload.config.ts`                                   | **sim**               | assina as sessões. Também via `requireEnv`.                                  |
-| `NEXT_PUBLIC_SERVER_URL` | `payload.config.ts:22`, `PayloadLivePreview.tsx:13`   | não                   | o URL público. Sem ela, `http://localhost:3000`.                             |
+| `NEXT_PUBLIC_SERVER_URL` | `payload.config.ts:24`, `PayloadLivePreview.tsx:13`   | não                   | o URL público. Sem ela, `http://localhost:3000`.                             |
 | `PREVIEW_SECRET`         | `getLivePreviewUrl.ts:26`, `next/preview/route.ts:13` | para live preview     | ver ⚠ em [9.5](#95-o-circuito-do-live-preview).                              |
 | `API_URL`                | `createApiClient.ts`                                  | só com `PROVIDER=api` | também via `requireEnv`.                                                     |
 | `API_TOKEN`              | `createApiClient.ts`                                  | não                   | vira `Authorization: Bearer ...`.                                            |
@@ -2652,7 +2765,7 @@ return { headers, next: { revalidate: this.config.revalidate, tags } };
 
 Em rascunho nunca se guarda nada; fora dele, usa-se o cache do Next com revalidação por tempo e com **tags** para invalidação seletiva. Repara na diferença face ao provider do Payload, que não tem camada de cache nenhuma ([2.2](#22-o-que-o-cache-garante--e-o-que-não-garante)) — aqui há, porque o `fetch` do Next traz o mecanismo de graça.
 
-Duas notas honestas sobre o estado atual: **nada no projeto chama `revalidateTag`**, portanto as tags ainda não servem para nada; e as tags (`ApiPageSource.ts:31`) **não incluem o locale**, o que numa API multilingue faria idiomas diferentes partilharem a mesma entrada de cache.
+Duas notas honestas sobre o estado atual: **nada no projeto chama `revalidateTag`**, portanto as tags ainda não servem para nada; e as tags (`ApiPageSource.ts:34`) **não incluem o locale**, o que numa API multilingue faria idiomas diferentes partilharem a mesma entrada de cache.
 
 **`createApiClient`** faz o que o `payload.config.ts` devia fazer:
 
@@ -2666,7 +2779,7 @@ if (!url) {
 
 Atira. Nada de `|| ''`. É o mesmo problema resolvido bem — e é útil ter os dois lado a lado para veres a diferença ([9.1](#91-payloadconfigts-opção-a-opção)).
 
-Faltam ao cliente um `AbortSignal`/timeout (um upstream pendurado pendura o render) e qualquer retentativa. O `ApiPageSource.ts:25` também cria um `ApiClient` novo a cada `getPage`, relendo o ambiente de cada vez.
+Faltam ao cliente um `AbortSignal`/timeout (um upstream pendurado pendura o render) e qualquer retentativa. O `ApiPageSource.ts:28` também cria um `ApiClient` novo a cada `getPage`, relendo o ambiente de cada vez.
 
 **A costura por escrever** — `mappers/mapApiPage.ts`:
 
@@ -2687,9 +2800,7 @@ export function mapApiPage(raw: unknown): PageDefinition {
 >
 > Não é código por acabar — é um **stub que se explica**. Arranca-se com `PROVIDER=api`, faz-se um pedido, e o erro diz que chaves a API devolveu e onde escrever a tradução. É a alternativa a inventar um mapeamento para uma API que ainda não se conhece. Se precisares de contexto no pedido (cabeçalhos, parâmetros), esse é o outro ponto editável: o `createPageRequest`.
 
-Duas coisas por fazer que convém saber antes de pegares nisto: o `createPageRequest.ts:8` declara `draft` no seu contexto mas **só destrutura `path`** — a opção é aceite e deitada fora; e o `ApiPageSource.ts:21` tem um `void locale`, ou seja, **o provider é cego a idiomas**. Ambos precisam de ser resolvidos para o provider servir um site multilingue.
-
-(O `void locale` é o idiom para dizer «recebo este parâmetro e não o uso, de propósito» sem o ESLint se queixar.)
+Uma coisa por fazer que convém saber antes de pegares nisto: o `createPageRequest` recebe `path`, `locale` e `draft`, mas a implementação por omissão **só usa o `path`**. O locale já lá chega resolvido — o `ApiPageSource` pergunta o default à sua `SiteSource` quando ninguém o indica — mas não se sabe como é que a API o quer (query string? header? caminho?), e por isso a decisão fica na costura, que é o sítio de quem ligar a API.
 
 ---
 
@@ -2698,26 +2809,30 @@ Duas coisas por fazer que convém saber antes de pegares nisto: o `createPageReq
 ```
 GET /en/sobre-nos
 │
-├─ src/app/(frontend)/[[...segments]]/layout.tsx
-│     await params            → segments = ['en', 'sobre-nos']
+├─ src/proxy.ts
+│     x-pathname = '/en/sobre-nos'
+│
+├─ src/app/(frontend)/layout.tsx
 │     await draftMode()       → isDraft
-│     resolvePage(segments) ──┐
-│                             │
-├─ page.tsx generateMetadata  │  as três chamadas partilham
-│     resolvePage(segments) ──┤  UMA execução, via cache() do React
+│     resolveSite()           → { locales, defaultLocale }
+│     headers()               → x-pathname
+│     resolveRoute(...)       → <html lang="en-GB">
+│
+├─ page.tsx generateMetadata     as duas chamadas partilham
+│     resolvePage(segments) ──┐  UMA execução, via cache() do React
 │                             │
 ├─ page.tsx Page              │
 │     resolvePage(segments) ──┘
 │                             │
 │     ┌───────────────────────┘
 │     ▼
-│  resolvePage.ts  (cache() do React, chave = 'en/sobre-nos')
+│  _lib/resolvePage.ts  (cache() do React, chave = 'en/sobre-nos')
 │     │
-│     ├─ foundation.site.getSite()
-│     │     └─ PayloadSiteSource → getPayload() → findGlobal('site')
-│     │           └─ mapPayloadSite  →  { name, locales: ['pt-PT','en-GB'] }
+│     ├─ foundation.site.getSite()          (também em cache: o layout já o pediu)
+│     │     └─ PayloadSiteSource → getPayloadClient() → findGlobal('site')
+│     │           └─ mapPayloadSite  →  { name, locales, defaultLocale }
 │     │
-│     ├─ resolveRoute({ segments, locales })
+│     ├─ resolveRoute({ segments, locales, defaultLocale })
 │     │     'en' é locale?  sim  →  { locale: 'en-GB', path: 'sobre-nos' }
 │     │
 │     └─ foundation.page.getPage('sobre-nos', 'en-GB', { draft })

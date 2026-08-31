@@ -92,6 +92,30 @@ modules/hero/
 └── index.ts
 ```
 
+### Dentro de `app/`, só ficheiros de rota
+
+Em `src/app/` uma pasta é um segmento de rota e certos nomes de ficheiro são convenções do Next (`page`, `layout`, `route`, `error`, `not-found`, `global-error`). Um `.ts` qualquer no meio deles não se distingue à vista de uma convenção cujo nome ainda não reconheces.
+
+A regra é: **em `app/` só ficheiros de rota; o resto vai para `_lib/`.** O prefixo `_` é o mecanismo do próprio Next para tirar uma pasta do router.
+
+```
+app/(frontend)/
+├── _lib/                ← não é rota
+│   ├── createMetadata.ts
+│   ├── resolvePage.ts
+│   └── resolveSite.ts
+├── layout.tsx
+├── not-found.tsx
+├── error.tsx
+├── global-error.tsx
+├── [[...segments]]/page.tsx
+└── next/preview/route.ts
+```
+
+O que é puro e não depende do Next não fica no `_lib` — sai de `app/` de vez. Foi o caso do `isSafeRedirectPath`, que é uma função sobre caminhos e por isso vive em [core/routing/](../src/core/routing/), ao lado do `createPagePath` e do `resolveRoute`.
+
+O que fica no `_lib` é o que **só** faz sentido dentro de um pedido do Next: o `resolvePage` e o `resolveSite` usam `draftMode()` e o singleton `foundation`, e o `createMetadata` fala o vocabulário do Next. Nenhum deles pode ser importado pelo `core` ou pelos `providers` — se fossem parar a um `utils/` partilhado, um dia seriam.
+
 ### Barrels
 
 Um `index.ts` por fronteira pública — `core/pages`, `core/modules`, `providers/payload/plugins`. Serve para o resto do projecto importar de um sítio estável.

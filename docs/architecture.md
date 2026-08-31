@@ -10,8 +10,8 @@ Nada no caminho de renderização sabe que CMS está por baixo.
 
 ```
 ┌─────────────────────────────────────────────┐
-│  app/          Next.js: routing, metadata,  │
-│                draftMode, 404               │
+│  app/ + proxy   Next.js: routing, metadata, │
+│                 draftMode, 404              │
 └──────────────────────┬──────────────────────┘
                        │
        ┌───────────────┴───────────────┐
@@ -22,8 +22,9 @@ Nada no caminho de renderização sabe que CMS está por baixo.
 │              │              │  de CMS         │
 │  PageSource  │              │  ┌───────────┐  │
 │  SiteSource  │              │  │  payload  │  │
-│  Registry    │              │  │  mocks    │  │
-│  Renderer    │              │  └───────────┘  │
+│  Registry    │              │  │  api      │  │
+│  Renderer    │              │  │  mocks    │  │
+│  Routing     │              │  └───────────┘  │
 └──────▲───────┘              └─────────────────┘
        │
 ┌──────┴───────┐
@@ -48,11 +49,11 @@ Se um dia `core/` precisar de importar de `providers/`, é sinal de que um conce
 URL /en/servicos/consultoria
         │
         ▼
-resolveRoute({ segments, locales })          app → core
-        │  { locale: 'en-GB', path: 'servicos/consultoria' }
-        ▼
 provider.site.getSite()                      → SiteDefinition
-        │
+        │  { locales, defaultLocale }
+        ▼
+resolveRoute({ segments, locales, defaultLocale })    app → core
+        │  { locale: 'en-GB', path: 'servicos/consultoria' }
         ▼
 provider.page.getPage(path, locale, { draft })
         │

@@ -17,7 +17,11 @@ Organiza as três regiões e delega tudo o resto:
 
 ```tsx
 <>
-  {page.navigation && <ModuleRenderer module={page.navigation} foundation={foundation} />}
+  {page.navigation && (
+    <nav>
+      <ModuleRenderer module={page.navigation} foundation={foundation} />
+    </nav>
+  )}
 
   <main>
     {page.main.map((module) => (
@@ -27,11 +31,19 @@ Organiza as três regiões e delega tudo o resto:
     ))}
   </main>
 
-  {page.footer && <ModuleRenderer module={page.footer} foundation={foundation} />}
+  {page.footer && (
+    <footer>
+      <ModuleRenderer module={page.footer} foundation={foundation} />
+    </footer>
+  )}
 </>
 ```
 
 O `Fragment` evita um wrapper no DOM. A chave é o `module.id`, que pertence à instância e vem do CMS — não o índice, para que reordenar blocos no admin não force React a recriar a árvore toda.
+
+**Os landmarks são do renderer, não dos módulos.** O `<nav>`, o `<main>` e o `<footer>` são emitidos aqui, sempre, independentemente do módulo que lá caia. Quem escrever um módulo de navegação **não** deve trazer o seu próprio `<nav>` — sairiam dois, aninhados.
+
+Isto é o que a foundation garante e o projecto não pode desfazer: o conteúdo das três regiões é livre, a estrutura não.
 
 ## ModuleRenderer
 

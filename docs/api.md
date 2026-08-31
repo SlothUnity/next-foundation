@@ -13,7 +13,7 @@ API_URL + o caminho onde estamos          →   resposta desconhecida
                                               → mapear para PageDefinition
 ```
 
-O pedido é o `API_URL` mais o caminho da página, e nada mais. Sem idioma, sem query string, sem headers: o provider não assume que a API precisa de contexto, porque a maioria não precisa. Se este projecto for um em que precise, isso acrescenta-se **editando um ficheiro na altura** — não fica declarado à espera.
+O pedido, por omissão, é o `API_URL` mais o caminho da página e nada mais: sem query string e sem headers. O provider não assume que a API precisa de contexto, porque a maioria não precisa. O locale **chega** ao `createPageRequest` já resolvido, mas é essa função que decide se entra no pedido e como — ver [Idiomas](#idiomas).
 
 O que volta não se sabe. Olha-se para a resposta verdadeira, e traduz-se para o contrato interno que já está montado. Esse é o único trabalho que sobra.
 
@@ -49,9 +49,9 @@ providers/api/
 
 ```
 getPage('en/about-us', locale, { draft })
-        │                 └─ ignorado: ver "Idiomas"
+        │                 └─ ausente → o default da ApiSiteSource
         ▼
-createPageRequest({ path, draft })                    ⚠️ costura
+createPageRequest({ path, locale, draft })            ⚠️ costura
         │  { endpoint: '/en/about-us' }
         ▼
 ApiClient.get(endpoint, { params, headers, draft, tags })
@@ -100,13 +100,13 @@ Por omissão o pedido é o caminho, e mais nada:
 
 O caminho vai inteiro, tal como está no browser. O provider não sabe que `en` é um idioma — para ele é o primeiro segmento de um caminho, e é a API que decide o que fazer com ele.
 
-Isto é a omissão, não uma regra. A função recebe `{ path, draft }` e devolve `{ endpoint, params?, headers? }`. Quando **este** projecto tiver uma API que precise de contexto, é aqui que se acrescenta:
+Isto é a omissão, não uma regra. A função recebe `{ path, locale, draft }` e devolve `{ endpoint, params?, headers? }`. Quando **este** projecto tiver uma API que precise de contexto, é aqui que se acrescenta:
 
 ```ts
-export function createPageRequest({ path, draft }: PageRequestContext): ApiRequest {
+export function createPageRequest({ path, locale, draft }: PageRequestContext): ApiRequest {
   return {
     endpoint: `/pages/${path}`,
-    params: { lang: 'pt', preview: draft || undefined },
+    params: { lang: locale, preview: draft || undefined },
     headers: { 'X-Site': 'super-bock' },
   };
 }
@@ -138,7 +138,7 @@ Isso é o desenho, não uma falha: a mensagem traz as chaves do topo do corpo ve
 
 ```ts
 {
-  meta: { locale, title?, description?, ogTitle?, ogDescription?, noIndex?, noFollow? },
+  meta: { locale?, title?, description?, ogTitle?, ogDescription?, noIndex?, noFollow? },
   navigation?: ModuleInstance,
   main: ModuleInstance[],
   footer?: ModuleInstance,
@@ -147,7 +147,7 @@ Isso é o desenho, não uma falha: a mensagem traz as chaves do topo do corpo ve
 
 Cada `ModuleInstance` é `{ id, alias, data, name? }`, e o **`alias` tem de ser igual ao `alias` de um módulo registado** em [src/modules/](../src/modules/) — é por ele que o renderer encontra o componente. O `data` não precisa de ser validado aqui: o schema do módulo valida-o a seguir. Ver [modules.md](modules.md) e [renderer.md](renderer.md).
 
-Nada é obrigatório além do `main`, que pode ser um array vazio. O `meta.locale` é o que vai para o `lang` do `<html>`.
+Nada é obrigatório além do `main`, que pode ser um array vazio.
 
 ### Exemplo completo
 
@@ -244,7 +244,7 @@ function mapSection(section: ApiSection): ModuleInstance[] {
 
 Cinco coisas que valem a pena reparar:
 
-**O `locale` vem da resposta.** É a API que sabe em que idioma respondeu, e é este valor que vai para o `lang` do `<html>` — ver [routing.md](routing.md#o-idioma-do-html). Se a resposta não o declarar, põe-se aqui o do projecto.
+**O `locale` vem da resposta.** É a API que sabe em que idioma respondeu. Já não é ele que alimenta o `lang` do `<html>` — esse sai do locale da rota ([routing.md](routing.md#o-idioma-do-html)) — mas continua a valer a pena preenchê-lo: é o que permite detectar que a API respondeu num idioma diferente do pedido. Se a resposta não o declarar, põe-se aqui o do projecto.
 
 **`null` e `""` não podem passar.** Um `null` que chegue a um componente aparece na página como texto. O [normalize.ts](../src/providers/api/mappers/normalize.ts) existe para isso, e é independente do formato — serve qualquer API:
 
@@ -291,23 +291,35 @@ Rascunhos (`draft: true`) passam a `cache: 'no-store'`. Quem grava precisa de ve
 
 ## Idiomas
 
-**O provider não tem noção de idioma.** O caminho vai inteiro, e se tiver um `/en` à frente é a API que o interpreta. O `locale` que o `getPage` recebe é ignorado.
+**O transporte não tem noção de idioma.** O caminho vai inteiro, e se tiver um `/en` à frente é a API que o interpreta.
+
+O que mudou: o `locale` já **não** é ignorado pelo `ApiPageSource`. Ele resolve-o — usando o default da sua `SiteSource` quando ninguém o indica — e passa-o ao `createPageRequest`:
+
+```ts
+const resolvedLocale = locale ?? (await this.site.getSite()).defaultLocale;
+
+const request = createPageRequest({ path, locale: resolvedLocale, draft: options?.draft });
+```
+
+O `createPageRequest` por omissão ainda não o põe no pedido, porque não se sabe como é que a API o quer — em query string, em header, no caminho. É por isso que é uma costura: o valor chega lá, e quem ligar a API decide o que fazer com ele.
 
 Onde é que o idioma existe, então:
 
-- **No `lang` do `<html>`** — vem da `meta.locale` que o mapper produz, ou seja da resposta da API. Ver [routing.md](routing.md#o-idioma-do-html).
-- **No `resolveRoute`** — que precisa de saber quais os primeiros segmentos que são idiomas, para os separar do caminho. Olhando para `/en/about-us` não há como adivinhar se `en` é um idioma ou o primeiro segmento de um caminho.
+- **No pedido** — se o `createPageRequest` o usar.
+- **No `lang` do `<html>`** — vem do locale da rota, resolvido pelo `resolveRoute`. Ver [routing.md](routing.md#o-idioma-do-html).
+- **No `resolveRoute`** — que precisa de saber quais os primeiros segmentos são idiomas, para os separar do caminho. Olhando para `/en/about-us` não há como adivinhar se `en` é um idioma ou o primeiro segmento de um caminho.
 
-A [ApiSiteSource](../src/providers/api/sources/ApiSiteSource.ts) responde a esse segundo ponto com um idioma só:
+A [ApiSiteSource](../src/providers/api/sources/ApiSiteSource.ts) responde aos dois últimos pontos com um idioma só:
 
 ```ts
 return {
   name: 'Site',
   locales: ['pt-PT'],
+  defaultLocale: 'pt-PT',
 };
 ```
 
-Com um único idioma na lista, nada é reconhecido como prefixo e **o caminho passa inteiro** — que é exactamente o que se quer. Este é o ficheiro a editar se um projecto precisar de o frontend distinguir idiomas (para gerar links com prefixo, ou um selector). Não é configuração de ambiente porque não é do transporte: é uma característica do site, como o `enabledLocales` do global `Site` é no provider Payload.
+Com um único idioma na lista, nada é reconhecido como prefixo e **o caminho passa inteiro** — que é exactamente o que se quer enquanto o mapeamento não estiver escrito. Este é o ficheiro a editar se um projecto precisar de o frontend distinguir idiomas (para gerar links com prefixo, ou um selector). Não é configuração de ambiente porque não é do transporte: é uma característica do site, como o `enabledLocales` do global `Site` é no provider Payload.
 
 Se a API que aparecer expuser definições de site, troca-se esta classe por um `client.get()` e um mapper, como a de páginas faz.
 

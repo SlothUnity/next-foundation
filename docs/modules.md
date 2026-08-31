@@ -14,16 +14,19 @@ O renderer usa o `alias` para perguntar ao registry quem sabe renderizar aquilo.
 
 ## Anatomia
 
-O módulo hero, quatro ficheiros:
+O módulo Hero:
 
 ```
-src/modules/hero/
+src/modules/Hero/
 ├── Hero.tsx           ← o componente
 ├── Hero.types.ts      ← os props, derivados do schema
 ├── Hero.schema.ts     ← validação de runtime
 ├── Hero.module.ts     ← o registo
+├── Hero.style.scss    ← os estilos
 └── index.ts
 ```
+
+O sufixo do ficheiro de estilos é `.style.scss` e não `.module.scss` de propósito: `Hero.module.ts` é a **definição do módulo** deste projecto, e um `Hero.module.scss` ao lado tornaria a palavra «module» ambígua na mesma pasta.
 
 **Schema primeiro.** Ele é a fonte de verdade e o tipo deriva dele, não o contrário:
 
@@ -51,6 +54,7 @@ Assim o schema e o tipo não podem divergir.
 ```tsx
 // Hero.tsx
 import type { HeroProps } from './Hero.types';
+import './Hero.style.scss';
 
 export function Hero({ title, subtitle }: HeroProps) {
   return (
@@ -89,13 +93,13 @@ export * from './Hero.types';
 
 Quatro passos, nenhum deles toca no renderer.
 
-**1. Criar a pasta** em `src/modules/<nome>/` com os quatro ficheiros acima.
+**1. Criar a pasta** em `src/modules/<Nome>/` com os ficheiros acima.
 
 **2. Exportar do barrel** [src/modules/index.ts](../src/modules/index.ts):
 
 ```ts
-export { heroModule } from './hero';
-export { galleryModule } from './gallery';
+export { heroModule } from './Hero';
+export { galleryModule } from './Gallery';
 ```
 
 O `registerModules` registra tudo o que este barrel exportar — não há mais nada a ligar. Exporta o **módulo**, não o componente: o registry itera sobre os valores exportados e espera definições de módulo.
@@ -120,6 +124,14 @@ export const pageBlocks = [HeroBlock, GalleryBlock];
 **4. `pnpm generate:payload`** para regenerar os tipos.
 
 O `slug` do bloco tem de ser igual ao `alias` do módulo — é essa a única ligação entre o CMS e o frontend. O mapper usa `blockType` como alias, e o registry procura por esse alias. Se não coincidirem, dá `ModuleRenderError` em desenvolvimento.
+
+**5. Opcional: usá-lo numa página de mock.** O `block()` do provider mocks recebe a definição do módulo e verifica o `data` contra o tipo dele, portanto um módulo novo fica utilizável sem nada mais:
+
+```ts
+main: [block(galleryModule, { images: [] })];
+```
+
+Ver [providers.md](providers.md#escrever-uma-página).
 
 ## defineModule e createModuleComponent
 

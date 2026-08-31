@@ -21,7 +21,7 @@ export abstract class PageSource {
 ```
 
 - `path` é o caminho **sem** prefixo de locale — `''` para a homepage, `'servicos/consultoria'` para uma página aninhada.
-- `locale` é o código completo (`'pt-PT'`), não o segmento de URL (`'pt'`).
+- `locale` é o código completo (`'pt-PT'`), não o segmento de URL (`'pt'`). **Omiti-lo significa «usa o teu locale por omissão»**, não «desiste»: quem chama nem sempre sabe que locales a origem serve, e é a origem que responde qual é o seu default. Um locale que ela não conheça continua a dar `undefined`.
 - `options.draft` pede a versão de rascunho. É um conceito de domínio, não do Payload: qualquer CMS headless tem publicado/rascunho. Implementações que não o suportem ignoram-no.
 - Uma página inexistente é `undefined`. Não é excepção, não é `null`, não é `notFound()`.
 
@@ -54,7 +54,7 @@ Três regiões: uma navegação opcional, uma lista de módulos, um footer opcio
 
 ```ts
 export interface Meta {
-  locale: string;
+  locale?: string;
 
   title?: string;
   description?: string;
@@ -67,7 +67,9 @@ export interface Meta {
 }
 ```
 
-Só o `locale` é obrigatório. A tradução para o formato do Next acontece na camada `app` — ver [routing.md](routing.md#metadata).
+Todos os campos são opcionais, incluindo o `locale`. A tradução para o formato do Next acontece na camada `app` — ver [routing.md](routing.md#metadata).
+
+O `locale` opcional é uma decisão por fechar: hoje nenhum consumidor depende dele — o `<html lang>` passou a sair do locale da rota, não da página — mas todos os mappers o preenchem. Torná-lo obrigatório está no [TODO.md](TODO.md).
 
 ## SiteDefinition
 
@@ -77,10 +79,13 @@ Só o `locale` é obrigatório. A tradução para o formato do Next acontece na 
 export interface SiteDefinition {
   name: string;
   locales: string[];
+  defaultLocale: string;
 }
 ```
 
-**A ordem de `locales` é significativa: o primeiro é o locale por omissão.** É ele que não recebe prefixo nas URLs, e é contra ele que o `resolveRoute` decide.
+**O locale por omissão é declarado, não inferido.** Era `locales[0]` por convenção não escrita, lida em quatro sítios que podiam divergir entre si; agora é a origem que responde qual é. É ele que não recebe prefixo nas URLs, e é contra ele que o `resolveRoute` decide.
+
+A ordem de `locales` continua a ser a que a origem declara, e o provider payload continua a usar a primeira posição para derivar o seu default — mas isso é uma escolha desse provider, não uma regra do contrato.
 
 ## Tipos de módulo
 
@@ -141,6 +146,12 @@ class ModuleRegistry extends Registry<string, Module> {
   getByAlias(alias): Module | undefined;
 }
 ```
+
+## Routing
+
+[core/routing/](../src/core/routing/) junta as funções puras sobre caminhos: `resolveRoute`, `createPagePath`, `getLocaleSegment` e `isSafeRedirectPath`. Nenhuma toca em Next nem em IO, e todas têm testes.
+
+Documentadas em [routing.md](routing.md).
 
 ## Foundation
 

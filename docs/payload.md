@@ -22,7 +22,7 @@ providers/payload/
 
 ```ts
 export default buildConfig({
-  secret: process.env.PAYLOAD_SECRET || '',
+  secret: requireEnv('PAYLOAD_SECRET', 'Payload to sign session tokens'),
   serverURL: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
 
   localization: { … },
@@ -31,10 +31,12 @@ export default buildConfig({
   collections: [Users, Pages, Media],
   globals: [Site],
 
-  db: postgresAdapter({ pool: { connectionString: process.env.DATABASE_URL || '' } }),
+  db: postgresAdapter({ pool: { connectionString: requireEnv('DATABASE_URL', …) } }),
   plugins: [nestedDocs, seo],
 });
 ```
+
+O [requireEnv](../src/providers/requireEnv.ts) derruba o arranque quando falta configuração obrigatória, em vez de degradar em silêncio: um `|| ''` num segredo de assinatura produz tokens forjáveis sem um único aviso.
 
 ## Localização
 
@@ -48,6 +50,8 @@ export const availableLocales = [
 
 export type SupportedLocale = (typeof availableLocales)[number]['value'];
 
+export const payloadDefaultLocale: SupportedLocale = 'pt-PT';
+
 export function isSupportedLocale(locale: string): locale is SupportedLocale { … }
 ```
 
@@ -55,12 +59,20 @@ Um idioma novo acrescenta-se aqui e propaga-se sozinho: aparece nas opções do 
 
 **Há dois conceitos de "locale por omissão" e não são o mesmo:**
 
-| Onde                                     | O que é                                                |
-| ---------------------------------------- | ------------------------------------------------------ |
-| `localization.defaultLocale` (`'pt-PT'`) | o default do Payload, para fallback de campos          |
-| `site.enabledLocales[0]`                 | o default **do site**, o que não recebe prefixo na URL |
+| Onde                               | O que é                                                |
+| ---------------------------------- | ------------------------------------------------------ |
+| `payloadDefaultLocale` (`'pt-PT'`) | o default do Payload, para o comportamento dos campos  |
+| `SiteDefinition.defaultLocale`     | o default **do site**, o que não recebe prefixo na URL |
 
-O `resolveRoute` usa o segundo. Se o global `Site` tiver `enabledLocales` por outra ordem, é essa ordem que manda nas URLs.
+O primeiro é uma constante de código, partilhada pelo `localization.defaultLocale` do [payload.config.ts](../payload.config.ts) para não haver duas cópias do mesmo valor. Com `fallback: false` e com todas as queries a passarem locale explícito, governa pouco.
+
+O segundo é o que manda no routing, e sai do [mapPayloadSite](../src/providers/payload/mappers/mapPayloadSite.ts):
+
+```ts
+defaultLocale: locales[0] ?? payloadDefaultLocale;
+```
+
+O campo `enabledLocales` é ordenável no admin e a sua descrição promete que o primeiro é o default — é essa promessa que o mapper cumpre. Se o global estiver por preencher, cai na constante em vez de ficar sem resposta.
 
 O `filterAvailableLocales` esconde do admin os idiomas que o global `Site` não tem activos, para os editores não escreverem conteúdo em idiomas que o site não serve.
 
@@ -119,7 +131,6 @@ admin: {
 
       return getLivePreviewUrl({
         breadcrumbs: data?.breadcrumbs,
-        isHome: data?.isHome,
         locale: locale.code,
         defaultLocale,
       });
@@ -140,7 +151,7 @@ O caminho do componente é uma **string** na config — ver o aviso em [conventi
 
 [globals/Site.ts](../src/providers/payload/globals/Site.ts) — nome do site e `enabledLocales` (select `hasMany`, ordenável).
 
-**Este global tem de estar gravado.** Se `enabledLocales` estiver vazio, o `resolveRoute` não consegue determinar o locale por omissão, o `PageUrl` não renderiza e o Live Preview desliga-se — os três em silêncio, porque cada um trata a ausência como "nada a mostrar".
+**Este global tem de estar gravado.** Com `enabledLocales` vazio, o site fica sem idiomas: o `mapPayloadSite` cai no `payloadDefaultLocale` para o routing não parar, mas o `PageUrl` não renderiza e o Live Preview desliga-se — os dois em silêncio, porque tratam a ausência como «nada a mostrar». Está no [TODO.md](TODO.md).
 
 ## Media e Users
 
@@ -180,18 +191,24 @@ Consequência a ter presente: uma página que nunca foi publicada dá 404 em pú
 
 ```ts
 async getPage(path, locale, options) {
-  if (!locale || !isSupportedLocale(locale)) return undefined;
+  const requested = locale ?? (await this.getDefaultLocale());
 
-  const payload = await getPayload({ config });
-  const page = await resolvePayloadPage(payload, path, locale, options?.draft ?? false);
+  if (!isSupportedLocale(requested)) return undefined;
+
+  const payload = await getPayloadClient();
+  const page = await resolvePayloadPage(payload, path, requested, options?.draft ?? false);
 
   if (!page) return undefined;
 
-  return mapPayloadPage(page, locale);
+  return mapPayloadPage(page, requested);
 }
 ```
 
-Um locale não suportado devolve `undefined` — trata-se como página não encontrada, não como erro.
+Sem locale, o default é resposta desta origem — o `getDefaultLocale` lê o global `Site` e passa-o pelo `mapPayloadSite`. Só corre quando quem chama omite o locale, o que o frontend nunca faz: vale a consulta extra em vez de acoplar esta source à `PayloadSiteSource`, que pagaria em todos os pedidos para poupar num que quase não acontece.
+
+Um locale que o Payload não conheça devolve `undefined` — trata-se como página não encontrada, não como erro.
+
+O [getPayloadClient](../src/providers/payload/getPayloadClient.ts) importa o `payload.config.ts` **dinamicamente**, para que o config não seja avaliado com `PROVIDER=mock`.
 
 [sources/resolvePayloadPage.ts](../src/providers/payload/sources/resolvePayloadPage.ts) — a query:
 
@@ -259,13 +276,15 @@ page.tsx  →  draftMode().isEnabled  →  getPage(…, { draft: true })
 [app/(frontend)/next/preview/route.ts](<../src/app/(frontend)/next/preview/route.ts>) — quatro guardas antes de activar o `draftMode`:
 
 1. `previewSecret` tem de coincidir com `PREVIEW_SECRET` → 403
-2. `path` tem de começar por `/` e não por `//` → 400 (protecção contra open redirect)
+2. `isSafeRedirectPath(path)` — só caminhos relativos à própria origem → 400 (ver [routing.md](routing.md#issaferedirectpath))
 3. `payload.auth({ headers })` tem de devolver um utilizador → 401
 4. só então `draftMode().enable()` e redirect
 
 [next/exit-preview/route.ts](<../src/app/(frontend)/next/exit-preview/route.ts>) desliga o cookie. Sem passar por aqui, a navegação normal continua a servir rascunhos.
 
-O [PayloadLivePreview.tsx](../src/providers/payload/components/PayloadLivePreview.tsx) é montado pelo [layout.tsx](<../src/app/(frontend)/[[...segments]]/layout.tsx>), condicionado ao `draftMode`, e chega lá pelo `provider.preview` — o `core` não participa.
+O [PayloadLivePreview.tsx](../src/providers/payload/components/PayloadLivePreview.tsx) é montado pelo [layout.tsx](<../src/app/(frontend)/layout.tsx>), condicionado ao `draftMode`, e chega lá pelo `provider.preview` — o `core` não participa.
+
+O `matcher` do [proxy](../src/proxy.ts) exclui `next/`, portanto as duas rotas de preview não passam por ele. Se essa exclusão desaparecer, o preview deixa de existir sem dizer porquê.
 
 ### O que confunde
 

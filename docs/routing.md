@@ -8,34 +8,34 @@ Uma única rota serve todo o site: [app/(frontend)/[[...segments]]/page.tsx](<..
 /en/servicos/consultoria
         │
         ▼  segments = ['en', 'servicos', 'consultoria']
-resolveRoute({ segments, locales })
+resolveRoute({ segments, locales, defaultLocale })
         │  { locale: 'en-GB', path: 'servicos/consultoria' }
         ▼
 provider.page.getPage('servicos/consultoria', 'en-GB', { draft })
 ```
 
-O `locales` vem de `site.getSite()`, ou seja do CMS — os idiomas do site são conteúdo, não configuração de build.
+O `locales` e o `defaultLocale` vêm ambos de `site.getSite()`, ou seja da origem de conteúdo — os idiomas do site são conteúdo, não configuração de build.
 
 ## resolveRoute
 
 [core/routing/resolveRoute.ts](../src/core/routing/resolveRoute.ts)
 
 ```ts
-export function resolveRoute({ segments, locales }): ResolvedRoute | undefined;
+export function resolveRoute({ segments, locales, defaultLocale }): ResolvedRoute;
 ```
-
-**O primeiro locale da lista é o default.** Se `locales` estiver vazio devolve `undefined`, e a página faz `notFound()`.
 
 A decisão é simples: se o primeiro segmento corresponder ao segmento de um locale conhecido, esse é o locale e o resto é o path; senão, é o locale por omissão e todos os segmentos são o path.
 
 ```
-locales = ['pt-PT', 'en-GB']        (pt-PT é o default)
+locales = ['pt-PT', 'en-GB']        defaultLocale = 'pt-PT'
 
 /                        → { locale: 'pt-PT', path: ''            }
 /servicos                → { locale: 'pt-PT', path: 'servicos'    }
 /en                      → { locale: 'en-GB', path: ''            }
 /en/servicos             → { locale: 'en-GB', path: 'servicos'    }
 ```
+
+**Resolve sempre.** Não devolve `undefined`, e isso é deliberado: a versão anterior derivava o default de `locales[0]` e desistia com a lista vazia, o que fazia o site inteiro responder 404 de forma indistinguível de «esta página não existe». Um locale que a origem não sirva falha agora mais à frente, no `getPage`, onde a falha é legível.
 
 Consequência a ter em conta: o locale por omissão **não tem prefixo**, logo uma página de topo cujo slug seja `en` ficaria inacessível. Os segmentos de locale são reservados.
 
@@ -65,6 +65,14 @@ createPagePath({ path: '/', locale: 'en-GB', defaultLocale: 'pt-PT' }); // '/en'
 
 Normaliza barras a mais e omite o prefixo quando o locale é o default. É usado pelo `getLivePreviewUrl` e pelo campo `PageUrl` do admin — os dois sítios que precisam de construir um URL público a partir de dados do CMS.
 
+## isSafeRedirectPath
+
+[core/routing/isSafeRedirectPath.ts](../src/core/routing/isSafeRedirectPath.ts) — aceita apenas caminhos relativos à própria origem.
+
+Vive no `core/routing` por ser o mesmo género de coisa que as funções acima: pura, sem dependências, testável sem levantar nada. O único consumidor é a rota de preview, mas a regra é sobre caminhos, não sobre preview.
+
+Não basta rejeitar `//`: para esquemas especiais o WHATWG URL trata `\` como `/`, portanto `/\sitemau.com` resolve para `//sitemau.com`.
+
 ## Como o path chega ao CMS
 
 No provider Payload, o `path` resolve contra os breadcrumbs gerados pelo plugin de nested docs:
@@ -81,7 +89,7 @@ Nota: o `breadcrumbs.url` só é recalculado quando o documento é gravado. Um t
 
 ## Metadata
 
-[app/(frontend)/createMetadata.ts](<../src/app/(frontend)/createMetadata.ts>) traduz o `Meta` do domínio para o `Metadata` do Next.
+[app/(frontend)/\_lib/createMetadata.ts](<../src/app/(frontend)/_lib/createMetadata.ts>) traduz o `Meta` do domínio para o `Metadata` do Next.
 
 ```ts
 export function createMetadata(meta: Meta): Metadata {
@@ -102,38 +110,67 @@ export function createMetadata(meta: Meta): Metadata {
 }
 ```
 
-Os campos de Open Graph caem para os campos gerais quando não estão preenchidos, e os booleanos invertem-se: o CMS pergunta "não indexar?", o Next quer saber "indexar?".
+Os campos de Open Graph caem para os campos gerais quando não estão preenchidos, e os booleanos invertem-se: o CMS pergunta «não indexar?», o Next quer saber «indexar?».
 
 Vive na camada `app` e não no `core` porque depende de tipos do Next. O `core` não conhece o framework.
 
-O `generateMetadata`, a página e o layout chamam todos o mesmo [resolvePage](<../src/app/(frontend)/[[...segments]]/resolvePage.ts>), que está envolvido no `cache` do React: três chamadas, uma resolução por pedido. A chave é o caminho em string e não o array de segmentos, porque o `cache` compara argumentos por identidade e cada `await params` devolve um array novo.
+O `generateMetadata` e a página chamam ambos o mesmo [resolvePage](<../src/app/(frontend)/_lib/resolvePage.ts>), envolvido no `cache` do React: duas chamadas, uma resolução por pedido. A chave é o caminho em string e não o array de segmentos, porque o `cache` compara argumentos por identidade e cada `await params` devolve um array novo.
 
 ## O idioma do `<html>`
 
-O root layout vive **dentro** do segmento dinâmico, em [[[...segments]]/layout.tsx](<../src/app/(frontend)/[[...segments]]/layout.tsx>), e não acima dele. A razão é o `lang`:
+O layout de raiz vive no topo do route group, em [app/(frontend)/layout.tsx](<../src/app/(frontend)/layout.tsx>). **Tem de ser aí**: quando se usam route groups como raízes separadas, o Next só monta o boundary do `not-found` e do `error` se encontrar um layout de raiz a esse nível. Enquanto o layout viveu dentro do `[[...segments]]`, um 404 respondia com o invólucro interno do Next (`<html id="__next_error__">`) em vez do nosso.
+
+O custo de estar aí é não haver `params`. O caminho chega por header, posto pelo [proxy](../src/proxy.ts):
 
 ```tsx
-<html lang={resolved?.page.meta.locale}>
+const pathname = (await headers()).get(PATHNAME_HEADER) ?? '';
+
+const { locale } = resolveRoute({
+  segments: pathname.split('/').filter(Boolean),
+  locales: site.locales,
+  defaultLocale: site.defaultLocale,
+});
+
+return <html lang={locale}>;
 ```
 
-Quem declara o idioma é a página, não o routing — a fonte de conteúdo sabe em que idioma escreveu, e o mapper do provider põe isso na `meta.locale`. Um layout acima do segmento não recebe `params`, logo não sabe que página está a ser servida e não conseguiria lá chegar.
+O `lang` sai do locale **da rota** e não do `meta.locale` da página. É uma função pura sobre dados que o `resolveSite()` já trouxe, logo o layout não paga uma consulta à página só para escrever o `lang` — e quando a página não resolve, o que se desenha é o `not-found` deste projeto, que o locale da rota continua a descrever correctamente.
 
-A consequência prática: um provider cujo conteúdo traz o idioma tem o `lang` correcto sem declarar lista de idiomas nenhuma. A lista serve o `resolveRoute`, que é um problema diferente — ver [api.md](api.md#idiomas).
+## O proxy
 
-Sem página resolvida (um 404) não se declara `lang` nenhum, em vez de declarar um errado.
+[src/proxy.ts](../src/proxy.ts) — em Next 16 a convenção `middleware` está depreciada; o ficheiro chama-se `proxy` e exporta uma função `proxy`.
 
-## Rotas reservadas
+Não reescreve nem redirecciona: só copia o pathname para o header `x-pathname`. É deliberado. Reescrever obrigaria o proxy a saber qual é o locale por omissão, e esse é uma resposta do provider — ver [providers.md](providers.md). Ao não decidir nada aqui, o default continua a viver onde deve e as URLs ficam como estão.
+
+O `matcher` exclui o admin, a API do Payload, as rotas de preview, os assets do Next e os ficheiros com extensão. Como não se reescreve nada, apanhar o resto seria inofensivo — mas é trabalho por pedido a troco de nada.
+
+## O que é rota e o que não é
 
 ```
 app/(frontend)/
-├── [[...segments]]/     ← todas as páginas, e o root layout
+├── _lib/                ← não é rota: o prefixo _ tira a pasta do router
+│   ├── createMetadata.ts
+│   ├── resolvePage.ts
+│   └── resolveSite.ts
+├── layout.tsx           ← o layout de raiz do grupo
+├── not-found.tsx
+├── error.tsx
+├── global-error.tsx
+├── [[...segments]]/
+│   └── page.tsx         ← todas as páginas
 └── next/
     ├── preview/         ← activa o draftMode
     └── exit-preview/    ← desactiva
 ```
 
+Dentro de `app/` só ficheiros de rota; o resto vai para `_lib/`. Sem essa regra, um `.ts` solto no meio das rotas não se distingue de uma convenção do Next à qual falta reconhecer o nome.
+
 O prefixo `next/` isola as rotas de framework do namespace de conteúdo — é a convenção do template oficial do Payload. Rotas estáticas têm precedência sobre o catch-all, por isso não há conflito, mas qualquer path que se acrescente aqui deixa de estar disponível para conteúdo.
 
-## draftMode
+## O frontend é SSR
 
-O [layout.tsx](<../src/app/(frontend)/[[...segments]]/layout.tsx>) e o `page.tsx` chamam `draftMode()`, o que **retira estas rotas da geração estática**, mesmo em produção. No estado actual não se perde nada, porque as páginas vêm todas da base de dados. Se um dia se quiser ISR, é preciso isolar a leitura do `draftMode` do caminho normal.
+O layout de raiz chama `draftMode()` e `headers()`. Qualquer um dos dois **retira estas rotas da geração estática**, portanto não existe uma única página estática no frontend.
+
+Foi uma escolha, não um acidente. A alternativa era pôr o locale como segmento real de rota (`[locale]/…`), com `generateStaticParams` a perguntar os locales ao provider no build — mas isso obrigava o locale por omissão a levar prefixo na URL e a reescrever o `createPagePath` e os seus testes.
+
+A consequência é que o desempenho se resolve com cache **ao nível dos dados** — `unstable_cache` com tags e `revalidateTag` — e não com HTML pré-construído. Ver [TODO.md](TODO.md).
