@@ -8,7 +8,7 @@ import type { ResolvedRoute } from '@/core/routing';
 import { resolveRoute } from '@/core/routing';
 import type { SiteDefinition } from '@/core/site';
 
-import { resolveSite } from '../resolveSite';
+import { resolveSite } from './resolveSite';
 
 export interface ResolvedPage {
   page: PageDefinition;

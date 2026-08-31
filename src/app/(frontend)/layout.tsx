@@ -5,7 +5,7 @@ import { provider } from '@/providers/provider';
 
 import { PATHNAME_HEADER } from '@/proxy';
 
-import { resolveSite } from './resolveSite';
+import { resolveSite } from './_lib/resolveSite';
 
 interface LayoutProps {
   children: React.ReactNode;

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { getPayload } from 'payload';
 import config from '@payload-config';
 
-import { isSafeRedirectPath } from './isSafeRedirectPath';
+import { isSafeRedirectPath } from '@/core/routing';
 
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);

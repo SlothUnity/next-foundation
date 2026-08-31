@@ -5,9 +5,8 @@ import { notFound } from 'next/navigation';
 import { foundation } from '@/core/foundation/foundation';
 import { PageRenderer } from '@/core/renderer';
 
-import { createMetadata } from '../createMetadata';
-
-import { resolvePage } from './resolvePage';
+import { createMetadata } from '../_lib/createMetadata';
+import { resolvePage } from '../_lib/resolvePage';
 
 interface PageProps {
   params: Promise<{
