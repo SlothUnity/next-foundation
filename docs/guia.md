@@ -1330,7 +1330,7 @@ Nota de detalhe: a função devolvida tem nome (`ModuleComponentAdapter`) em vez
 
 ## 6.5 O `hero`, ficheiro a ficheiro
 
-`src/modules/hero/` tem cinco ficheiros. Cada um com um papel, e a separação é a convenção que todos os módulos seguintes vão seguir.
+`src/modules/Hero/` tem seis ficheiros. Cada um com um papel, e a separação é a convenção que todos os módulos seguintes vão seguir.
 
 **`Hero.schema.ts`** — a forma dos dados, validável em execução:
 
@@ -1378,6 +1378,22 @@ O `{subtitle && <p>...</p>}` é o padrão normal de renderização condicional. 
 > **O nível do título é responsabilidade de quem escreve o módulo, não da foundation.** Ela não tem como adivinhar em que página o módulo vai cair. É por isso que o gerador emite `<h2>`, que é o que costuma estar certo. Um projecto que precise de o resolver a sério tem de dar ao módulo a sua posição na página, e isso **altera o contrato dos módulos** — ver [modules.md](modules.md#o-que-a-foundation-não-decide-por-ti).
 >
 > A mesma leitura vale para o `<section>`: sem nome acessível não conta como _landmark_, e dar-lhe um `aria-labelledby` implica um `id` único que vive na instância, não no componente.
+
+**`Hero.style.scss`** — os estilos, importados pelo componente com um `import './Hero.style.scss'` e mais nada:
+
+```scss
+h1 {
+  color: red;
+}
+```
+
+Vermelho porque é um exemplo, e serve só para se ver que o `.scss` compila. Há duas coisas a reter, e nenhuma é o vermelho.
+
+A primeira é o **nome**. É `.style.scss` e não `.module.scss`, o sufixo habitual de CSS Modules em Next. A razão é local a este projeto: `Hero.module.ts` é a **definição do módulo**, e um `Hero.module.scss` na mesma pasta tornava a palavra «module» ambígua — ora bloco de conteúdo, ora ficheiro com scope de CSS.
+
+A segunda é o que **não** existe. Não há sistema de tema: nem variáveis, nem tokens, nem reset, nem escala tipográfica. Não é um esquecimento — é a mesma linha que separa o nível do título acima. A foundation garante onde os estilos de um módulo vivem e como se chamam; o que lá dentro se escreve é decisão de quem monta o site.
+
+O `sass` é uma devDependency declarada. Chegou a compilar sem estar no `package.json`, por vir por arrasto do `@payloadcms/ui` — o tipo de dependência que funciona até alguém actualizar a de cima.
 
 **`Hero.module.ts`** — a definição, a juntar as peças:
 
@@ -2459,11 +2475,41 @@ export async function GET(): Promise<Response> {
 >
 > Se acrescentares um botão de «sair da pré-visualização», tem de fazer `fetch('/next/exit-preview', { method: 'POST' })` — um `<a href>` já não serve.
 
-**O campo `PageUrl`** é o companheiro disto no admin: mostra ao editor o URL público da página. Corre no browser, por isso usa `fetch` para a API REST (não tem Local API disponível), busca o global `Site` para saber o locale por omissão e depois a página para o `breadcrumbs`.
+**O campo `PageUrl`** é o companheiro disto no admin: mostra ao editor o URL público da página. E é o melhor exemplo do projeto de uma correcção que se faz a **apagar** código.
 
-> ⚠ **Lapso, não decisão**
+A versão original era um único componente cliente com um `useEffect` que fazia dois `fetch` sequenciais à API REST do Payload — o global `Site`, para saber o locale por omissão, e depois a própria página, para os breadcrumbs. Tinha quatro problemas:
+
+|                       |                                                                               |
+| --------------------- | ----------------------------------------------------------------------------- |
+| quatro `return` mudos | uma resposta sem `ok` desistia sem dizer nada ao editor nem ao log            |
+| sem `AbortController` | trocar de idioma a meio de um pedido escrevia estado de uma resposta obsoleta |
+| `void loadData()`     | a promise era descartada, e uma falha de rede virava _unhandled rejection_    |
+| `enabledLocales?.[0]` | a terceira cópia da regra do locale por omissão, sem a queda do original      |
+
+A tentação é corrigi-los um a um: apanhar a promise, pôr o `AbortController`, mostrar um estado de erro. Todos legítimos, e todos a tratar o sintoma.
+
+**A pergunta certa é porque é que um componente dentro do admin do Payload está a pedir dados ao Payload por HTTP.** Não estava, por escolha — estava porque era cliente, e um componente cliente não tem Local API.
+
+A correcção foi deixar de ser cliente. Um componente de campo **de servidor** recebe nas props tudo o que este campo precisa:
+
+```
+PageUrl.tsx   data          → os breadcrumbs do documento
+              req.locale    → o idioma escolhido no admin
+              req.origin    → a origem do pedido
+              req.payload   → a Local API, para o global Site
+```
+
+**Zero pedidos, e zero JavaScript no browser.** Os quatro problemas não foram corrigidos — deixaram de ter onde existir. Não há resposta para vir sem `ok`, não há corrida para abortar, não há promise para apanhar. A quarta linha resolve-se pelo `mapPayloadSite`, que é onde a regra mora ([8.2](#82-payloadsitesource-e-a-local-api)).
+
+Houve um passo intermédio que vale a pena contar, porque é um erro fácil: o campo chegou a ficar partido em dois — um componente de servidor a ler o global e a passar valores por prop a um componente cliente que lia os breadcrumbs pelo `useDocumentInfo()`. Funcionava, mas a divisão não se justificava: bastou olhar para o tipo `ServerComponentProps` para ver que o servidor já recebia o `data` e o `req.locale`, e a metade cliente ficou sem razão de existir.
+
+E vir tudo do mesmo render fecha uma inconsistência que a versão em duas metades não conseguia evitar: o `useLocale()` muda de imediato ao trocar de idioma, mas os breadcrumbs chegariam noutro momento — e entre os dois há um instante com o prefixo de um idioma e o caminho do outro.
+
+> 🎯 **Decisão**
 >
-> Três problemas no `useEffect` (linhas 27-63): os `if (!res.ok) return;` desistem em silêncio, sem mostrar nada ao editor nem registar o erro; não há `AbortController`, por isso trocar de idioma a meio de um pedido pode escrever no estado a partir de uma resposta obsoleta; e o `void loadData()` na linha 62 descarta a promise, o que transforma qualquer falha de rede numa _unhandled rejection_. São dois pedidos sequenciais em cada render do campo, o que também se podia melhorar.
+> Havia ainda um `window.location.origin` lido durante o render. Só não rebentava em SSR **por acidente**: o `useEffect` fazia o componente devolver `null` no primeiro render, e nessa altura o `window` não chegava a ser tocado. Tirado o `useEffect`, o acidente deixava de proteger — e num componente de servidor o `window` nem existe. A origem passou a vir do `req.origin`, que é onde ela é conhecida sem adivinhar.
+>
+> Vale a pena guardar o padrão: quando uma correcção óbvia é adicionar defesas (`AbortController`, `try/catch`, estado de erro), pergunta primeiro se o caminho que precisa de defesas tinha de existir.
 
 ---
 

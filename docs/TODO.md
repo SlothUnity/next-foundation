@@ -25,6 +25,7 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 - o código gerado passa `typecheck`, `lint` e o teste que ele próprio escreve, sem se tocar em nada
 - templates fora do alcance do Prettier, que os reescrevia como markup e destruía a indentação do código gerado
 - módulo `Hero` como referência, com `Hero.style.scss`
+- `sass` declarado como devDependency em vez de vir por arrasto do `@payloadcms/ui`; o `.style.scss` evita a ambiguidade com o `.module.ts`, e não há sistema de tema porque isso é decisão de projecto
 
 ### Providers
 
@@ -45,7 +46,7 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 - hierarquia e breadcrumbs (`nestedDocs`), slugs por `createSlug`
 - SEO com `ogTitle`, `ogDescription`, `noIndex`, `noFollow`
 - validação de homepage única (`isHome`)
-- campo de admin `PageUrl`
+- **campo de admin `pageUrl` só de servidor** — os breadcrumbs vêm do `data`, o idioma do `req.locale`, a origem do `req.origin` e o global da Local API, portanto não faz pedido nenhum nem envia JavaScript ao browser; desapareceram com os dois `fetch` os `return` mudos, o `AbortController` em falta, a promise descartada e a terceira cópia do `enabledLocales[0]`
 - CMS fechado atrás de login, com leitura de `Media` aberta; o frontend lê pela Local API e a query filtra por `_status`
 - rascunhos com autosave a 375ms
 - **falhas silenciosas fechadas** — o locale por omissão do Live Preview passou a sair do `mapPayloadSite` em vez de uma cópia da regra sem rede; `PREVIEW_SECRET` em falta desliga o preview com uma linha no log em vez de gerar um link que responde 403; um locale que o CMS tem e o `locales.ts` já não avisa em vez de dar 404 mudo; o global `Site` por preencher avisa ao cair no `payloadDefaultLocale`
@@ -74,7 +75,7 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 
 ### Qualidade
 
-- `typecheck`, `lint` e 155 testes verdes (156 assim que existir um módulo gerado)
+- `typecheck`, `lint` e 164 testes verdes (165 assim que existir um módulo gerado)
 - testes sem carregar o `payload.config.ts`
 - `pnpm build` corre `lint`, `typecheck` e testes antes do `next build` — sem CI, é este o portão antes de produção
 - `.env.example` na raiz
@@ -120,21 +121,11 @@ O `unstable_cache` está declarado em Next 16 como substituído pela directiva `
 
 Falta ainda **verificar a invalidação contra o admin**: publicar uma página e confirmar que o público muda à primeira. Os hooks estão testados unitariamente e as entradas de cache foram inspeccionadas em produção contra a base de dados real, mas o ciclo completo exige uma escrita.
 
-### 3. O campo `PageUrl`
-
-O [PageUrl.tsx](../src/providers/payload/components/PageUrl.tsx) tem três problemas no `useEffect`: os `if (!res.ok) return;` desistem sem mostrar nada ao editor nem registar o erro; não há `AbortController`, logo trocar de idioma a meio de um pedido pode escrever no estado a partir de uma resposta obsoleta; e o `void loadData()` descarta a promise, transformando uma falha de rede numa unhandled rejection. São ainda dois pedidos sequenciais em cada render.
-
-### 4. `PREVIEW_SECRET` fora do URL
+### 3. `PREVIEW_SECRET` fora do URL
 
 O segredo viaja na query string do iframe do Live Preview, logo fica no DOM do admin, no histórico do browser e em qualquer `Referer` que a página previsualizada envie. Um token curto e assinado resolvia. Não é urgente porque a rota valida também a sessão com `payload.auth()`.
 
-### 5. Tema e estilos
-
-Não existe sistema de tema. **Também é decisão de projecto.** A foundation não impõe nenhum, e a colisão de nomes que se temia está resolvida: o ficheiro de estilos de um módulo é `Hero.style.scss`, não `Hero.module.scss`, para não colidir com o `Hero.module.ts` que é a definição do módulo.
-
-Nota de dependências: o `sass` **não está no `package.json`** — vem por arrasto do `@payloadcms/ui`. Compila hoje por acidente. Declará-lo como devDependency é uma linha.
-
-### 6. Mapeamento do provider api
+### 4. Mapeamento do provider api
 
 O transporte está feito e o `mapApiPage` está deliberadamente por escrever: arranca com `PROVIDER=api`, e o erro do primeiro pedido diz as chaves que a API devolveu. Ver [api.md](api.md).
 
@@ -147,19 +138,19 @@ Pendências conhecidas, todas por resolver antes de servir um site multilingue:
 - o `createPageRequest` recebe o `locale` já resolvido mas ainda não o põe no pedido;
 - um `API_URL` mal escrito produz 404 em tudo, e o site responde 404 em silêncio em vez de dizer que a configuração está errada — é a última falha silenciosa por fechar, e fecha-se ao escrever o `mapApiPage`.
 
-### 7. TypeScript
+### 5. TypeScript
 
 **`noUncheckedIndexedAccess`** não está ligado no `tsconfig.json`. Ligá-lo apanha a classe de bugs que este projeto mais tem — `locales[0]`, `docs[0]`, `split('-')[0]` compilam hoje sem guarda. É mecânico, e vale a pena fazê-lo **antes** das rondas grandes, senão escrevem-se as guardas duas vezes.
 
 **`Meta.locale` obrigatório.** Hoje é opcional e nenhum consumidor depende dele — o `<html lang>` passou a sair do locale da rota — mas todos os mappers o preenchem. Torná-lo obrigatório fecha a divergência entre o que o tipo permite e o que a realidade faz.
 
-### 8. Cobertura e E2E
+### 6. Cobertura e E2E
 
-Não há cobertura configurada nem framework de E2E — 155 testes, todos unitários. Os componentes de admin não têm testes.
+Não há cobertura configurada nem framework de E2E — 164 testes, todos unitários. Os componentes de admin já têm testes (o `PageUrl` e o `livePreview.url` da collection), mas nunca foram abertos num browser autenticado: o que está verificado é a lógica, não o render dentro do admin.
 
 O cenário que interessa é o editorial: publicado A, preview mostra B, público continua A, publicar, público passa a B. Vale a pena corrê-lo à mão assim que o Live Preview estiver verificado contra a base de dados, e automatizá-lo depois como ronda própria — instalar e configurar Playwright com uma base de dados com estado é trabalho a sério.
 
-### 9. Providers realmente permutáveis
+### 7. Providers realmente permutáveis
 
 Resolvido o essencial: o `payload.config.ts` já não é avaliado com `PROVIDER=mock`, porque o [getPayloadClient.ts](../src/providers/payload/getPayloadClient.ts) o importa dinamicamente. Há teste de regressão em `createProvider.test.ts`.
 

@@ -1,78 +1,51 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useDocumentInfo, useLocale } from '@payloadcms/ui';
+import type { UIFieldServerProps } from 'payload';
 
 import { createPagePath } from '@/core/routing';
-
-interface SiteSettings {
-  enabledLocales?: string[];
-}
+import { mapPayloadSite } from '@/providers/payload/mappers/mapPayloadSite';
 
 interface Breadcrumb {
   url?: string | null;
 }
 
-interface PageData {
-  breadcrumbs?: Breadcrumb[] | null;
-}
+/**
+ * Mostra ao editor o URL público da página.
+ *
+ * **Corre só no servidor, e não faz pedido nenhum à API.** Um componente de campo
+ * de servidor recebe nas props o documento (`data`), o locale escolhido no admin
+ * (`req.locale`), a origem do pedido (`req.origin`) e o cliente do Payload — tudo
+ * o que este campo precisa. Já foi um componente cliente com um `useEffect` a
+ * buscar o global e a página por REST a partir de dentro do próprio Payload, e
+ * trazia com isso quatro `return` mudos, uma corrida por abortar e uma promise
+ * descartada. Nada disso tem onde existir aqui.
+ *
+ * Vir tudo do mesmo render também elimina uma inconsistência que a versão cliente
+ * tinha: o `useLocale()` mudava de imediato ao trocar de idioma, mas os
+ * breadcrumbs vinham de um pedido separado, e entre os dois havia um instante com
+ * o prefixo de um idioma e o caminho do outro.
+ */
+export default async function PageUrl({ data, req }: UIFieldServerProps) {
+  const breadcrumbs = (data?.breadcrumbs ?? null) as Breadcrumb[] | null;
+  const lastBreadcrumb = breadcrumbs?.[breadcrumbs.length - 1];
 
-export default function PageUrl() {
-  const { id } = useDocumentInfo();
-  const locale = useLocale();
-
-  const [defaultLocale, setDefaultLocale] = useState<string>();
-  const [pagePath, setPagePath] = useState<string>();
-
-  useEffect(() => {
-    async function loadData() {
-      if (!locale?.code) {
-        return;
-      }
-
-      const siteResponse = await fetch('/api/globals/site');
-
-      if (!siteResponse.ok) {
-        return;
-      }
-
-      const site: SiteSettings = await siteResponse.json();
-
-      setDefaultLocale(site.enabledLocales?.[0]);
-
-      if (!id) {
-        return;
-      }
-
-      const pageResponse = await fetch(
-        `/api/pages/${id}?locale=${encodeURIComponent(locale.code)}&depth=0`,
-      );
-
-      if (!pageResponse.ok) {
-        return;
-      }
-
-      const page: PageData = await pageResponse.json();
-
-      const lastBreadcrumb = page.breadcrumbs?.[page.breadcrumbs.length - 1];
-
-      setPagePath(lastBreadcrumb?.url ?? '/');
-    }
-
-    void loadData();
-  }, [id, locale?.code]);
-
-  if (!defaultLocale || !locale?.code || pagePath === undefined) {
-    return null;
+  // Uma página por gravar não tem breadcrumbs nem URL. Dizê-lo é melhor do que o
+  // campo desaparecer, que era o que acontecia antes.
+  if (typeof lastBreadcrumb?.url !== 'string') {
+    return (
+      <div>
+        <span>Page URL: </span>
+        <span>save the page to get its URL.</span>
+      </div>
+    );
   }
 
-  const path = createPagePath({
-    path: pagePath,
-    locale: locale.code,
-    defaultLocale,
-  });
+  const site = await req.payload.findGlobal({ slug: 'site', depth: 0 });
 
-  const url = `${window.location.origin}${path}`;
+  // O locale por omissão é resposta do mapPayloadSite, a única definição da regra.
+  // O `'all'` é um valor legítimo de `req.locale` que aqui não faz sentido.
+  const { defaultLocale } = mapPayloadSite(site);
+  const locale = !req.locale || req.locale === 'all' ? defaultLocale : req.locale;
+
+  const url = `${req.origin}${createPagePath({ path: lastBreadcrumb.url, locale, defaultLocale })}`;
 
   return (
     <div>

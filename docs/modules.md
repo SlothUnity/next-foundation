@@ -28,6 +28,8 @@ src/modules/Hero/
 
 O sufixo do ficheiro de estilos é `.style.scss` e não `.module.scss` de propósito: `Hero.module.ts` é a **definição do módulo** deste projecto, e um `Hero.module.scss` ao lado tornaria a palavra «module» ambígua na mesma pasta.
 
+O `sass` está declarado como devDependency — o Next compila `.scss` assim que o pacote existe, sem configuração nenhuma. **Não há sistema de tema, e é deliberado**: variáveis, tokens, reset, escalas — a foundation não impõe nenhum, porque isso é decisão de quem monta o site. O que ela garante é o sítio onde os estilos de um módulo vivem e o nome que têm.
+
 **Schema primeiro.** Ele é a fonte de verdade e o tipo deriva dele, não o contrário:
 
 ```ts

@@ -154,7 +154,22 @@ Devolver `undefined` é o contrato do Payload para **desligar** o preview. Ver a
 
 ### O campo pageUrl
 
-[components/PageUrl.tsx](../src/providers/payload/components/PageUrl.tsx) é um campo `type: 'ui'` que mostra ao editor o URL público da página. Corre no cliente e obtém os dados por REST (`/api/globals/site` e `/api/pages/:id`), porque um componente de admin não tem acesso à Local API.
+[components/PageUrl.tsx](../src/providers/payload/components/PageUrl.tsx) é um campo `type: 'ui'` que mostra ao editor o URL público da página. **Corre só no servidor e não faz pedido nenhum à API.**
+
+Um componente de campo de servidor recebe nas props tudo o que este campo precisa:
+
+| prop          | serve para                                           |
+| ------------- | ---------------------------------------------------- |
+| `data`        | os `breadcrumbs` do documento, de onde sai o caminho |
+| `req.locale`  | o idioma escolhido no admin                          |
+| `req.origin`  | a origem do pedido                                   |
+| `req.payload` | a Local API, para ler o global `Site`                |
+
+Aqui esteve um componente cliente com um `useEffect` a buscar o global e a página por REST — pedidos ao Payload a partir de dentro do Payload. Com eles foram-se quatro coisas: os `return` mudos quando uma resposta não vinha `ok`, o `AbortController` em falta, o `void loadData()` que transformava uma falha de rede numa _unhandled rejection_, e uma terceira cópia do `enabledLocales[0]` sem a queda para o `payloadDefaultLocale` — era isso que fazia o campo desaparecer com o global por preencher.
+
+Vir tudo do mesmo render fecha ainda uma inconsistência que uma versão cliente não consegue evitar: o `useLocale()` muda de imediato ao trocar de idioma, mas os breadcrumbs viriam de um pedido separado, e entre os dois há um instante com o prefixo de um idioma e o caminho do outro.
+
+Numa página por gravar não há breadcrumbs nem URL. O campo diz-o em vez de desaparecer, e nem chega a consultar o global.
 
 O caminho do componente é uma **string** na config — ver o aviso em [conventions.md](conventions.md#cuidado-com-o-que-o-typescript-não-vê).
 
@@ -162,7 +177,7 @@ O caminho do componente é uma **string** na config — ver o aviso em [conventi
 
 [globals/Site.ts](../src/providers/payload/globals/Site.ts) — nome do site e `enabledLocales` (select `hasMany`, ordenável).
 
-**Este global tem de estar gravado.** Com `enabledLocales` vazio, o site fica sem idiomas escolhidos: o `mapPayloadSite` cai no `payloadDefaultLocale` para o routing não parar, e avisa no log que o está a fazer. O Live Preview continua a funcionar. Fica o `PageUrl`, que não renderiza e não diz porquê — está no [TODO.md](TODO.md).
+**Este global tem de estar gravado**, mas já não é catastrófico se não estiver. Com `enabledLocales` vazio, o `mapPayloadSite` cai no `payloadDefaultLocale` para o routing não parar e avisa no log que o está a fazer; o Live Preview e o `pageUrl` continuam a funcionar, porque os dois passam a resposta a esse mesmo mapeador.
 
 Tem um `afterChange` a invalidar a tag `payload:site` — sem guarda nenhuma, porque um global não tem rascunhos e mudar a ordem dos idiomas muda o `<html lang>` de todas as páginas. Ver [Cache](#cache).
 
