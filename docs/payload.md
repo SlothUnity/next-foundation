@@ -106,6 +106,17 @@ O `not_equals: id` é o que permite gravar a própria homepage sem se autodetect
 
 A página com `isHome` responde na raiz (`/` ou `/en`), e o plugin de nested docs exclui-a dos breadcrumbs dos filhos — ver [routing.md](routing.md).
 
+### Hooks de cache
+
+```ts
+hooks: {
+  afterChange: [revalidatePagesOnChange],
+  afterDelete: [revalidatePagesOnDelete],
+},
+```
+
+O único ponto onde o CMS fala com o cache do Next. Interage com o `autosave` logo abaixo, e a interação não é inocente — ver [Cache](#cache).
+
 ### Rascunhos e autosave
 
 ```ts
@@ -151,7 +162,9 @@ O caminho do componente é uma **string** na config — ver o aviso em [conventi
 
 [globals/Site.ts](../src/providers/payload/globals/Site.ts) — nome do site e `enabledLocales` (select `hasMany`, ordenável).
 
-**Este global tem de estar gravado.** Com `enabledLocales` vazio, o site fica sem idiomas: o `mapPayloadSite` cai no `payloadDefaultLocale` para o routing não parar, mas o `PageUrl` não renderiza e o Live Preview desliga-se — os dois em silêncio, porque tratam a ausência como «nada a mostrar». Está no [TODO.md](TODO.md).
+**Este global tem de estar gravado.** Com `enabledLocales` vazio, o site fica sem idiomas escolhidos: o `mapPayloadSite` cai no `payloadDefaultLocale` para o routing não parar, e avisa no log que o está a fazer. O Live Preview continua a funcionar. Fica o `PageUrl`, que não renderiza e não diz porquê — está no [TODO.md](TODO.md).
+
+Tem um `afterChange` a invalidar a tag `payload:site` — sem guarda nenhuma, porque um global não tem rascunhos e mudar a ordem dos idiomas muda o `<html lang>` de todas as páginas. Ver [Cache](#cache).
 
 ## Media e Users
 
@@ -321,6 +334,10 @@ page.tsx  →  draftMode().isEnabled  →  getPage(…, { draft: true })
 
 **O arranque:** o `url` da collection devolve `/next/preview?path=…&previewSecret=…`. O iframe carrega essa rota, que valida e redirecciona para a página real.
 
+O locale por omissão que entra nesse caminho sai do `mapPayloadSite`, e não de uma leitura própria de `enabledLocales[0]`. A regra é dele e resolve sempre — a cópia que aqui esteve desistia com o global por preencher, e o preview desaparecia sem explicação.
+
+O `previewSecret` é **parâmetro** do `getLivePreviewUrl`, não uma leitura de `process.env` lá dentro. Sem segredo, a função produzia um link com `previewSecret=` vazio e a rota respondia 403 dentro do iframe. Hoje a collection detecta a ausência antes de gerar o link, regista `PREVIEW_SECRET is not set` no log do servidor e devolve `undefined` — o preview fica desligado de propósito, não por acidente.
+
 [app/(frontend)/next/preview/route.ts](<../src/app/(frontend)/next/preview/route.ts>) — quatro guardas antes de activar o `draftMode`:
 
 1. `previewSecret` tem de coincidir com `PREVIEW_SECRET` → 403
@@ -340,6 +357,6 @@ O `matcher` do [proxy](../src/proxy.ts) exclui `next/`, portanto as duas rotas d
 
 **Não aparece em documentos novos.** O Payload passa `isLivePreviewEnabled && operation !== 'create'`, e a função `url` só é executada quando `operation !== 'create'`. Grava primeiro.
 
-**Se o `url` devolver `undefined`, o preview desaparece sem erro.** A causa mais provável é o global `Site` sem `enabledLocales`.
+**Se o `url` devolver `undefined`, o preview desaparece sem erro.** Hoje só há uma causa, e ela deixa rasto: `PREVIEW_SECRET` por definir, com uma linha de erro no log do servidor. O global `Site` sem `enabledLocales` já não desliga nada.
 
 **O `url` corre a cada autosave.** Com `interval: 375` é um `findGlobal` à base de dados a cada 375ms por editor com o painel aberto. A própria documentação do Payload avisa para não pôr operações caras nesta função. Só dói com vários editores em simultâneo; se acontecer, cachear o `defaultLocale` em memória no módulo.

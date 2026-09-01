@@ -18,6 +18,14 @@ export class PayloadPageSource extends PageSource {
     const requested = locale ?? (await this.getDefaultLocale());
 
     if (!isSupportedLocale(requested)) {
+      // Um visitante não chega aqui: o `resolveRoute` só devolve locales que o
+      // global `Site` declara. Isto é divergência de configuração — um locale
+      // escolhido no CMS que o `locales.ts` já não tem — e sem o aviso ficava
+      // indistinguível de uma página que não existe.
+      console.warn(
+        `Locale "${requested}" is enabled in the CMS but missing from availableLocales in locales.ts. Every page in it will 404.`,
+      );
+
       return undefined;
     }
 

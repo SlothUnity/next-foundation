@@ -1635,6 +1635,10 @@ E o mapeador, `mapPayloadSite.ts`:
 export function mapPayloadSite(site: Site): SiteDefinition {
   const locales = site.enabledLocales ?? [];
 
+  if (locales.length === 0) {
+    console.warn('The `site` global has no enabledLocales. Falling back to …');
+  }
+
   return {
     name: site.name,
     locales,
@@ -1646,6 +1650,10 @@ export function mapPayloadSite(site: Site): SiteDefinition {
 Faz a tradução do vocabulário do CMS (`enabledLocales`) para o do projeto (`locales`). O `?? []` protege contra o campo estar por preencher. O `depth: 0` da consulta existe porque este mapeador só lê escalares — não há relação nenhuma para popular.
 
 E é aqui que este provider **responde** qual é o seu locale por omissão. O campo `enabledLocales` é ordenável no admin e a sua descrição promete que o primeiro é o default — é essa promessa que esta linha cumpre. Com o global por preencher não há resposta possível vinda dos dados, e cai-se no `payloadDefaultLocale`, a constante que o `payload.config.ts` também usa.
+
+O aviso existe porque a queda é razoável mas não é normal: o site passa a servir um idioma que ninguém escolheu, e sem uma linha no log a única pista era o `PageUrl` deixar de renderizar no admin. Repara onde ele está — dentro da função em cache, portanto sai uma vez por entrada e não uma vez por pedido.
+
+**Esta é também a única definição da regra.** Havia uma cópia dela na collection `Pages`, a decidir o locale do Live Preview, e a cópia não tinha a queda — ver [9.2](#92-a-collection-pages).
 
 ## 8.3 `PayloadPageSource.getPage`
 
@@ -1688,7 +1696,11 @@ A assinatura é **exatamente** a da classe abstrata — não podia ser outra ([0
 
 **A guarda de locale** é o sítio onde o type predicate de [8.1](#81-localests-uma-lista-três-formas) se paga. O `core` fala em `locale?: string` (qualquer string); o Payload só aceita os locales que conhece. Depois do `if`, o TypeScript já sabe que `requested` é um `SupportedLocale`, e a linha seguinte compila sem cast nenhum. Sem o predicate, era preciso escrever `requested as SupportedLocale`, uma afirmação por verificar.
 
-Continua a haver uma decisão discutível: um locale desconhecido dá `undefined`, que acaba em 404. É defensável (`/xx/sobre-nos` não é uma página deste site), mas é um sítio onde um problema de configuração fica indistinguível de uma página inexistente, sem log nenhum.
+**E um locale desconhecido avisa antes de desistir.** Continua a devolver `undefined`, que acaba em 404 — mas com um `console.warn` que nomeia o locale.
+
+Vale a pena perceber porque é que o aviso não faz barulho à toa. Um visitante que escreva `/xx/sobre-nos` **não chega aqui**: o `resolveRoute` só reconhece como locale um segmento que esteja em `site.locales`, e `xx` não está, portanto `xx/sobre-nos` vira caminho e dá 404 normal, sem passar por esta guarda. O único caminho até aqui é o CMS ter um locale seleccionado que o `availableLocales` do `locales.ts` já não tem — alguém apagou um idioma do código com ele ainda escolhido no admin.
+
+Isso não é uma página que falta, é configuração partida, e o efeito é todas as páginas desse idioma responderem 404. Sem o aviso, as duas coisas eram indistinguíveis nos logs.
 
 **A bifurcação do rascunho** é a linha com mais consequência do ficheiro, e está explicada em [8.6](#86-a-cache-o-que-sobrevive-ao-pedido). Em duas palavras: o que o editor vê no Live Preview é a versão dele, e guardá-la arriscava servi-la a um visitante anónimo.
 
@@ -2034,6 +2046,11 @@ O `postgresAdapter` é o que torna o Payload agnóstico de base de dados: trocar
 export const Pages: CollectionConfig = {
   slug: 'pages',
 
+  hooks: {
+    afterChange: [revalidatePagesOnChange],
+    afterDelete: [revalidatePagesOnDelete],
+  },
+
   versions: {
     drafts: {
       autosave: { interval: 375 },
@@ -2042,8 +2059,11 @@ export const Pages: CollectionConfig = {
 ```
 
 - **`slug: 'pages'`** — o identificador. É o que aparece no URL do admin e o que se usa em `payload.find({ collection: 'pages' })`.
+- **`hooks`** — o único sítio do projeto onde o CMS fala com o cache do Next. Sempre que uma página é gravada ou apagada, a tag `payload:pages` é invalidada e a leitura seguinte volta ao Postgres. A implementação está em [8.6](#86-a-cache-o-que-sobrevive-ao-pedido) — vale a pena lê-la antes de mexer aqui, porque a interação com o `autosave` logo abaixo não é inocente.
 - **`versions.drafts`** — liga o histórico de versões e o modo rascunho. É isto que **cria o campo `_status`** de que a consulta depende ([8.4](#84-resolvepayloadpage-opção-a-opção)). Sem esta opção, aquele filtro não faria sentido nenhum.
 - **`autosave.interval: 375`** — grava sozinho 375 ms depois de o editor parar de escrever. O número é pequeno de propósito: é o que faz o live preview parecer instantâneo. Cada gravação é uma versão nova na base de dados, por isso é um compromisso entre fluidez e volume.
+
+  E é aqui que as duas opções se cruzam: **cada autosave dispara o `afterChange`**. Sem a guarda de `_status` que o hook tem, escrever um parágrafo neste editor invalidava a cache do site inteiro umas dezenas de vezes.
 
 ```ts
   admin: {
@@ -2052,19 +2072,23 @@ export const Pages: CollectionConfig = {
 
     livePreview: {
       url: async ({ data, locale, req }) => {
-        const site = await req.payload.findGlobal({ slug: 'site', depth: 0 });
+        const previewSecret = process.env.PREVIEW_SECRET;
 
-        const defaultLocale = site.enabledLocales?.[0];
+        if (!previewSecret) {
+          req.payload.logger.error(
+            'PREVIEW_SECRET is not set: Live Preview is disabled. Add it to .env.local.',
+          );
 
-        if (!defaultLocale) {
           return undefined;
         }
 
+        const site = await req.payload.findGlobal({ slug: 'site', depth: 0 });
+
         return getLivePreviewUrl({
           breadcrumbs: data?.breadcrumbs,
-          isHome: data?.isHome,
           locale: locale.code,
-          defaultLocale,
+          defaultLocale: mapPayloadSite(site).defaultLocale,
+          previewSecret,
         });
       },
     },
@@ -2075,7 +2099,15 @@ export const Pages: CollectionConfig = {
 - **`useAsTitle: 'title'`** — que campo mostrar nas listagens para identificar o documento.
 - **`livePreview.url`** — dado o documento em edição, que endereço deve o iframe abrir. O `depth: 0` na consulta ao global é uma otimização: só se quer o array `enabledLocales`, não relações nenhumas.
 
-  O `enabledLocales?.[0]` é a convenção de [3.3](#33-o-locale-por-omissão-é-declarado-não-adivinhado) outra vez — o primeiro da lista é o por omissão. O `return undefined` quando não há locales desliga a pré-visualização sem dizer porquê, que é o terceiro dos «sítios silenciosos» que o [`TODO.md`](TODO.md) identifica.
+  **Há aqui dois `return undefined`, e só um deles é uma decisão.** Vale a pena perceber a diferença, porque é o exemplo mais nítido do projeto.
+
+  O locale por omissão sai do `mapPayloadSite`, que resolve sempre ([8.2](#82-payloadsitesource-e-a-local-api)). Antes esta função lia `enabledLocales?.[0]` por sua conta e desistia com a lista vazia — a mesma regra escrita em dois sítios, e a cópia sem a rede de segurança do original. Bastava o global estar por preencher para a pré-visualização desaparecer do admin sem explicação. Não se acrescentou aviso nenhum: **eliminou-se a duplicação, e com ela a falha.**
+
+  O `return undefined` que ficou é diferente. Sem `PREVIEW_SECRET`, o link que se gerasse levava um segredo vazio e a rota respondia 403 dentro do iframe — o editor via uma caixa cinzenta e mais nada. Agora o separador simplesmente não aparece, e o servidor regista `PREVIEW_SECRET is not set`. Continua a devolver `undefined`, mas **de propósito e com voz**, que é a distinção que interessa: o problema não é desligar uma funcionalidade, é desligá-la sem dizer.
+
+> 🎯 **Decisão**
+>
+> Reparar uma falha silenciosa tem duas saídas, e a ordem importa. A primeira é **fazer o caso desaparecer** — foi o que aconteceu ao locale, deduplicando a regra. Só quando o caso é mesmo irredutível (falta configuração obrigatória, não há nada a servir) é que se passa à segunda: **degradar com voz**, nomeando a variável ou o campo que falta.
 
 Os campos, dentro de duas `tabs`:
 
@@ -2215,6 +2247,16 @@ O frontend não é «autorizado»; **passa ao lado** do sistema de acesso, porqu
 - **`hasMany: true`** — escolha múltipla, e o valor é um array.
 - **`options: [...availableLocales]`** — as opções vêm da lista técnica ([8.1](#81-localests-uma-lista-três-formas)), no formato `{label, value}` que o `select` espera. O espalhamento é preciso porque `availableLocales` é `readonly` (por causa do `as const`) e o Payload quer um array mutável.
 - **`isSortable: true`** — e aqui está a peça que fecha o círculo: **a ordem é editável, e a ordem tem significado**. O primeiro locale é o por omissão ([3.3](#33-o-locale-por-omissão-é-declarado-não-adivinhado)), aquele que não leva prefixo no URL. A `description` diz isso ao editor, que é a única defesa que existe — arrastar um idioma para cima muda todos os URLs do site.
+
+O global tem também um hook, pela mesma razão que a collection `Pages`:
+
+```ts
+hooks: {
+  afterChange: [revalidateSiteOnChange],
+},
+```
+
+Sem guarda nenhuma, ao contrário do das páginas: um global não tem versões nem rascunhos, portanto qualquer gravação é uma publicação. E é uma gravação que tem de invalidar mesmo — mudar a ordem dos idiomas muda o locale por omissão, e o `<html lang>` de todas as páginas com ele.
 
 ## 9.4 Os plugins: `nestedDocs` e `seo`
 

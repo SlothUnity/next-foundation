@@ -285,7 +285,7 @@ Páginas publicadas usam o cache do Next com o `revalidate` configurado, e etiqu
 tags: ['pages', 'page:/sobre-nos'];
 ```
 
-Isso permite revalidar tudo ou uma página só, quando existir um webhook do CMS a fazê-lo.
+Isso permite revalidar tudo ou uma página só, quando existir um webhook do CMS a fazê-lo. **Hoje nada chama `revalidateTag`**, portanto estas tags ainda são só escrita — está no [TODO.md](TODO.md). O provider payload já tem o circuito fechado, e serve de referência para o desenho: ver [payload.md § Cache](payload.md#cache), em particular a razão de as tags lá serem grosseiras e a de o segundo argumento do `revalidateTag` ser `{ expire: 0 }` e não `'max'`.
 
 Rascunhos (`draft: true`) passam a `cache: 'no-store'`. Quem grava precisa de ver o que gravou, e não uma resposta de há um minuto.
 

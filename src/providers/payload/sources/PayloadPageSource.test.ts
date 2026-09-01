@@ -16,6 +16,7 @@ const source = new PayloadPageSource();
 
 describe('PayloadPageSource', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     getCachedPage.mockClear();
     loadPayloadPage.mockClear();
     getCachedSite.mockClear();
@@ -45,8 +46,20 @@ describe('PayloadPageSource', () => {
   });
 
   it('gives up on a locale this provider does not know', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
     await expect(source.getPage('sobre-nos', 'fr-FR')).resolves.toBeUndefined();
 
     expect(getCachedPage).not.toHaveBeenCalled();
+  });
+
+  it('says out loud that the locale is a configuration divergence', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // Um visitante não chega aqui — o resolveRoute só devolve locales que o global
+    // declara. Sem o aviso, isto ficava indistinguível de uma página inexistente.
+    await source.getPage('sobre-nos', 'fr-FR');
+
+    expect(String(warn.mock.calls[0][0])).toContain('fr-FR');
   });
 });

@@ -118,7 +118,7 @@ O que fica no `_lib` é o que **só** faz sentido dentro de um pedido do Next: o
 
 ### Barrels
 
-Um `index.ts` por fronteira pública — `core/pages`, `core/modules`, `providers/payload/plugins`. Serve para o resto do projecto importar de um sítio estável.
+Um `index.ts` por fronteira pública — `core/pages`, `core/modules`, `providers/payload/plugins`, `providers/payload/cache`. Serve para o resto do projecto importar de um sítio estável.
 
 Duas regras:
 

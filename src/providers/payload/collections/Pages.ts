@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload';
 
 import { pageBlocks } from '@/providers/payload/blocks';
 import { revalidatePagesOnChange, revalidatePagesOnDelete } from '@/providers/payload/cache';
+import { mapPayloadSite } from '@/providers/payload/mappers/mapPayloadSite';
 import { breadcrumbsField } from '@/providers/payload/plugins';
 import { getLivePreviewUrl } from '@/providers/payload/utils/getLivePreviewUrl';
 
@@ -32,18 +33,31 @@ export const Pages: CollectionConfig = {
 
     livePreview: {
       url: async ({ data, locale, req }) => {
-        const site = await req.payload.findGlobal({ slug: 'site', depth: 0 });
+        const previewSecret = process.env.PREVIEW_SECRET;
 
-        const defaultLocale = site.enabledLocales?.[0];
+        // Devolver `undefined` desliga o separador de pré-visualização. É a única
+        // das duas saídas honestas: com o segredo em falta, o link que se gerasse
+        // aqui respondia 403 dentro do iframe e não dizia a ninguém porquê.
+        if (!previewSecret) {
+          req.payload.logger.error(
+            'PREVIEW_SECRET is not set: Live Preview is disabled. Add it to .env.local.',
+          );
 
-        if (!defaultLocale) {
           return undefined;
         }
+
+        const site = await req.payload.findGlobal({ slug: 'site', depth: 0 });
 
         return getLivePreviewUrl({
           breadcrumbs: data?.breadcrumbs,
           locale: locale.code,
-          defaultLocale,
+
+          // Pelo `mapPayloadSite` e não por `enabledLocales?.[0]`: a regra do locale
+          // por omissão é dele, e ele resolve sempre. A leitura em duplicado que
+          // aqui estava desligava o preview em silêncio com o global por preencher.
+          defaultLocale: mapPayloadSite(site).defaultLocale,
+
+          previewSecret,
         });
       },
     },
