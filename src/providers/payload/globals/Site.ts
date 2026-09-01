@@ -1,5 +1,6 @@
 import type { GlobalConfig } from 'payload';
 
+import { revalidateSiteOnChange } from '@/providers/payload/cache';
 import { availableLocales } from '@/providers/payload/locales';
 
 export const Site: GlobalConfig = {
@@ -9,6 +10,10 @@ export const Site: GlobalConfig = {
 
   admin: {
     group: 'Website',
+  },
+
+  hooks: {
+    afterChange: [revalidateSiteOnChange],
   },
 
   fields: [

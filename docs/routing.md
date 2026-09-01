@@ -173,4 +173,4 @@ O layout de raiz chama `draftMode()` e `headers()`. Qualquer um dos dois **retir
 
 Foi uma escolha, não um acidente. A alternativa era pôr o locale como segmento real de rota (`[locale]/…`), com `generateStaticParams` a perguntar os locales ao provider no build — mas isso obrigava o locale por omissão a levar prefixo na URL e a reescrever o `createPagePath` e os seus testes.
 
-A consequência é que o desempenho se resolve com cache **ao nível dos dados** — `unstable_cache` com tags e `revalidateTag` — e não com HTML pré-construído. Ver [TODO.md](TODO.md).
+A consequência é que o desempenho se resolve com cache **ao nível dos dados** e não com HTML pré-construído. É o que o provider payload faz — ver [payload.md](payload.md#cache).

@@ -21,6 +21,7 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 - `defineModule`, `createModuleComponent`
 - registo automático a partir de `src/modules/index.ts`
 - **gerador de módulos** (`pnpm generate`, Plop) — escreve os sete ficheiros do módulo, o bloco do Payload, e regista os dois; o `alias` e o `slug` saem do mesmo nome, logo coincidem por construção
+- o bloco do Payload só é escrito se esse provider existir no projecto: sem ele, gera-se o módulo e mais nada
 - o código gerado passa `typecheck`, `lint` e o teste que ele próprio escreve, sem se tocar em nada
 - templates fora do alcance do Prettier, que os reescrevia como markup e destruía a indentação do código gerado
 - módulo `Hero` como referência, com `Hero.style.scss`
@@ -47,6 +48,8 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 - campo de admin `PageUrl`
 - CMS fechado atrás de login, com leitura de `Media` aberta; o frontend lê pela Local API e a query filtra por `_status`
 - rascunhos com autosave a 375ms
+- **cache entre pedidos** — `unstable_cache` sobre o resultado do mapeamento, com tags grosseiras e hooks `afterChange`/`afterDelete` a invalidar; o rascunho nunca entra, o 404 entra; 133 ms a frio, ~20 ms a quente, medido em produção contra a base de dados
+- a guarda do autosave: um rascunho de uma página nunca publicada não invalida nada, senão a cache do site caía a cada 375ms enquanto um editor escrevia
 - Live Preview server-side: `RefreshRouteOnSave`, `next/preview`, `next/exit-preview`
 - o `PayloadLivePreview` **atira** quando falta o `NEXT_PUBLIC_SERVER_URL`, em vez de passar `''` ao `RefreshRouteOnSave` e falhar a validação de origem em silêncio
 
@@ -70,7 +73,7 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 
 ### Qualidade
 
-- `typecheck`, `lint` e 126 testes verdes (127 assim que existir um módulo gerado)
+- `typecheck`, `lint` e 141 testes verdes (142 assim que existir um módulo gerado)
 - testes sem carregar o `payload.config.ts`
 - `pnpm build` corre `lint`, `typecheck` e testes antes do `next build` — sem CI, é este o portão antes de produção
 - `.env.example` na raiz
@@ -99,7 +102,7 @@ Quatro coisas testadas e descartadas:
 | `experimental.globalNotFound` + `app/global-not-found.tsx`       | compila, mas nunca é usado: só serve a rota `/_not-found`, e o catch-all apanha tudo antes |
 | `app/layout.tsx` pass-through + `app/not-found.tsx` com `<html>` | o conteúdo passa a existir no payload RSC, o HTML continua vazio                           |
 
-Portanto a decisão do ponto 2 original — «subir o layout resolve os boundaries» — estava **errada**, e a documentação foi corrigida em conformidade. O que falta é decidir entre:
+Portanto a premissa de que **subir o layout resolvia os boundaries** estava errada, e a documentação foi corrigida em conformidade. O que falta é decidir entre:
 
 - aceitar 404 sem HTML servido (mau para SEO e para quem não corre JS);
 - desistir do `notFound()` no frontend e desenhar o 404 dentro da árvore normal, com o custo de o status passar a 200 — inaceitável sem outra forma de o corrigir;
@@ -108,13 +111,13 @@ Portanto a decisão do ponto 2 original — «subir o layout resolve os boundari
 
 Ainda por verificar, e independente disto: abrir o Live Preview no admin e confirmar que o `matcher` do proxy não engoliu o `/next/preview`. Precisa de base de dados.
 
-### 2. Cache no provider payload
+### 2. Migrar a cache para `use cache`
 
-É o item com mais impacto. Hoje **não há camada de cache nenhuma**: o `draftMode()` e o `headers()` no layout tornam todas as rotas dinâmicas, e cada visita a cada página faz duas consultas ao Postgres. O `cache()` do React só deduplica dentro de um pedido.
+A cache do provider payload **está feita** — ver [payload.md](payload.md#cache). Fica a dívida da API escolhida.
 
-A forma correcta é `unstable_cache` (ou `'use cache'`) com tags por página, mais hooks `afterChange` no Payload a chamar `revalidateTag`. Merece uma ronda própria, com medição antes e depois.
+O `unstable_cache` está declarado em Next 16 como substituído pela directiva `use cache`, que exige `cacheComponents: true`. Esse flag não é uma troca de API: liga o PPR por omissão, muda a navegação para `<Activity>`, e obriga todo o acesso a APIs de runtime a viver dentro de um `<Suspense>` — incluindo o `headers()` do layout de raiz, de onde sai o `<html lang>`, e incluindo o admin do Payload, que partilha o mesmo `app/`. É uma ronda própria, e vale a pena esperar que o Payload 3 declare suporte.
 
-Ficou decidido que o frontend é **SSR** e não geração estática — ver [routing.md](routing.md#o-frontend-é-ssr). O desempenho resolve-se aqui, ao nível dos dados.
+Falta ainda **verificar a invalidação contra o admin**: publicar uma página e confirmar que o público muda à primeira. Os hooks estão testados unitariamente e as entradas de cache foram inspeccionadas em produção contra a base de dados real, mas o ciclo completo exige uma escrita.
 
 ### 3. Falhas silenciosas
 
@@ -130,23 +133,13 @@ O [PageUrl.tsx](../src/providers/payload/components/PageUrl.tsx) tem três probl
 
 O segredo viaja na query string do iframe do Live Preview, logo fica no DOM do admin, no histórico do browser e em qualquer `Referer` que a página previsualizada envie. Um token curto e assinado resolvia. Não é urgente porque a rota valida também a sessão com `payload.auth()`.
 
-### 6. Módulos
-
-Só existe o `Hero`. Os próximos exercitam partes do contrato ainda não usadas: um com relações (para validar o `depth: 2`), um com media (para validar uploads), e um com uma lista de itens. Arranca-os com `pnpm generate` e acrescenta os campos ao schema e ao bloco, aos pares.
-
-### 7. Navigation e footer
-
-O `PageDefinition` já os prevê e o `PageRenderer` já os envolve em `<nav>`/`<footer>`, mas nenhum provider os preenche.
-
-**É uma decisão de projecto, não da foundation.** O que a foundation garante são os landmarks; onde o conteúdo deles vive no CMS — provavelmente globals — é de quem monta o site. Nota para quem os escrever: **o módulo não deve trazer o seu próprio `<nav>`**, o renderer já o põe.
-
-### 8. Tema e estilos
+### 6. Tema e estilos
 
 Não existe sistema de tema. **Também é decisão de projecto.** A foundation não impõe nenhum, e a colisão de nomes que se temia está resolvida: o ficheiro de estilos de um módulo é `Hero.style.scss`, não `Hero.module.scss`, para não colidir com o `Hero.module.ts` que é a definição do módulo.
 
 Nota de dependências: o `sass` **não está no `package.json`** — vem por arrasto do `@payloadcms/ui`. Compila hoje por acidente. Declará-lo como devDependency é uma linha.
 
-### 9. Mapeamento do provider api
+### 7. Mapeamento do provider api
 
 O transporte está feito e o `mapApiPage` está deliberadamente por escrever: arranca com `PROVIDER=api`, e o erro do primeiro pedido diz as chaves que a API devolveu. Ver [api.md](api.md).
 
@@ -158,19 +151,19 @@ Pendências conhecidas, todas por resolver antes de servir um site multilingue:
 - não há `AbortSignal` nem timeout — um upstream pendurado pendura o render;
 - o `createPageRequest` recebe o `locale` já resolvido mas ainda não o põe no pedido.
 
-### 10. TypeScript
+### 8. TypeScript
 
 **`noUncheckedIndexedAccess`** não está ligado no `tsconfig.json`. Ligá-lo apanha a classe de bugs que este projeto mais tem — `locales[0]`, `docs[0]`, `split('-')[0]` compilam hoje sem guarda. É mecânico, e vale a pena fazê-lo **antes** das rondas grandes, senão escrevem-se as guardas duas vezes.
 
 **`Meta.locale` obrigatório.** Hoje é opcional e nenhum consumidor depende dele — o `<html lang>` passou a sair do locale da rota — mas todos os mappers o preenchem. Torná-lo obrigatório fecha a divergência entre o que o tipo permite e o que a realidade faz.
 
-### 11. Cobertura e E2E
+### 9. Cobertura e E2E
 
-Não há cobertura configurada nem framework de E2E — 126 testes, todos unitários. Os componentes de admin não têm testes.
+Não há cobertura configurada nem framework de E2E — 141 testes, todos unitários. Os componentes de admin não têm testes.
 
-O cenário que interessa é o editorial: publicado A, preview mostra B, público continua A, publicar, público passa a B. Vale a pena corrê-lo à mão ao fechar o ponto 2, e automatizá-lo depois como ronda própria — instalar e configurar Playwright com uma base de dados com estado é trabalho a sério.
+O cenário que interessa é o editorial: publicado A, preview mostra B, público continua A, publicar, público passa a B. Vale a pena corrê-lo à mão assim que o Live Preview estiver verificado contra a base de dados, e automatizá-lo depois como ronda própria — instalar e configurar Playwright com uma base de dados com estado é trabalho a sério.
 
-### 12. Providers realmente permutáveis
+### 10. Providers realmente permutáveis
 
 Resolvido o essencial: o `payload.config.ts` já não é avaliado com `PROVIDER=mock`, porque o [getPayloadClient.ts](../src/providers/payload/getPayloadClient.ts) o importa dinamicamente. Há teste de regressão em `createProvider.test.ts`.
 

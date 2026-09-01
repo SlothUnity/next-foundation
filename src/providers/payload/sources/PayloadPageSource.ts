@@ -3,12 +3,10 @@ import type { PageDefinition } from '@/core/pages';
 import { PageSource } from '@/core/pages/PageSource';
 import type { GetPageOptions } from '@/core/pages/PageSource';
 
-import { getPayloadClient } from '@/providers/payload/getPayloadClient';
+import { getCachedPage } from '@/providers/payload/cache/getCachedPage';
+import { getCachedSite } from '@/providers/payload/cache/getCachedSite';
 import { isSupportedLocale, type SupportedLocale } from '@/providers/payload/locales';
-
-import { mapPayloadPage } from '@/providers/payload/mappers/mapPayloadPage';
-import { mapPayloadSite } from '@/providers/payload/mappers/mapPayloadSite';
-import { resolvePayloadPage } from '@/providers/payload/sources/resolvePayloadPage';
+import { loadPayloadPage } from '@/providers/payload/sources/loadPayloadPage';
 
 export class PayloadPageSource extends PageSource {
   async getPage(
@@ -25,28 +23,23 @@ export class PayloadPageSource extends PageSource {
 
     const payloadLocale: SupportedLocale = requested;
 
-    const payload = await getPayloadClient();
-
-    const page = await resolvePayloadPage(payload, path, payloadLocale, options?.draft ?? false);
-
-    if (!page) {
-      return undefined;
+    // O rascunho nunca passa pela cache. Não é só desperdício: o que o editor está a
+    // ver é a versão dele, e guardá-la arriscava servi-la a um visitante.
+    if (options?.draft) {
+      return loadPayloadPage(path, payloadLocale, true);
     }
 
-    return mapPayloadPage(page, payloadLocale);
+    return getCachedPage(path, payloadLocale);
   }
 
   /**
    * Só corre quando quem chama omite o locale — o frontend passa-o sempre, vindo do
-   * `resolveRoute`. É por isso que vale a consulta extra em vez de partilhar estado
-   * com o `PayloadSiteSource`: acoplá-los pagava um custo em todos os pedidos para
-   * poupar num que quase não acontece.
+   * `resolveRoute`. Lê pela mesma cache que o `PayloadSiteSource`, portanto o custo
+   * extra é o de uma entrada já quente e não o de uma consulta.
    */
   private async getDefaultLocale(): Promise<string> {
-    const payload = await getPayloadClient();
+    const site = await getCachedSite();
 
-    const site = await payload.findGlobal({ slug: 'site', depth: 0 });
-
-    return mapPayloadSite(site).defaultLocale;
+    return site.defaultLocale;
   }
 }

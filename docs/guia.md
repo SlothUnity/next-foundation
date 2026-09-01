@@ -93,6 +93,7 @@ Isto **esteve** errado e já não está. Fica registado por duas razões: a expl
   - [8.3 `PayloadPageSource.getPage`](#83-payloadpagesourcegetpage)
   - [8.4 `resolvePayloadPage`, opção a opção](#84-resolvepayloadpage-opção-a-opção)
   - [8.5 `mapPayloadPage`: onde os dados mudam de forma](#85-mappayloadpage-onde-os-dados-mudam-de-forma)
+  - [8.6 A cache: o que sobrevive ao pedido](#86-a-cache-o-que-sobrevive-ao-pedido)
 - [Cap. 9 — Provider Payload, lado do CMS](#cap-9--provider-payload-lado-do-cms)
   - [9.1 `payload.config.ts`, opção a opção](#91-payloadconfigts-opção-a-opção)
   - [9.2 A collection `Pages`](#92-a-collection-pages)
@@ -821,15 +822,15 @@ Esta distinção é fácil de trocar e as consequências são grandes.
 
 **Não garante nada entre pedidos.** O próximo visitante começa do zero. Não é um cache de dados — é uma deduplicação com o tempo de vida de um pedido.
 
-Vale a pena dizer o que isto significa em conjunto com o que vimos em [1.4](#14-layouttsx-linha-a-linha): como o `layout.tsx` chama `draftMode()` **e** `headers()`, todas as rotas são dinâmicas; e como o provider do Payload não tem camada de cache nenhuma (não há `revalidate`, não há `unstable_cache`, não há `generateStaticParams` em lado nenhum do projeto), **cada visita a cada página faz duas consultas ao Postgres**. O `cache()` impede que sejam mais. Não impede que sejam duas.
+Vale a pena dizer o que isto significa em conjunto com o que vimos em [1.4](#14-layouttsx-linha-a-linha): como o `layout.tsx` chama `draftMode()` **e** `headers()`, todas as rotas são dinâmicas. Não há uma única página estática no frontend, e o `cache()` do React não muda isso — impede que as consultas sejam mais de duas por pedido, não impede que sejam duas.
 
-Isto não é um bug — é o estado atual, consciente, de um projeto que ainda não chegou à fase de otimização. Mas é bom saberes-lo antes de pores isto em produção com tráfego a sério.
+O que impede é a camada abaixo. O provider do Payload guarda o resultado entre pedidos com `unstable_cache`, e é por isso que a segunda visita não volta ao Postgres — ver [8.6](#86-a-cache-o-que-sobrevive-ao-pedido). São dois mecanismos com nomes parecidos e âmbitos diferentes: o `cache()` do React dura um pedido, o `unstable_cache` do Next dura até alguém invalidar a tag.
 
 > 🎯 **Decisão**
 >
 > **O frontend é SSR, e isso está decidido.** A alternativa — pôr o locale como segmento real de rota e pré-construir as páginas com `generateStaticParams` — foi ponderada e rejeitada: obrigava o locale por omissão a levar prefixo na URL.
 >
-> A consequência é que o desempenho se resolve com cache **ao nível dos dados**, com `unstable_cache` e `revalidateTag`, e não com HTML pré-construído. Ver [TODO.md](TODO.md).
+> A consequência é que o desempenho se resolve com cache **ao nível dos dados**, e não com HTML pré-construído.
 
 ## 2.3 Porque há duas funções e não uma
 
@@ -1593,23 +1594,29 @@ Sem ele, a função devolvia `boolean` e o compilador não aprendia nada — den
 
 ## 8.2 `PayloadSiteSource` e a Local API
 
-`src/providers/payload/sources/PayloadSiteSource.ts`:
+`src/providers/payload/sources/PayloadSiteSource.ts` hoje é uma linha:
 
 ```ts
 export class PayloadSiteSource extends SiteSource {
   async getSite(): Promise<SiteDefinition> {
-    const payload = await getPayload({ config });
-
-    const site = await payload.findGlobal({
-      slug: 'site',
-    });
-
-    return mapPayloadSite(site);
+    return getCachedSite();
   }
 }
 ```
 
-**`getPayload({ config })` é a peça a compreender.** Não abre uma ligação HTTP a lado nenhum. Inicializa o Payload **dentro deste processo** e devolve um objeto com métodos que falam diretamente com a base de dados. É a chamada _Local API_.
+A consulta em si mudou-se para `loadPayloadSite.ts`, para que a versão com cache e a versão sem cache partilhem o mesmo código — voltamos a isso em [8.6](#86-a-cache-o-que-sobrevive-ao-pedido). É essa a leitura que interessa aqui:
+
+```ts
+export async function loadPayloadSite(): Promise<SiteDefinition> {
+  const payload = await getPayloadClient();
+
+  const site = await payload.findGlobal({ slug: 'site', depth: 0 });
+
+  return mapPayloadSite(site);
+}
+```
+
+**`getPayloadClient()` é a peça a compreender.** Por dentro é `getPayload({ config })`, com o config importado dinamicamente. Não abre uma ligação HTTP a lado nenhum. Inicializa o Payload **dentro deste processo** e devolve um objeto com métodos que falam diretamente com a base de dados. É a chamada _Local API_.
 
 Compara os dois caminhos possíveis:
 
@@ -1636,7 +1643,7 @@ export function mapPayloadSite(site: Site): SiteDefinition {
 }
 ```
 
-Faz a tradução do vocabulário do CMS (`enabledLocales`) para o do projeto (`locales`). O `?? []` protege contra o campo estar por preencher.
+Faz a tradução do vocabulário do CMS (`enabledLocales`) para o do projeto (`locales`). O `?? []` protege contra o campo estar por preencher. O `depth: 0` da consulta existe porque este mapeador só lê escalares — não há relação nenhuma para popular.
 
 E é aqui que este provider **responde** qual é o seu locale por omissão. O campo `enabledLocales` é ordenável no admin e a sua descrição promete que o primeiro é o default — é essa promessa que esta linha cumpre. Com o global por preencher não há resposta possível vinda dos dados, e cai-se no `payloadDefaultLocale`, a constante que o `payload.config.ts` também usa.
 
@@ -1659,36 +1666,31 @@ export class PayloadPageSource extends PageSource {
 
     const payloadLocale: SupportedLocale = requested;
 
-    const payload = await getPayloadClient();
-
-    const page = await resolvePayloadPage(payload, path, payloadLocale, options?.draft ?? false);
-
-    if (!page) {
-      return undefined;
+    // O rascunho nunca passa pela cache.
+    if (options?.draft) {
+      return loadPayloadPage(path, payloadLocale, true);
     }
 
-    return mapPayloadPage(page, payloadLocale);
+    return getCachedPage(path, payloadLocale);
   }
 }
 ```
 
 A assinatura é **exatamente** a da classe abstrata — não podia ser outra ([0.3](#03-extends-e-polimorfismo)).
 
-**Sem locale, a origem responde o seu.** O `getDefaultLocale` lê o global `Site` e passa-o pelo `mapPayloadSite`. Isto é o contrato do `PageSource`: omitir o locale significa «usa o teu default», não «desiste».
+**Sem locale, a origem responde o seu.** O `getDefaultLocale` lê o global `Site` pelo mesmo `getCachedSite` que a `PayloadSiteSource` usa — é a mesma entrada de cache, portanto não é uma segunda consulta. Isto é o contrato do `PageSource`: omitir o locale significa «usa o teu default», não «desiste».
 
 > ✅ **Corrigido**
 >
 > A primeira linha era `if (!locale || !isSupportedLocale(locale)) return undefined`. Um `getPage` sem locale desistia — o que fazia desta source a única que não sabia responder à pergunta mais simples que se lhe pode fazer. Hoje resolve.
 >
-> A consulta extra só acontece quando quem chama omite o locale, o que o frontend nunca faz: o `resolvePage` passa-o sempre, vindo do `resolveRoute`. Vale mais isso do que acoplar esta source à `PayloadSiteSource`, que pagaria em todos os pedidos para poupar num que quase não acontece.
+> Quando isto foi escrito, a leitura do global custava mesmo uma consulta extra, e argumentou-se que valia a pena por só acontecer num caminho que o frontend nunca percorre. Com a cache, o argumento deixou de ser preciso: o custo é o de uma entrada já quente.
 
 **A guarda de locale** é o sítio onde o type predicate de [8.1](#81-localests-uma-lista-três-formas) se paga. O `core` fala em `locale?: string` (qualquer string); o Payload só aceita os locales que conhece. Depois do `if`, o TypeScript já sabe que `requested` é um `SupportedLocale`, e a linha seguinte compila sem cast nenhum. Sem o predicate, era preciso escrever `requested as SupportedLocale`, uma afirmação por verificar.
 
 Continua a haver uma decisão discutível: um locale desconhecido dá `undefined`, que acaba em 404. É defensável (`/xx/sobre-nos` não é uma página deste site), mas é um sítio onde um problema de configuração fica indistinguível de uma página inexistente, sem log nenhum.
 
-**O `getPayloadClient()`** importa o `payload.config.ts` dinamicamente, e é isso que permite ao provider `mocks` correr sem nunca avaliar a config — ver [7.x](#cap-7--sair-do-core-o-provider).
-
-E `options?.draft ?? false` — o encadeamento opcional para o caso de `options` não vir, e o `?? false` para o caso de vir sem `draft`. Duas defesas porque há dois níveis de opcionalidade.
+**A bifurcação do rascunho** é a linha com mais consequência do ficheiro, e está explicada em [8.6](#86-a-cache-o-que-sobrevive-ao-pedido). Em duas palavras: o que o editor vê no Live Preview é a versão dele, e guardá-la arriscava servi-la a um visitante anónimo.
 
 ## 8.4 `resolvePayloadPage`, opção a opção
 
@@ -1838,6 +1840,99 @@ O `Object.entries` / `Object.fromEntries` é o par idiomático para transformar 
 >
 > A versão original tinha um `!Array.isArray(value)` na condição, e portanto a recursão **não entrava em arrays**: um `null` dentro de um item de array sobrevivia à limpeza e fazia o `parse` falhar. Não se notava porque nenhum módulo tem arrays ainda — ia aparecer no primeiro módulo com uma lista, como um bloco que desaparece em produção sem explicação. Hoje o `cleanValue` trata os três casos (array, objeto, primitivo) e há testes de regressão em `mapPayloadPage.test.ts`.
 
+## 8.6 A cache: o que sobrevive ao pedido
+
+Em [2.2](#22-o-que-o-cache-garante--e-o-que-não-garante) ficou dito que o `cache()` do React morre com o pedido. Esta secção é a outra metade: o que fica.
+
+### Porque era preciso
+
+O frontend é SSR. Não há uma única página estática, e por isso cada visita a cada página fazia duas consultas ao Postgres — uma ao global `Site` para o `<html lang>`, outra à página. Numa base de dados remota, medido num servidor de produção: **133 ms**. Com cache, a mesma página serve em **~20 ms**.
+
+### Duas camadas com nomes parecidos
+
+|               | `cache()` do React                      | `unstable_cache` do Next                       |
+| ------------- | --------------------------------------- | ---------------------------------------------- |
+| de onde vem   | `react`                                 | `next/cache`                                   |
+| tempo de vida | um pedido HTTP                          | até alguém invalidar a tag                     |
+| o que resolve | o layout e a página perguntarem o mesmo | o segundo visitante não voltar à base de dados |
+| onde vive     | `app/(frontend)/_lib/`                  | `providers/payload/cache/`                     |
+
+São complementares, não alternativas. O primeiro é uma deduplicação; o segundo é um cache de dados.
+
+### O par carregar / guardar
+
+Cada leitura existe em duas versões, e a razão é o rascunho:
+
+```
+loadPayloadPage(path, locale, draft)   ← consulta + mapeamento, sem cache
+        ↑
+getCachedPage(path, locale)            ← o mesmo, com o draft fixo em false
+```
+
+O `getCachedPage` não recebe `draft`. Não é esquecimento — é a garantia. **Não há forma de um rascunho entrar na cache**, porque o argumento não existe na assinatura. Quem precisa do rascunho chama o `loadPayloadPage` directamente, e é isso que o `if (options?.draft)` do `getPage` faz.
+
+Porquê tanto cuidado? Porque o que o editor vê no Live Preview é a versão dele, por publicar. Se essa versão entrasse na cache partilhada, o visitante seguinte via-a.
+
+### O que se guarda é o mapeamento
+
+Guarda-se o `PageDefinition`, não o documento cru do Payload. Três razões: o documento vem com `depth: 2` e arrasta media e relações inteiras; o `PageDefinition` é exactamente o que o renderer precisa; e é JSON puro, que é o que o `unstable_cache` sabe serializar — por dentro faz `JSON.stringify` e `JSON.parse`.
+
+O `path` e o `locale` entram na chave por serem **argumentos** — o `unstable_cache` inclui os argumentos por si, e o array que se lhe passa (`['payload:page']`) é só um prefixo. Cada idioma tem a sua entrada; o global `Site` tem uma só, partilhada por todas as rotas.
+
+Inspeccionado em produção, o `.next/cache/fetch-cache` fica assim:
+
+```
+["payload:site"]   {"name":"Teste","locales":["pt-PT","en-GB"],"defaultLocale":"pt-PT"}
+["payload:pages"]  {"meta":{"locale":"pt-PT",…},"main":[…]}
+["payload:pages"]  {"meta":{"locale":"en-GB",…},"main":[…]}
+["payload:pages"]  undefined
+```
+
+A última entrada é uma página que não existe. **O 404 também se guarda**, e é de propósito: um caminho inexistente pedido em ciclo não deve custar uma consulta por pedido, e publicar a página nova invalida a mesma tag.
+
+### As tags são grosseiras de propósito
+
+Duas tags: `payload:pages` para todas as páginas, `payload:site` para o global.
+
+Uma tag por página seria mais eficiente, e a tentação é grande. Não é de confiança aqui: o `nestedDocs` reescreve os breadcrumbs dos filhos quando um pai muda de slug, e nesse caminho não há garantia de que o `afterChange` de cada filho dispare. Uma tag por página deixaria os filhos com o URL antigo em cache, sem nada que os invalidasse.
+
+Invalidar a mais custa uma consulta. Invalidar a menos serve um URL errado durante horas. A escolha faz-se sozinha.
+
+### Quem invalida
+
+Os hooks do Payload, em `cache/hooks.ts`, ligados na collection `Pages` e no global `Site`:
+
+```ts
+hooks: {
+  afterChange: [revalidatePagesOnChange],
+  afterDelete: [revalidatePagesOnDelete],
+},
+```
+
+E o hook das páginas tem uma guarda que não é opcional:
+
+```ts
+if (doc?._status !== 'published' && previousDoc?._status !== 'published') return;
+```
+
+**Sem ela, o autosave a 375ms invalidava a cache do site inteiro a cada tecla que um editor escrevesse.** Um rascunho de uma página nunca publicada não está em cache nenhuma — o `resolvePayloadPage` filtra por `_status: 'published'` — portanto não há nada para invalidar.
+
+O `previousDoc` conta tanto como o `doc` por causa do despublicar: a versão nova é rascunho, mas a antiga estava em cache e tem de sair.
+
+### Duas armadilhas do `revalidateTag`
+
+O `revalidatePayloadTag` embrulha o `revalidateTag` do Next por duas razões, e nenhuma é cosmética.
+
+**A primeira é o segundo argumento.** Em Next 16 a forma de um só argumento está depreciada, e o valor que a documentação recomenda é `'max'`. `'max'` marca a entrada como velha e serve o conteúdo antigo enquanto revalida em fundo — óptimo para um catálogo, errado para um CMS: quem carrega em publicar e vai ver a página veria a versão antiga à primeira. Usa-se `{ expire: 0 }`, que expira já.
+
+**A segunda é que os hooks também correm fora do Next.** Um script de seed, uma migração ou o CLI do Payload chamam o mesmo `afterChange`, e aí o `revalidateTag` atira — não encontra o contexto do pedido. Nesse caso não há cache nenhuma para invalidar, portanto engolir é a resposta certa. Mas só desse erro, identificado pelo código `E263` que o Next põe no objeto e não pela mensagem, que muda com a expressão que falhou.
+
+> ⚠️ **Dívida assumida**
+>
+> O `unstable_cache` está declarado em Next 16 como **substituído** pela directiva `use cache`. Não se migrou, e a razão está registada em [TODO.md](TODO.md): o `use cache` exige `cacheComponents: true`, que não é uma troca de API — liga o PPR por omissão, muda a navegação para `<Activity>`, e obriga todo o acesso a APIs de runtime a viver dentro de um `<Suspense>`. Isso inclui o `headers()` do layout de raiz, de onde sai o `<html lang>`, e inclui o admin do Payload, que partilha o mesmo `app/`. É uma ronda própria.
+
+---
+
 ---
 
 # Cap. 9 — Provider Payload, lado do CMS
@@ -1980,7 +2075,7 @@ export const Pages: CollectionConfig = {
 - **`useAsTitle: 'title'`** — que campo mostrar nas listagens para identificar o documento.
 - **`livePreview.url`** — dado o documento em edição, que endereço deve o iframe abrir. O `depth: 0` na consulta ao global é uma otimização: só se quer o array `enabledLocales`, não relações nenhumas.
 
-  O `enabledLocales?.[0]` é a convenção de [3.3](#33-o-locale-por-omissão-é-o-primeiro-da-lista) outra vez — o primeiro da lista é o por omissão. O `return undefined` quando não há locales desliga a pré-visualização sem dizer porquê, que é o terceiro dos «sítios silenciosos» que o [`TODO.md`](TODO.md) identifica.
+  O `enabledLocales?.[0]` é a convenção de [3.3](#33-o-locale-por-omissão-é-declarado-não-adivinhado) outra vez — o primeiro da lista é o por omissão. O `return undefined` quando não há locales desliga a pré-visualização sem dizer porquê, que é o terceiro dos «sítios silenciosos» que o [`TODO.md`](TODO.md) identifica.
 
 Os campos, dentro de duas `tabs`:
 
@@ -2119,7 +2214,7 @@ O frontend não é «autorizado»; **passa ao lado** do sistema de acesso, porqu
 
 - **`hasMany: true`** — escolha múltipla, e o valor é um array.
 - **`options: [...availableLocales]`** — as opções vêm da lista técnica ([8.1](#81-localests-uma-lista-três-formas)), no formato `{label, value}` que o `select` espera. O espalhamento é preciso porque `availableLocales` é `readonly` (por causa do `as const`) e o Payload quer um array mutável.
-- **`isSortable: true`** — e aqui está a peça que fecha o círculo: **a ordem é editável, e a ordem tem significado**. O primeiro locale é o por omissão ([3.3](#33-o-locale-por-omissão-é-o-primeiro-da-lista)), aquele que não leva prefixo no URL. A `description` diz isso ao editor, que é a única defesa que existe — arrastar um idioma para cima muda todos os URLs do site.
+- **`isSortable: true`** — e aqui está a peça que fecha o círculo: **a ordem é editável, e a ordem tem significado**. O primeiro locale é o por omissão ([3.3](#33-o-locale-por-omissão-é-declarado-não-adivinhado)), aquele que não leva prefixo no URL. A `description` diz isso ao editor, que é a única defesa que existe — arrastar um idioma para cima muda todos os URLs do site.
 
 ## 9.4 Os plugins: `nestedDocs` e `seo`
 
@@ -2580,7 +2675,7 @@ E os **`paths`**, que são os que vês em todos os imports do projeto:
 
 O `@/` evita cadeias de `../../../`. Os outros dois são exigidos pelo Payload, que espera encontrar a config e os tipos gerados por estes nomes exatos.
 
-**Uma opção que não está lá e faria diferença:** `noUncheckedIndexedAccess`. Sem ela, `array[0]` tem o tipo do elemento; com ela, tem `elemento | undefined`, o que obriga a tratar o caso de o array estar vazio. É a razão pela qual `locales[0]` ([3.3](#33-o-locale-por-omissão-é-o-primeiro-da-lista)), `docs[0]` ([8.4](#84-resolvepayloadpage-opção-a-opção)) e `split('-')[0]` ([3.2](#32-getlocalesegment-de-pt-pt-para-pt)) compilam sem guardas. Ligá-la agora obrigaria a algumas correções, mas apanhava exatamente a classe de bugs que este projeto mais tem.
+**Uma opção que não está lá e faria diferença:** `noUncheckedIndexedAccess`. Sem ela, `array[0]` tem o tipo do elemento; com ela, tem `elemento | undefined`, o que obriga a tratar o caso de o array estar vazio. É a razão pela qual `locales[0]` ([3.3](#33-o-locale-por-omissão-é-declarado-não-adivinhado)), `docs[0]` ([8.4](#84-resolvepayloadpage-opção-a-opção)) e `split('-')[0]` ([3.2](#32-getlocalesegment-de-pt-pt-para-pt)) compilam sem guardas. Ligá-la agora obrigaria a algumas correções, mas apanhava exatamente a classe de bugs que este projeto mais tem.
 
 ## 11.3 `next.config.ts`
 
@@ -2767,7 +2862,7 @@ if (draft) {
 return { headers, next: { revalidate: this.config.revalidate, tags } };
 ```
 
-Em rascunho nunca se guarda nada; fora dele, usa-se o cache do Next com revalidação por tempo e com **tags** para invalidação seletiva. Repara na diferença face ao provider do Payload, que não tem camada de cache nenhuma ([2.2](#22-o-que-o-cache-garante--e-o-que-não-garante)) — aqui há, porque o `fetch` do Next traz o mecanismo de graça.
+Em rascunho nunca se guarda nada; fora dele, usa-se o cache do Next com revalidação por tempo e com **tags** para invalidação seletiva. A regra do rascunho é a mesma do provider do Payload ([8.6](#86-a-cache-o-que-sobrevive-ao-pedido)) — a diferença é o mecanismo: aqui vem de graça com o `fetch` do Next, lá foi preciso o `unstable_cache`, porque a Local API não passa por `fetch` nenhum.
 
 Duas notas honestas sobre o estado atual: **nada no projeto chama `revalidateTag`**, portanto as tags ainda não servem para nada; e as tags (`ApiPageSource.ts:34`) **não incluem o locale**, o que numa API multilingue faria idiomas diferentes partilharem a mesma entrada de cache.
 
@@ -2866,13 +2961,13 @@ GET /en/sobre-nos
 
 Onde as coisas costumam partir, por ordem de probabilidade:
 
-| Sintoma                                | Suspeito                                                                                            |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| O módulo não aparece                   | `alias` ≠ `slug` do bloco ([6.6](#66-o-alias-é-a-cola)) ou falta o export em `src/modules/index.ts` |
-| 404 numa página que existe             | `breadcrumbs.url` diferente do esperado, ou `_status` ainda em rascunho                             |
-| O site inteiro dá 404                  | `enabledLocales` vazio no global `Site` ([3.3](#33-o-locale-por-omissão-é-o-primeiro-da-lista))     |
-| Erro de validação num módulo           | schema e bloco do Payload divergem; ver a mensagem do zod no `cause`                                |
-| O TypeScript não conhece um campo novo | falta correr `pnpm generate:payload`                                                                |
+| Sintoma                                | Suspeito                                                                                             |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| O módulo não aparece                   | `alias` ≠ `slug` do bloco ([6.6](#66-o-alias-é-a-cola)) ou falta o export em `src/modules/index.ts`  |
+| 404 numa página que existe             | `breadcrumbs.url` diferente do esperado, ou `_status` ainda em rascunho                              |
+| O site inteiro dá 404                  | `enabledLocales` vazio no global `Site` ([3.3](#33-o-locale-por-omissão-é-declarado-não-adivinhado)) |
+| Erro de validação num módulo           | schema e bloco do Payload divergem; ver a mensagem do zod no `cause`                                 |
+| O TypeScript não conhece um campo novo | falta correr `pnpm generate:payload`                                                                 |
 
 ---
 

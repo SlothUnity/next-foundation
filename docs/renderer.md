@@ -45,6 +45,8 @@ O `Fragment` evita um wrapper no DOM. A chave é o `module.id`, que pertence à 
 
 Isto é o que a foundation garante e o projecto não pode desfazer: o conteúdo das três regiões é livre, a estrutura não.
 
+**Hoje nenhum provider preenche o `navigation` nem o `footer`**, e isso é deliberado. Onde esse conteúdo vive no CMS — provavelmente globals, no Payload — é uma decisão de quem monta o site, não da foundation. Ela garante os landmarks e o sítio onde os módulos entram; o resto é do projecto.
+
 ## ModuleRenderer
 
 [core/renderer/ModuleRenderer.tsx](../src/core/renderer/ModuleRenderer.tsx)

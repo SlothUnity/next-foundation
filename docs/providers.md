@@ -16,6 +16,14 @@ export interface Provider {
 
 O `preview` é opcional e é o que distingue este contrato da `Foundation`: um mecanismo de pré-visualização é específico do CMS (o do Payload usa `postMessage` e um componente cliente), logo não pertence ao domínio. Um provider que não tenha preview simplesmente não o declara, e a aplicação não renderiza nada — sem condicionais espalhadas.
 
+## A cache é do provider, não do core
+
+O `core` não sabe o que é uma cache, e é assim que deve ficar: a `PageSource` é uma classe abstracta com um método, e quem a implementa decide se guarda alguma coisa e onde.
+
+Cada provider resolve-o com o mecanismo que a sua origem lhe dá: o `api` recebe-o de graça no `fetch` do Next; o `payload` teve de o construir sobre `unstable_cache`, porque a Local API fala directamente com o Postgres e não passa por `fetch` nenhum — ver [payload.md](payload.md#cache). O `mocks` não tem nada em memória para guardar.
+
+Uma regra atravessa os três: **o rascunho nunca entra na cache.** O que o editor está a ver é a versão dele, e guardá-la arriscava servi-la a um visitante anónimo.
+
 ## O provider é dono dos seus locales
 
 Duas regras atravessam todos os providers, e vale a pena lê-las juntas porque são a mesma decisão vista de dois lados.

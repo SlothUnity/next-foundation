@@ -195,16 +195,16 @@ async getPage(path, locale, options) {
 
   if (!isSupportedLocale(requested)) return undefined;
 
-  const payload = await getPayloadClient();
-  const page = await resolvePayloadPage(payload, path, requested, options?.draft ?? false);
+  // O rascunho nunca passa pela cache.
+  if (options?.draft) return loadPayloadPage(path, requested, true);
 
-  if (!page) return undefined;
-
-  return mapPayloadPage(page, requested);
+  return getCachedPage(path, requested);
 }
 ```
 
-Sem locale, o default é resposta desta origem — o `getDefaultLocale` lê o global `Site` e passa-o pelo `mapPayloadSite`. Só corre quando quem chama omite o locale, o que o frontend nunca faz: vale a consulta extra em vez de acoplar esta source à `PayloadSiteSource`, que pagaria em todos os pedidos para poupar num que quase não acontece.
+Sem locale, o default é resposta desta origem — o `getDefaultLocale` lê o global `Site` pelo `getCachedSite`, portanto é a mesma entrada de cache que a `PayloadSiteSource` usa e não uma consulta extra.
+
+A bifurcação entre `loadPayloadPage` e `getCachedPage` é o tema da [Cache](#cache).
 
 Um locale que o Payload não conheça devolve `undefined` — trata-se como página não encontrada, não como erro.
 
@@ -253,6 +253,54 @@ function mapBlock(block): ModuleInstance {
 O `blockType` do Payload torna-se o `alias` do módulo. É essa a única ligação entre o CMS e o frontend.
 
 O `removeNullValues` é recursivo e existe porque o Payload devolve `null` para campos opcionais vazios, enquanto o zod espera `undefined` em `.optional()`. Sem isto, um subtítulo vazio falhava a validação.
+
+## Cache
+
+[cache/](../src/providers/payload/cache/)
+
+Sem ela, cada visita a cada página fazia duas consultas ao Postgres — uma ao global `Site`, outra à página. O `cache()` do React só deduplica dentro de um pedido, e o frontend é SSR, portanto não havia nada a guardar entre pedidos. Medido num servidor de produção contra a base de dados real: **133 ms a frio, ~20 ms a quente.**
+
+### O que se guarda
+
+Guarda-se o `PageDefinition` e o `SiteDefinition` — o resultado do mapeamento, não o documento cru. O documento vem com `depth: 2`, e arrasta media e relações inteiras; o `PageDefinition` é o que o renderer precisa e nada mais, é JSON puro, e é isso que o `unstable_cache` sabe serializar.
+
+| Ficheiro                                                                          | Papel                                             |
+| --------------------------------------------------------------------------------- | ------------------------------------------------- |
+| [sources/loadPayloadPage.ts](../src/providers/payload/sources/loadPayloadPage.ts) | consulta + mapeamento, sem cache nenhuma          |
+| [sources/loadPayloadSite.ts](../src/providers/payload/sources/loadPayloadSite.ts) | o mesmo para o global `Site`, com `depth: 0`      |
+| [cache/getCachedPage.ts](../src/providers/payload/cache/getCachedPage.ts)         | o `loadPayloadPage` com o `draft` fixo em `false` |
+| [cache/getCachedSite.ts](../src/providers/payload/cache/getCachedSite.ts)         | o `loadPayloadSite` guardado                      |
+| [cache/tags.ts](../src/providers/payload/cache/tags.ts)                           | `payload:pages` e `payload:site`                  |
+| [cache/hooks.ts](../src/providers/payload/cache/hooks.ts)                         | os hooks do Payload que invalidam                 |
+
+O `path` e o `locale` entram na chave por serem argumentos — o `unstable_cache` inclui-os por si, e o `keyParts` serve só de prefixo. Cada idioma tem a sua entrada; o global `Site` tem uma só, partilhada por todas as rotas.
+
+Não há `revalidate` por tempo. O conteúdo não envelhece sozinho, muda quando o editor o muda.
+
+### O rascunho nunca entra
+
+É a regra que mais importa. O que o editor vê no Live Preview é a versão dele, e guardá-la arriscava servi-la a um visitante anónimo. O `getCachedPage` tem o `draft` fixo em `false`, portanto não há sequer forma de lá chegar um rascunho por engano — quem precisa dele chama o `loadPayloadPage` directamente.
+
+O `unstable_cache` também se desliga sozinho em modo rascunho, mas isso é a segunda linha de defesa, não a primeira.
+
+### O 404 também se guarda
+
+Uma página que não existe fica em cache como `undefined`. É o que se quer: um 404 repetido não deve custar uma consulta, e publicar a página nova invalida a mesma tag.
+
+### Invalidação
+
+As tags são propositadamente grosseiras — uma para todas as páginas, outra para o global. Uma tag por página seria mais eficiente mas não é de confiança aqui: o `nestedDocs` reescreve os breadcrumbs dos filhos quando um pai muda de slug, e nesse caminho não há garantia de que o `afterChange` de cada filho dispare. Invalidar a mais custa uma consulta; invalidar a menos serve um URL errado durante horas.
+
+Duas decisões no [revalidatePayloadTag](../src/providers/payload/cache/revalidatePayloadTag.ts):
+
+- **`{ expire: 0 }` e não `'max'`.** O `'max'` que a documentação do Next recomenda marca como velho e serve o conteúdo antigo enquanto revalida em fundo. Errado para um CMS: quem carrega em publicar veria a página velha à primeira. A forma de um só argumento faria o mesmo que `{ expire: 0 }` mas está depreciada em Next 16.
+- **Os hooks também correm fora do Next.** Um script de seed, uma migração ou o CLI do Payload chamam o mesmo `afterChange`, e aí o `revalidateTag` atira por não encontrar contexto de pedido. Nesse caso não há cache para invalidar, portanto engole-se — mas só esse erro, identificado pelo código `E263` e não pela mensagem.
+
+E uma guarda no hook das páginas: **um rascunho de uma página nunca publicada não invalida nada.** Sem isto, o autosave a 375ms invalidava a cache do site inteiro a cada tecla que um editor escrevesse. O `previousDoc` conta tanto como o `doc`, por causa do despublicar — a versão nova é rascunho, mas a antiga estava em cache e tem de sair.
+
+### `unstable_cache` está depreciado
+
+Em Next 16 o `unstable_cache` está declarado como substituído pela directiva `use cache`, que exige `cacheComponents: true`. Esse flag não é uma troca de API: liga o PPR por omissão, muda a navegação para `<Activity>`, e obriga todo o acesso a APIs de runtime a viver dentro de um `<Suspense>` — incluindo o `headers()` do nosso layout de raiz, de onde sai o `<html lang>`, e incluindo o admin do Payload, que partilha o mesmo `app/`. Fica registado em [TODO.md](TODO.md) como ronda própria.
 
 ## Live Preview
 

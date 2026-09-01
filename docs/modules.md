@@ -197,6 +197,21 @@ O `alias` do módulo e o `slug` do bloco saem ambos do `camelCase` do nome que d
 
 **Falta um passo, e é de propósito:** correr `pnpm generate:payload` a seguir, para os tipos do Payload apanharem o bloco novo. O gerador lembra-te no fim.
 
+### Sem o provider payload, não há bloco
+
+As três acções do Payload só correm **se `src/providers/payload/blocks/index.ts` existir**. Um projecto servido por `api` ou por `mocks` pode ter apagado `src/providers/payload/` inteiro, e nesse caso um bloco não teria onde viver — nem ficheiro, nem `pageBlocks` onde se registar.
+
+Sem ele, o gerador escreve só o módulo e diz-to:
+
+```
+-> Provider payload não encontrado — só o módulo foi criado.
+   Liga-o à tua origem de conteúdo.
+```
+
+Não é um aviso de erro: é a resposta certa nesse projecto. O que muda é onde o `alias` passa a ter de coincidir — no `mapApiPage` do provider api, ou no `block()` de uma página de mock. Ver [providers.md](providers.md).
+
+O que o gerador testa é o `index.ts` e não só a pasta, porque é nele que vivem as duas âncoras `// plop:` — sem elas não há onde registar o bloco.
+
 O que sai é código pronto a correr, não um esqueleto vazio: o `pnpm typecheck`, o `pnpm lint` e o teste gerado passam sem se tocar em nada. A partir daí acrescentas campos ao schema e ao bloco, aos pares.
 
 ### As duas coisas invulgares que vais notar
@@ -223,6 +238,18 @@ Este é o único ficheiro que precisa de **duas** inserções — o import e a e
 - Um módulo não importa de `providers/`. Recebe dados via props; não sabe de onde vieram.
 - O `PageDefinition` não importa tipos de módulos concretos. Trabalha com `ModuleInstance`.
 - Se um módulo precisar de dados que não estão nos seus `data`, o sítio para os obter é o mapper do provider — não o componente.
+
+## Partes do contrato ainda por exercitar
+
+O `Hero` só usa campos de texto, portanto há caminhos do código que **nenhum módulo percorreu ainda**. Se fores o primeiro a escrever um destes, conta com ser também o primeiro a encontrar o que lá estiver partido:
+
+| Um módulo com…     | Exercita                                                                       |
+| ------------------ | ------------------------------------------------------------------------------ |
+| uma relação        | o `depth: 2` da query do Payload — sem ele, a relação chega como um id         |
+| um upload de media | a collection `Media` e o único caminho de leitura pública do CMS               |
+| uma lista de itens | o `removeNullValues` do mapper a percorrer arrays, e as keys de React na lista |
+
+Não é trabalho pendente da foundation — é o que se descobre ao construir o primeiro site com ela.
 
 ## O que a foundation não decide por ti
 
