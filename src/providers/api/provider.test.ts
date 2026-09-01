@@ -55,8 +55,10 @@ describe('apiProvider', () => {
     expect(requested).toEqual(['/content/en/about-us']);
   });
 
-  it('returns undefined for a path the api does not know', async () => {
-    await expect(apiProvider.page.getPage('nao-existe', 'pt-PT')).resolves.toBeUndefined();
+  it('answers notFound for a path the api does not know', async () => {
+    await expect(apiProvider.page.getPage('nao-existe', 'pt-PT')).resolves.toEqual({
+      status: 'notFound',
+    });
   });
 
   it('delivers the response body to the mapper untouched', async () => {

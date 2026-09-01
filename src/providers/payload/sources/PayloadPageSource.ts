@@ -1,4 +1,4 @@
-import type { PageDefinition } from '@/core/pages';
+import type { PageResponse } from '@/core/pages';
 
 import { PageSource } from '@/core/pages/PageSource';
 import type { GetPageOptions } from '@/core/pages/PageSource';
@@ -9,11 +9,7 @@ import { isSupportedLocale, type SupportedLocale } from '@/providers/payload/loc
 import { loadPayloadPage } from '@/providers/payload/sources/loadPayloadPage';
 
 export class PayloadPageSource extends PageSource {
-  async getPage(
-    path: string,
-    locale?: string,
-    options?: GetPageOptions,
-  ): Promise<PageDefinition | undefined> {
+  async getPage(path: string, locale?: string, options?: GetPageOptions): Promise<PageResponse> {
     // Sem locale, o default é resposta desta origem — não motivo para desistir.
     const requested = locale ?? (await this.getDefaultLocale());
 
@@ -26,7 +22,7 @@ export class PayloadPageSource extends PageSource {
         `Locale "${requested}" is enabled in the CMS but missing from availableLocales in locales.ts. Every page in it will 404.`,
       );
 
-      return undefined;
+      return { status: 'notFound' };
     }
 
     const payloadLocale: SupportedLocale = requested;

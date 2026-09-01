@@ -63,9 +63,12 @@ provider.page.getPage(path, locale, { draft })
         │   │  mapPayloadPage()   ─ traduz │
         │   └─────────────────────────────┘
         ▼
-PageDefinition | undefined
+PageResponse
         │
-        ├── undefined → notFound()                   app
+        ├── redirect → redirect() / permanentRedirect()   app
+        │
+        ├── notFound → a página de erro da origem,
+        │              ou um fallback mínimo
         │
         ▼
 PageRenderer                                 core
@@ -92,15 +95,19 @@ Nunca o inverso. Se um campo do Payload não encaixa no `PageDefinition`, é o m
 
 ### 2. O routing pertence à aplicação
 
-O `PageSource` recebe um `path` e um `locale` e devolve dados ou `undefined`. Não conhece Next.js, não chama `notFound()`, não sabe o que é um segmento de URL.
+O `PageSource` recebe um `path` e um `locale` e diz **o que há ali**: uma página, um redirect, ou nada. Não conhece Next.js, não chama `notFound()`, não sabe o que é um segmento de URL — traduzir o status numa resposta HTTP é trabalho da aplicação.
 
 ```ts
-const page = await foundation.page.getPage(route.path, route.locale, { draft });
+const { response } = await resolvePage(segments);
 
-if (!page) {
-  notFound();
+if (response.status === 'redirect') {
+  return response.permanent ? permanentRedirect(response.to) : redirect(response.to);
 }
+
+return <PageRenderer page={response.page} foundation={foundation} />;
 ```
+
+Repara em que o `notFound` e o `ok` seguem o **mesmo** caminho de render. Uma página de erro é conteúdo como outro qualquer — ver [routing.md](routing.md#o-404-é-conteúdo).
 
 ### 3. Os módulos são descobertos por alias
 

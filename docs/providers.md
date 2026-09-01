@@ -47,10 +47,28 @@ abstract getPage(
   path: string,
   locale?: string,
   options?: GetPageOptions,
-): Promise<PageDefinition | undefined>;
+): Promise<PageResponse>;
 ```
 
-Não significa «desiste», que era o que o `PayloadPageSource` fazia. Quem chama nem sempre sabe que locales a origem serve; a origem sabe sempre. Um locale que ela não conheça continua a dar `undefined` — isso é um pedido a uma página que ali não existe.
+Não significa «desiste», que era o que o `PayloadPageSource` fazia. Quem chama nem sempre sabe que locales a origem serve; a origem sabe sempre. Um locale que ela não conheça responde `notFound` — é um pedido a uma página que ali não existe.
+
+## O provider diz o status, não só o conteúdo
+
+```ts
+type PageResponse =
+  | { status: 'ok'; page: PageDefinition }
+  | { status: 'notFound'; page?: PageDefinition }
+  | { status: 'redirect'; to: string; permanent?: boolean };
+```
+
+Aqui esteve um `PageDefinition | undefined`, e o `undefined` acumulava três significados: «não existe», «não sei este locale» e «a configuração está errada». O `app` traduzia os três num 404 mudo.
+
+Duas coisas mudam para quem escreve um provider:
+
+- **a página de erro é conteúdo.** Se a origem tiver uma, devolve-a no `page` do `notFound` e ela renderiza como qualquer outra — ver [routing.md](routing.md#o-404-é-conteúdo). Se não tiver, omite-o e a aplicação desenha um fallback com aviso no log.
+- **os redirects passam a caber no contrato.** É a segunda coisa que um CMS precisa de dizer sobre um URL, e até agora não havia como.
+
+Só o `mocks` preenche os dois hoje, de propósito: é o provider que serve de exemplo. No `payload` e no `api` ficam marcados como costura, como o `mapApiPage`.
 
 A consequência prática está no [routing.md](routing.md): como o default vive no provider e o provider corre no servidor, o `proxy` não precisa de o saber e portanto não reescreve URLs.
 
@@ -124,16 +142,13 @@ Nota: os bundles são `const` de módulo, logo **todos** são instanciados quand
 
 ```ts
 export class ContentfulPageSource extends PageSource {
-  async getPage(
-    path: string,
-    locale?: string,
-    options?: GetPageOptions,
-  ): Promise<PageDefinition | undefined> {
+  async getPage(path: string, locale?: string, options?: GetPageOptions): Promise<PageResponse> {
     // 1. sem locale, resolver o default desta origem
     // 2. validar/normalizar o locale
-    // 3. consultar o CMS (usando options?.draft se suportado)
-    // 4. devolver undefined se não existir
-    // 5. traduzir para PageDefinition
+    // 3. se o caminho for um redirect, devolver { status: 'redirect', to }
+    // 4. consultar o CMS (usando options?.draft se suportado)
+    // 5. não existe → { status: 'notFound', page: a página de erro, se houver }
+    // 6. existe → { status: 'ok', page: traduzido para PageDefinition }
   }
 }
 ```
@@ -196,7 +211,9 @@ mocks/
 ├── mockSite.ts          ← o site e os locales que os mocks servem
 ├── pages/
 │   ├── index.ts         ← a lista do que é servido
-│   └── home.ts          ← uma página, em todos os idiomas
+│   ├── home.ts          ← uma página, em todos os idiomas
+│   ├── notFound.ts      ← a página de erro, em todos os idiomas
+│   └── redirects.ts     ← caminhos que mudaram de sítio
 └── sources/
     ├── MockPageSource.ts
     └── MockSiteSource.ts
@@ -205,6 +222,26 @@ mocks/
 Arranca com `PROVIDER=mock pnpm dev`. Serve três propósitos: desenvolver o frontend sem o CMS a correr, ter testes rápidos que não tocam no Payload, e provar que a abstracção funciona — se o mock deixar de conseguir servir o site, a abstracção está a vazar.
 
 Não declara `preview`, por isso é também o caso de teste do `preview` opcional.
+
+**É o único provider que exercita os três ramos do `PageResponse`**, e é para isso que serve: o `payload` e o `api` deixam o 404 e os redirects como costura por ligar, portanto é aqui que se vê o contrato inteiro a funcionar.
+
+```ts
+// MockPageSource — a ordem é a de qualquer CMS
+const redirect = mockRedirects.find(/* … */);
+if (redirect) return { status: 'redirect', to: redirect.to, permanent: redirect.permanent };
+
+const match = mockPages.find(/* … */);
+if (match) return { status: 'ok', page: match.page };
+
+const notFound = mockNotFoundPages.find(/* … */);
+return { status: 'notFound', page: notFound?.page };
+```
+
+O redirect vem antes da página de propósito: se um caminho tiver as duas coisas ganha o redirect, que é o que permite substituir uma página sem a apagar.
+
+A `notFound.ts` é escrita com o mesmo `definePage` e os mesmos módulos que qualquer outra página — é esse o ponto. Traduzida, e com `noIndex: true` na meta.
+
+Os redirects têm uma entrada por idioma, porque um slug traduz-se: `/pagina-antiga` e `/en/old-page` são URLs diferentes.
 
 ### Escrever uma página
 

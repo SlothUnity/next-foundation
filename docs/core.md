@@ -12,18 +12,35 @@ export interface GetPageOptions {
 }
 
 export abstract class PageSource {
-  abstract getPage(
-    path: string,
-    locale?: string,
-    options?: GetPageOptions,
-  ): Promise<PageDefinition | undefined>;
+  abstract getPage(path: string, locale?: string, options?: GetPageOptions): Promise<PageResponse>;
 }
 ```
 
 - `path` é o caminho **sem** prefixo de locale — `''` para a homepage, `'servicos/consultoria'` para uma página aninhada.
-- `locale` é o código completo (`'pt-PT'`), não o segmento de URL (`'pt'`). **Omiti-lo significa «usa o teu locale por omissão»**, não «desiste»: quem chama nem sempre sabe que locales a origem serve, e é a origem que responde qual é o seu default. Um locale que ela não conheça continua a dar `undefined`.
+- `locale` é o código completo (`'pt-PT'`), não o segmento de URL (`'pt'`). **Omiti-lo significa «usa o teu locale por omissão»**, não «desiste»: quem chama nem sempre sabe que locales a origem serve, e é a origem que responde qual é o seu default.
 - `options.draft` pede a versão de rascunho. É um conceito de domínio, não do Payload: qualquer CMS headless tem publicado/rascunho. Implementações que não o suportem ignoram-no.
-- Uma página inexistente é `undefined`. Não é excepção, não é `null`, não é `notFound()`.
+- **A resposta é sempre um `PageResponse`.** Nunca `undefined`, nunca uma excepção, nunca um `notFound()`.
+
+### PageResponse
+
+```ts
+export type PageResponse =
+  | { status: 'ok'; page: PageDefinition }
+  | { status: 'notFound'; page?: PageDefinition }
+  | { status: 'redirect'; to: string; permanent?: boolean };
+```
+
+Aqui esteve um `PageDefinition | undefined`. O `undefined` dizia «esta página não existe», mas também «não sei este locale» e «a configuração está errada» — e o `app` traduzia qualquer um deles num 404 mudo. Foi essa ambiguidade que gerou a série de falhas silenciosas que este projecto andou a fechar.
+
+O status vive **num envelope à volta do `PageDefinition`, não num campo dentro dele**, por três razões:
+
+- o `PageDefinition` é o que o renderer consome, e não deve carregar informação de transporte;
+- um redirect não tem página nenhuma, logo não caberia num campo;
+- e assim nenhum mock, mapper ou teste tem de escrever um status que é quase sempre o mesmo.
+
+O `page` opcional no `notFound` é o que torna a página de erro **conteúdo**: a origem devolve-a se a tiver, e ela renderiza como qualquer outra. É isso que faz um 404 chegar inteiro ao HTML servido — ver [routing.md](routing.md#o-404-é-conteúdo).
+
+O `permanent` mapeia para os helpers do Next: `redirect` dá 307, `permanentRedirect` dá 308. Não são 301/302 — esses exigiriam produzir a resposta no proxy.
 
 ## SiteSource
 

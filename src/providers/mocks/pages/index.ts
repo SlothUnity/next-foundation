@@ -1,6 +1,10 @@
 import type { MockPage } from '../definePage';
 
 import { home } from './home';
+import { notFound } from './notFound';
+
+export type { MockRedirect } from './redirects';
+export { mockRedirects } from './redirects';
 
 /**
  * Todas as páginas que o provider `mocks` serve.
@@ -10,3 +14,9 @@ import { home } from './home';
  * uma página são duas linhas — o import e a entrada.
  */
 export const mockPages: MockPage[] = [...home];
+
+/**
+ * A página de erro, por idioma. Fora do `mockPages` de propósito: não é alcançável
+ * por URL, é o que se serve quando nenhum caminho bate certo.
+ */
+export const mockNotFoundPages: MockPage[] = [...notFound];

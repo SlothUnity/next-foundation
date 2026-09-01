@@ -60,16 +60,17 @@ describe('ApiPageSource', () => {
     expect(get.mock.calls[0][1]).toMatchObject({ draft: true });
   });
 
-  it('returns undefined when the api has no page', async () => {
+  it('answers notFound when the api has no page', async () => {
     const { source } = createSource(undefined);
 
-    await expect(source.getPage('nao-existe', 'pt-PT')).resolves.toBeUndefined();
+    // Sem página de erro: onde vive a dela é uma característica da API que se ligar.
+    await expect(source.getPage('nao-existe', 'pt-PT')).resolves.toEqual({ status: 'notFound' });
   });
 
-  it('returns undefined when the api returns an empty body', async () => {
+  it('answers notFound when the api returns an empty body', async () => {
     const { source } = createSource(null);
 
-    await expect(source.getPage('nao-existe', 'pt-PT')).resolves.toBeUndefined();
+    await expect(source.getPage('nao-existe', 'pt-PT')).resolves.toEqual({ status: 'notFound' });
   });
 
   it('hands the body to the mapper untouched', async () => {

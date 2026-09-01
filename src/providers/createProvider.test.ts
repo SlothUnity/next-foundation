@@ -41,9 +41,12 @@ describe('createProvider', () => {
     process.env.PROVIDER = 'mock';
 
     const createProvider = await loadCreateProvider();
-    const page = await createProvider().page.getPage('');
+    const response = await createProvider().page.getPage('');
 
-    expect(page?.main[0]).toMatchObject({ alias: 'hero' });
+    expect(response).toMatchObject({
+      status: 'ok',
+      page: { main: [{ alias: 'hero' }] },
+    });
   });
 
   it('would notice: evaluating the Payload config without a secret does throw', async () => {

@@ -3,7 +3,7 @@ import { cache } from 'react';
 import { draftMode } from 'next/headers';
 
 import { foundation } from '@/core/foundation/foundation';
-import type { PageDefinition } from '@/core/pages';
+import type { PageResponse } from '@/core/pages';
 import type { ResolvedRoute } from '@/core/routing';
 import { resolveRoute } from '@/core/routing';
 import type { SiteDefinition } from '@/core/site';
@@ -11,12 +11,12 @@ import type { SiteDefinition } from '@/core/site';
 import { resolveSite } from './resolveSite';
 
 export interface ResolvedPage {
-  page: PageDefinition;
+  response: PageResponse;
   route: ResolvedRoute;
   site: SiteDefinition;
 }
 
-const resolve = cache(async (path: string): Promise<ResolvedPage | undefined> => {
+const resolve = cache(async (path: string): Promise<ResolvedPage> => {
   const { isEnabled: isDraft } = await draftMode();
 
   const site = await resolveSite();
@@ -27,15 +27,20 @@ const resolve = cache(async (path: string): Promise<ResolvedPage | undefined> =>
     defaultLocale: site.defaultLocale,
   });
 
-  const page = await foundation.page.getPage(route.path, route.locale, { draft: isDraft });
+  const response = await foundation.page.getPage(route.path, route.locale, { draft: isDraft });
 
-  if (!page) {
-    return undefined;
-  }
-
-  return { page, route, site };
+  return { response, route, site };
 });
 
-export function resolvePage(segments: string[]): Promise<ResolvedPage | undefined> {
+/**
+ * Nunca devolve `undefined` — a origem responde sempre, nem que seja `notFound`.
+ * Quem chama decide o que fazer com o status.
+ *
+ * O `join('/')` não é cosmético: o `cache()` do React compara argumentos por
+ * identidade, e o `await params` do layout e o da página devolvem arrays
+ * diferentes com o mesmo conteúdo. Sem esta normalização a cache nunca acertava,
+ * e isso não parte teste nenhum — só duplica as consultas em silêncio.
+ */
+export function resolvePage(segments: string[]): Promise<ResolvedPage> {
   return resolve(segments.join('/'));
 }

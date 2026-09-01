@@ -1,49 +1,83 @@
 import { describe, expect, it } from 'vitest';
 
 import { home } from '../pages/home';
+import { notFound } from '../pages/notFound';
 
 import { MockPageSource } from './MockPageSource';
 
 const [homePt, homeEn] = home;
+const [notFoundPt, notFoundEn] = notFound;
+
+const source = new MockPageSource();
 
 describe('MockPageSource', () => {
-  it('returns the mock page for a known path', async () => {
-    const source = new MockPageSource();
-
-    const page = await source.getPage('', 'pt-PT');
-
-    expect(page).toBe(homePt?.page);
+  it('serves the mock page for a known path', async () => {
+    await expect(source.getPage('', 'pt-PT')).resolves.toEqual({
+      status: 'ok',
+      page: homePt?.page,
+    });
   });
 
   it('falls back to the site default locale when none is given', async () => {
-    const source = new MockPageSource();
-
-    const page = await source.getPage('');
-
-    expect(page).toBe(homePt?.page);
+    await expect(source.getPage('')).resolves.toEqual({ status: 'ok', page: homePt?.page });
   });
 
   it('serves the same path in another locale', async () => {
-    const source = new MockPageSource();
+    await expect(source.getPage('', 'en-GB')).resolves.toEqual({
+      status: 'ok',
+      page: homeEn?.page,
+    });
+  });
+});
 
-    const page = await source.getPage('', 'en-GB');
-
-    expect(page).toBe(homeEn?.page);
+describe('MockPageSource, when the path is unknown', () => {
+  it('answers notFound with the error page as content', async () => {
+    // O 404 é conteúdo do provider, não um ficheiro do app/. É isto que faz com que
+    // ele renderize pela árvore normal e chegue inteiro ao HTML servido.
+    await expect(source.getPage('nao-existe', 'pt-PT')).resolves.toEqual({
+      status: 'notFound',
+      page: notFoundPt?.page,
+    });
   });
 
-  it('returns undefined for a locale it does not serve', async () => {
-    const source = new MockPageSource();
-
-    const page = await source.getPage('', 'fr-FR');
-
-    expect(page).toBeUndefined();
+  it('serves the error page in the requested locale', async () => {
+    await expect(source.getPage('does-not-exist', 'en-GB')).resolves.toEqual({
+      status: 'notFound',
+      page: notFoundEn?.page,
+    });
   });
 
-  it('returns undefined for an unknown path', async () => {
-    const source = new MockPageSource();
+  it('keeps the error page out of the indexable set', async () => {
+    const response = await source.getPage('nao-existe', 'pt-PT');
 
-    const page = await source.getPage('/does-not-exist');
+    expect(response.status === 'notFound' && response.page?.meta.noIndex).toBe(true);
+  });
 
-    expect(page).toBeUndefined();
+  it('answers notFound without a page for a locale it does not serve', async () => {
+    // Sem tradução da página de erro não há nada honesto para servir; quem chama
+    // desenha o seu fallback.
+    await expect(source.getPage('', 'fr-FR')).resolves.toEqual({ status: 'notFound' });
+  });
+});
+
+describe('MockPageSource, when the path is a redirect', () => {
+  it('answers redirect instead of a page', async () => {
+    await expect(source.getPage('pagina-antiga', 'pt-PT')).resolves.toEqual({
+      status: 'redirect',
+      to: '/',
+      permanent: true,
+    });
+  });
+
+  it('keeps redirects per locale, because a slug is translated', async () => {
+    await expect(source.getPage('old-page', 'en-GB')).resolves.toMatchObject({
+      status: 'redirect',
+      to: '/en',
+    });
+
+    // O caminho inglês não existe em português.
+    await expect(source.getPage('old-page', 'pt-PT')).resolves.toMatchObject({
+      status: 'notFound',
+    });
   });
 });

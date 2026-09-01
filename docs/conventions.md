@@ -96,23 +96,28 @@ modules/hero/
 
 Em `src/app/` uma pasta é um segmento de rota e certos nomes de ficheiro são convenções do Next (`page`, `layout`, `route`, `error`, `not-found`, `global-error`). Um `.ts` qualquer no meio deles não se distingue à vista de uma convenção cujo nome ainda não reconheces.
 
-A regra é: **em `app/` só ficheiros de rota; o resto vai para `_lib/`.** O prefixo `_` é o mecanismo do próprio Next para tirar uma pasta do router.
+A regra é: **em `app/` só ficheiros de rota; o resto vai para uma pasta com `_`.** O prefixo `_` é o mecanismo do próprio Next para tirar uma pasta do router.
 
 ```
 app/(frontend)/
-├── _lib/                ← não é rota
+├── _components/         ← componentes que não são páginas
+│   └── MissingNotFoundPage.tsx
+├── _lib/                ← funções
 │   ├── createMetadata.ts
 │   ├── resolvePage.ts
 │   └── resolveSite.ts
 ├── layout.tsx
-├── not-found.tsx
 ├── error.tsx
 ├── global-error.tsx
 ├── [[...segments]]/page.tsx
 └── next/preview/route.ts
 ```
 
-O que é puro e não depende do Next não fica no `_lib` — sai de `app/` de vez. Foi o caso do `isSafeRedirectPath`, que é uma função sobre caminhos e por isso vive em [core/routing/](../src/core/routing/), ao lado do `createPagePath` e do `resolveRoute`.
+São **duas** pastas e não uma porque guardam coisas diferentes: `_lib` são funções, `_components` são componentes React. É a mesma separação que os providers já fazem — o provider payload tem um [components/](../src/providers/payload/components/) ao lado dos `utils/` e dos `mappers/`. Com uma pasta só, o segundo componente a aparecer transforma o `_lib` numa gaveta.
+
+**Porque é que não ficam na raiz do grupo, ao lado do `error.tsx`.** É tentador: o `MissingNotFoundPage` até se parece com um boundary. Mas o `error.tsx` e o `global-error.tsx` são **convenções do Next** — é o Next que os encontra pelo nome e os monta. O `MissingNotFoundPage` é um componente normal, importado à mão pelo `page.tsx`. Pô-lo lado a lado sugeria que o Next também o monta, e é exactamente o mal-entendido que esta regra existe para evitar.
+
+O que é puro e não depende do Next não fica em nenhuma das duas — sai de `app/` de vez. Foi o caso do `isSafeRedirectPath`, que é uma função sobre caminhos e por isso vive em [core/routing/](../src/core/routing/), ao lado do `createPagePath` e do `resolveRoute`.
 
 O que fica no `_lib` é o que **só** faz sentido dentro de um pedido do Next: o `resolvePage` e o `resolveSite` usam `draftMode()` e o singleton `foundation`, e o `createMetadata` fala o vocabulário do Next. Nenhum deles pode ser importado pelo `core` ou pelos `providers` — se fossem parar a um `utils/` partilhado, um dia seriam.
 

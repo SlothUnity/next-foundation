@@ -12,6 +12,8 @@ resolveRoute({ segments, locales, defaultLocale })
         │  { locale: 'en-GB', path: 'servicos/consultoria' }
         ▼
 provider.page.getPage('servicos/consultoria', 'en-GB', { draft })
+        │
+        ▼  PageResponse: ok | notFound | redirect
 ```
 
 O `locales` e o `defaultLocale` vêm ambos de `site.getSite()`, ou seja da origem de conteúdo — os idiomas do site são conteúdo, não configuração de build.
@@ -118,7 +120,7 @@ O `generateMetadata` e a página chamam ambos o mesmo [resolvePage](<../src/app/
 
 ## O idioma do `<html>`
 
-O layout de raiz vive no topo do route group, em [app/(frontend)/layout.tsx](<../src/app/(frontend)/layout.tsx>). **Tem de ser aí**: quando se usam route groups como raízes separadas, o Next só monta o boundary do `not-found` e do `error` se encontrar um layout de raiz a esse nível. Enquanto o layout viveu dentro do `[[...segments]]`, um 404 respondia com o invólucro interno do Next (`<html id="__next_error__">`) em vez do nosso.
+O layout de raiz vive no topo do route group, em [app/(frontend)/layout.tsx](<../src/app/(frontend)/layout.tsx>) — é onde o Next o procura quando se usam route groups como raízes separadas.
 
 O custo de estar aí é não haver `params`. O caminho chega por header, posto pelo [proxy](../src/proxy.ts):
 
@@ -148,12 +150,13 @@ O `matcher` exclui o admin, a API do Payload, as rotas de preview, os assets do 
 
 ```
 app/(frontend)/
-├── _lib/                ← não é rota: o prefixo _ tira a pasta do router
+├── _components/         ← não é rota: o prefixo _ tira a pasta do router
+│   └── MissingNotFoundPage.tsx
+├── _lib/
 │   ├── createMetadata.ts
 │   ├── resolvePage.ts
 │   └── resolveSite.ts
 ├── layout.tsx           ← o layout de raiz do grupo
-├── not-found.tsx
 ├── error.tsx
 ├── global-error.tsx
 ├── [[...segments]]/
@@ -163,9 +166,91 @@ app/(frontend)/
     └── exit-preview/    ← desactiva
 ```
 
-Dentro de `app/` só ficheiros de rota; o resto vai para `_lib/`. Sem essa regra, um `.ts` solto no meio das rotas não se distingue de uma convenção do Next à qual falta reconhecer o nome.
+Dentro de `app/` só ficheiros de rota; o resto vai para uma pasta com `_` — `_lib/` para funções, `_components/` para componentes. Sem essa regra, um `.ts` solto no meio das rotas não se distingue de uma convenção do Next à qual falta reconhecer o nome.
 
 O prefixo `next/` isola as rotas de framework do namespace de conteúdo — é a convenção do template oficial do Payload. Rotas estáticas têm precedência sobre o catch-all, por isso não há conflito, mas qualquer path que se acrescente aqui deixa de estar disponível para conteúdo.
+
+## O 404 é conteúdo
+
+Um caminho que não existe **não** chama `notFound()`. A origem responde
+`{ status: 'notFound' }`, com a página de erro dela se a tiver, e essa página
+renderiza pela árvore normal — pelo mesmo `PageRenderer`, dentro do mesmo layout.
+
+O `notFound()` esteve aqui e saiu. A razão está medida, num build de produção:
+
+|                    | status | HTML servido                                                         |
+| ------------------ | ------ | -------------------------------------------------------------------- |
+| com `notFound()`   | 404    | **vazio** — `<html id="__next_error__">`, conteúdo só no payload RSC |
+| como render normal | 200    | completo — `<html lang="pt-PT">`, `<main>`, `<h1>`                   |
+
+**A causa não é o streaming**, que é o que a documentação do Next leva a pensar. Foi
+isolada por eliminação, com três medições:
+
+| o que se variou                                               | shell servido    |
+| ------------------------------------------------------------- | ---------------- |
+| `notFound()` com o layout normal (assíncrono)                 | `__next_error__` |
+| o mesmo, com um layout **totalmente síncrono**                | `__next_error__` |
+| uma página **sem um único `await`** que só chama `notFound()` | `__next_error__` |
+
+Sem nada assíncrono em lado nenhum o shell continua vazio, portanto o streaming não
+explica isto. O que explica são **as duas raízes de route group** — o caso que a
+documentação do `not-found.js` nomeia à parte. Não há layout na camada de raiz de onde
+compor o 404, e o Next usa o dele.
+
+E não pode haver: o `(payload)/layout.tsx` usa o `RootLayout` do Payload, que traz o seu
+próprio `<html>`. Um `app/layout.tsx` na camada de raiz daria `<html>` dentro de `<html>`
+no admin.
+
+No browser não se nota, porque o React hidrata a partir do payload RSC; num crawler sem
+JS não há nada.
+
+**O preço assumido é o status passar a 200.** Em troca vem HTML servido, uma página de
+erro editável no CMS, e um só caminho de render. O `noIndex` é forçado pelo
+`generateMetadata` quando o status é `notFound`, o que substitui a `<meta robots>` que
+o Next injectava sozinho.
+
+Se a origem disser `notFound` sem página — é o caso do provider payload enquanto
+ninguém marcar uma página como sendo a de erro — a aplicação desenha o
+[MissingNotFoundPage](<../src/app/(frontend)/_components/MissingNotFoundPage.tsx>), que avisa
+no log em vez de fingir que está tudo bem.
+
+### Porque é que não se recupera o status
+
+O `notFound()` **dá** o status 404 correcto — o que ele não dá é corpo. As duas saídas
+para ter os dois foram avaliadas, e uma foi medida:
+
+**Produzir a resposta no proxy** — perguntar o status ao provider antes de renderizar e,
+num 404, devolver o HTML com status 404. Funciona: dá 404 e HTML completo. **E custa
+caro**, medido contra a base de dados real, na mesma página:
+
+|                         | tempo de resposta |
+| ----------------------- | ----------------- |
+| como está               | **14 ms**         |
+| com a consulta no proxy | **177 ms**        |
+
+São 12×, **em todos os pedidos**, incluindo os das páginas que existem. O motivo é que o
+`unstable_cache` não funciona no proxy — não há work store — portanto cada pedido volta
+ao Postgres. Trocar isso por um código de estado que só o analytics lê não se justifica.
+
+**Tirar o admin do Payload deste `app/`** resolveria a causa na raiz, e é a única solução
+limpa. É uma mudança estrutural grande, e está registada no [TODO.md](TODO.md).
+
+## Redirects
+
+`{ status: 'redirect', to, permanent }` traduz-se em `redirect()` ou
+`permanentRedirect()`. Ao contrário do 404, **aqui o código HTTP é real** — medido:
+
+```
+GET /pagina-antiga  →  HTTP/1.1 308 Permanent Redirect
+                       location: /
+```
+
+São 307 e 308, e não 301/302: esses
+exigiriam produzir a resposta no [proxy](../src/proxy.ts), onde o `NextResponse.redirect`
+aceita a lista toda.
+
+Nenhum provider preenche redirects a não ser o `mocks`, que traz um exemplo em cada
+idioma. De onde vêm num CMS — uma collection própria, um plugin — é decisão de projecto.
 
 ## O frontend é SSR
 

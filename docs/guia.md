@@ -165,11 +165,7 @@ A regra que daí sai, e que deves aplicar quando acrescentares código:
 
 ```ts
 export abstract class PageSource {
-  abstract getPage(
-    path: string,
-    locale?: string,
-    options?: GetPageOptions,
-  ): Promise<PageDefinition | undefined>;
+  abstract getPage(path: string, locale?: string, options?: GetPageOptions): Promise<PageResponse>;
 }
 ```
 
@@ -186,8 +182,38 @@ export abstract class SiteSource {
 - `path: string` — o caminho **sem locale** (`sobre-nos`, não `/en/sobre-nos`). Quem chama já separou as duas coisas.
 - `locale?: string` — opcional, e é um `string` genérico, não uma lista de locales concretos. O core não sabe que locales existem neste site.
 - `options?: GetPageOptions` — hoje só tem `draft?: boolean`. É um objeto em vez de um quarto parâmetro solto porque objetos crescem sem partir chamadas existentes; parâmetros posicionais não.
-- `Promise<PageDefinition | undefined>` — devolve uma página ou nada. **Não devolve um documento do Payload.** Devolve o tipo interno do projeto. É aqui que a fronteira é desenhada.
+- `Promise<PageResponse>` — devolve **o que há naquele caminho**. Não devolve um documento do Payload; devolve o tipo interno do projeto. É aqui que a fronteira é desenhada.
 - E repara no que **não** está aqui: nenhuma menção a Payload, a SQL, a `fetch`, a CMS nenhum. Uma pessoa que leia só este ficheiro não consegue adivinhar que o projeto usa Payload.
+
+O `PageResponse` merece um parágrafo, porque a forma dele foi discutida:
+
+```ts
+export type PageResponse =
+  | { status: 'ok'; page: PageDefinition }
+  | { status: 'notFound'; page?: PageDefinition }
+  | { status: 'redirect'; to: string; permanent?: boolean };
+```
+
+Isto chama-se **união discriminada**: três formas possíveis, distinguidas por um campo
+comum (`status`). O TypeScript sabe que dentro de um `if (response.status === 'redirect')`
+existe um `to` e não existe um `page` — sem casts, sem `?`.
+
+> 🎯 **Decisão**
+>
+> Aqui esteve `PageDefinition | undefined`. O `undefined` acumulava três significados —
+> «não existe», «não sei este locale», «a configuração está errada» — e a aplicação
+> traduzia os três num 404 mudo. Foi essa ambiguidade que gerou a série de falhas
+> silenciosas que este projeto andou a fechar.
+>
+> A alternativa considerada era pôr o status **dentro** do `PageDefinition`, como mais um
+> campo. Rejeitada por três razões: o `PageDefinition` é o que o renderer consome e não
+> deve carregar informação de transporte; **um redirect não tem página nenhuma**, logo não
+> caberia num campo; e todos os mocks, mappers e testes passariam a escrever um status que
+> é quase sempre o mesmo.
+>
+> O `page` opcional no `notFound` é o que torna a página de erro **conteúdo do CMS** em vez
+> de um ficheiro do `app/` — e é isso que a faz chegar inteira ao HTML servido
+> ([1.5](#15-pagetsx-linha-a-linha)).
 
 **Porquê classe abstrata e não uma `interface`?** Uma interface daria quase o mesmo e o TypeScript verificava-a na mesma. A diferença prática é que a classe abstrata existe em tempo de execução: pode-se fazer `extends`, pode-se verificar `instanceof`, e — o que mais conta aqui — quando amanhã for preciso pôr comportamento partilhado por todas as fontes (um cache, um log, uma normalização de `path`), há onde o pôr sem tocar em nenhuma das três implementações. Com uma interface teria de se repetir esse comportamento nas três.
 
@@ -199,7 +225,7 @@ export abstract class SiteSource {
 
 ```ts
 export class PayloadPageSource extends PageSource {
-  async getPage(path, locale?, options?): Promise<PageDefinition | undefined> {
+  async getPage(path, locale?, options?): Promise<PageResponse> {
 ```
 
 E, exatamente da mesma forma, `ApiPageSource extends PageSource` e `MockPageSource extends PageSource`.
@@ -513,10 +539,11 @@ src/
     ├── (frontend)/                     ← o site público
     │   ├── favicon.ico
     │   ├── layout.tsx                  ← o <html> do site
-    │   ├── not-found.tsx               ← o 404
     │   ├── error.tsx                   ← erro dentro da página
     │   ├── global-error.tsx            ← erro no próprio layout
-    │   ├── _lib/                       ← não são rotas
+    │   ├── _components/                ← não são rotas
+    │   │   └── MissingNotFoundPage.tsx ← só quando a origem não traz 404
+    │   ├── _lib/                       ← nem estas
     │   │   ├── createMetadata.ts
     │   │   ├── resolvePage.ts
     │   │   └── resolveSite.ts
@@ -538,7 +565,7 @@ Só ficheiros com **nomes especiais** viram rotas: `page.tsx` (uma página), `la
 
 > 🎯 **Decisão**
 >
-> Os helpers estão numa pasta `_lib/`, e o prefixo `_` é o mecanismo do Next para tirar uma pasta do router. A alternativa era deixá-los soltos ao lado dos ficheiros de rota, que foi como estiveram — e o problema é que um `.ts` qualquer no meio das rotas não se distingue à vista de uma convenção do Next cujo nome ainda não reconheces. A regra passou a ser: **em `app/` só ficheiros de rota; o resto em `_lib/`**.
+> Os helpers estão numa pasta `_lib/` e os componentes numa `_components/`, e o prefixo `_` é o mecanismo do Next para tirar uma pasta do router. A alternativa era deixá-los soltos ao lado dos ficheiros de rota, que foi como estiveram — e o problema é que um `.ts` qualquer no meio das rotas não se distingue à vista de uma convenção do Next cujo nome ainda não reconheces. A regra passou a ser: **em `app/` só ficheiros de rota; o resto numa pasta com `_`**.
 >
 > O que é puro e não depende do Next não fica sequer no `_lib` — sai de `app/` de vez. Foi o caso do `isSafeRedirectPath`, que hoje vive em `core/routing/` ao lado das outras funções sobre caminhos.
 
@@ -580,9 +607,9 @@ Para `/en/sobre-nos`, o Next entrega `segments = ['en', 'sobre-nos']`. Para `/`,
 
 > 📐 **Imposto pelo Next.js**
 >
-> Quando se usam route groups como raízes separadas, o Next só monta o boundary do `not-found` e do `error` se encontrar um layout de raiz **no topo do grupo**.
+> Quando se usam route groups como raízes separadas, o Next só monta o boundary do `error` se encontrar um layout de raiz **no topo do grupo**.
 
-O layout viveu durante algum tempo dentro do `[[...segments]]`, para poder ler os `params` e tirar de lá o idioma. Funcionava para as páginas — e não funcionava para mais nada: um 404 respondia com o invólucro interno do Next, `<html id="__next_error__">`, em vez do nosso. O `not-found.tsx` estava escrito e nunca aparecia.
+O layout viveu durante algum tempo dentro do `[[...segments]]`, para poder ler os `params` e tirar de lá o idioma. Funcionava para as páginas e não funcionava para os boundaries.
 
 Subir o layout resolve os boundaries e cria um problema: **a este nível não há `params`**. Um layout acima de qualquer segmento dinâmico não sabe que caminho está a ser servido, e portanto não sabe que idioma declarar no `<html lang>`.
 
@@ -648,7 +675,7 @@ return (
 >
 > **O `lang` vem do locale da rota, não da página.** O layout podia chamar o `resolvePage` e usar `meta.locale`, que foi o que fez enquanto viveu dentro do segmento. Mas o `resolveRoute` é uma função pura sobre dados que o `resolveSite()` já trouxe — e assim o layout não paga uma consulta à página só para escrever um atributo.
 >
-> Há um segundo motivo, e é o que fecha a questão: quando a página **não** resolve, o que se desenha é o `not-found.tsx`. Não há `meta.locale` nenhum, e o locale da rota continua a descrever correctamente a página que o visitante pediu. Um `<html>` sem `lang` deixa um leitor de ecrã sem saber em que língua ler (WCAG 3.1.1), exatamente nas páginas mais indexadas.
+> Há um segundo motivo, e é o que fecha a questão: quando a origem responde `notFound` sem trazer conteúdo, não há `meta.locale` nenhum para ler — e o locale da rota continua a descrever correctamente a página que o visitante pediu. Um `<html>` sem `lang` deixa um leitor de ecrã sem saber em que língua ler (WCAG 3.1.1).
 
 Repara no que **não** se usa aqui: o cabeçalho `Accept-Language` do visitante. É uma tentação, e está errada — o `lang` descreve a língua **do conteúdo**, não a preferência de quem visita. Dizer `lang="en"` a um visitante inglês por causa de um cabeçalho faria o leitor de ecrã ler texto português com voz inglesa. (O `Accept-Language` tem um uso legítimo — negociar para que idioma **redirecionar** — mas isso é routing, e vive noutro sítio.)
 
@@ -656,15 +683,16 @@ O `resolveSite()` está envolvido no `cache()` do React ([2.2](#22-o-que-o-cache
 
 Há aqui um custo que vale a pena nomear já: **`draftMode()` e `headers()` tornam todas as rotas dinâmicas**. O Next não pode gerar nada estaticamente se o resultado depende de um cookie ou de um header. Guarda a ideia — voltamos a ela em [2.2](#22-o-que-o-cache-garante--e-o-que-não-garante).
 
-### Os três boundaries
+### Os dois boundaries
 
-Ao lado do layout estão os três ficheiros que só funcionam por ele estar ali:
+Ao lado do layout estão os dois ficheiros que só funcionam por ele estar ali:
 
 | Ficheiro           | Apanha                                |
 | ------------------ | ------------------------------------- |
-| `not-found.tsx`    | o `notFound()` chamado pela página    |
 | `error.tsx`        | um erro dentro da página              |
 | `global-error.tsx` | um erro no **próprio layout de raiz** |
+
+Havia aqui um terceiro, o `not-found.tsx`, e ele saiu. Neste projecto o 404 é conteúdo do provider e renderiza pela árvore normal — não há `notFound()` nenhum para apanhar. Ver [1.5](#15-pagetsx-linha-a-linha).
 
 O `global-error.tsx` é a única excepção à regra de que só o layout de raiz emite `<html>`: quando o layout rebenta, não há `<html>` onde desenhar o fallback, portanto ele traz o seu.
 
@@ -678,17 +706,25 @@ O `global-error.tsx` é a única excepção à regra de que só o layout de raiz
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { segments = [] } = await params;
 
-  const resolved = await resolvePage(segments);
+  const { response } = await resolvePage(segments);
 
-  if (!resolved) {
+  if (response.status === 'redirect') {
     return {};
   }
 
-  return createMetadata(resolved.page.meta);
+  const noIndex = response.status === 'notFound' ? true : response.page.meta.noIndex;
+
+  return createMetadata({ ...response.page?.meta, noIndex });
 }
 ```
 
-`generateMetadata` é um nome reservado. O `return {}` quando não resolve deixa o Next usar os valores por omissão — não vale a pena inventar título para uma página que não existe.
+`generateMetadata` é um nome reservado. Um redirect não tem `<head>` nenhum para
+escrever, portanto devolve-se `{}`.
+
+O `noIndex` é **forçado** quando o status é `notFound`, e não deixado ao editor. É uma
+garantia da foundation: uma página de erro nunca deve ser indexada, mesmo que quem a
+escreveu no CMS não se tenha lembrado de marcar a caixa. Substitui a `<meta robots>`
+que o Next injectava sozinho enquanto isto passava pelo `notFound()`.
 
 O `createMetadata` (`src/app/(frontend)/_lib/createMetadata.ts`) é a tradução entre o vocabulário do projeto e o do Next:
 
@@ -712,17 +748,53 @@ Três coisas a reter. O `??` (_nullish coalescing_) só entra se o lado esquerdo
 export default async function Page({ params }: PageProps) {
   const { segments = [] } = await params;
 
-  const resolved = await resolvePage(segments);
+  const { response } = await resolvePage(segments);
 
-  if (!resolved) {
-    notFound();
+  if (response.status === 'redirect') {
+    return response.permanent ? permanentRedirect(response.to) : redirect(response.to);
   }
 
-  return <PageRenderer page={resolved.page} foundation={foundation} />;
+  if (!response.page) {
+    return <MissingNotFoundPage />;
+  }
+
+  return <PageRenderer page={response.page} foundation={foundation} />;
 }
 ```
 
-- **`notFound()`** vem do `next/navigation` e **atira uma exceção** — nunca devolve. É por isso que a linha a seguir pode usar `resolved.page` sem `?`: o TypeScript sabe, pela assinatura (`never`), que o código só chega ali se `resolved` existir. Não é preciso `else`.
+**Repara no que não está aqui: um `notFound()`.** O `ok` e o `notFound` seguem o mesmo
+caminho — uma página de erro é conteúdo como outro qualquer, e renderiza pelo mesmo
+`PageRenderer`, dentro do mesmo layout.
+
+> 🎯 **Decisão**
+>
+> Aqui esteve um `notFound()`, e saiu. Medido num build de produção, com `notFound()` um
+> 404 respondia **status 404 e corpo vazio**: `<html id="__next_error__">`, com o
+> conteúdo só dentro do payload RSC. No browser via-se a página, porque o React hidrata;
+> num crawler sem JS não havia nada.
+>
+> A causa **não** é o streaming, que é o que a documentação do Next leva a pensar. Foi
+> isolada por eliminação: com um layout totalmente síncrono, o shell continua vazio; e
+> com uma página sem um único `await`, que só chama `notFound()`, também. Sem nada
+> assíncrono em lado nenhum, o resultado é o mesmo.
+>
+> O que explica são **as duas raízes de route group**, que é o caso que a documentação do
+> `not-found.js` nomeia à parte: não há layout na camada de raiz de onde compor o 404. E
+> não pode haver — o `(payload)/layout.tsx` traz o `<html>` do Payload, portanto um
+> `app/layout.tsx` daria `<html>` dentro de `<html>` no admin.
+>
+> Renderizado como página normal, o mesmo 404 serve `<html lang="pt-PT">` com o `<main>`
+> e o `<h1>` no HTML. **O preço é o status passar a 200**, e está assumido — com
+> `noindex` forçado no lugar dele. Porque é que não se recupera o status está medido em
+> [routing.md](routing.md#porque-é-que-não-se-recupera-o-status).
+
+- **`redirect()` e `permanentRedirect()`** dão **307 e 308 reais**, medidos nos headers —
+  ao contrário do corpo do `notFound()`. Não são 301/302:
+  esses exigiriam produzir a resposta no proxy.
+- **`MissingNotFoundPage`** só aparece quando a origem diz `notFound` e **não** traz
+  conteúdo. Não é a página de erro do site — é o aviso de que ela não existe, com um
+  `console.warn` a dizê-lo. É o caso do provider payload enquanto ninguém marcar uma
+  página como sendo a de erro.
 - **`foundation`** é importado do caminho completo (`@/core/foundation/foundation`), não do barrel — é aqui que a aplicação real é tocada, exatamente como explicado em [0.9](#09-barrels-indexts-e-a-regra-dos-efeitos-secundários).
 - E é aqui que se vê a [injeção de dependências](#010-injeção-de-dependências) em ação: o `page.tsx` é a fronteira que conhece o singleton e o entrega ao `PageRenderer`, que a partir daí não sabe de onde veio.
 
@@ -1677,15 +1749,11 @@ O aviso existe porque a queda é razoável mas não é normal: o site passa a se
 
 ```ts
 export class PayloadPageSource extends PageSource {
-  async getPage(
-    path: string,
-    locale?: string,
-    options?: GetPageOptions,
-  ): Promise<PageDefinition | undefined> {
+  async getPage(path: string, locale?: string, options?: GetPageOptions): Promise<PageResponse> {
     const requested = locale ?? (await this.getDefaultLocale());
 
     if (!isSupportedLocale(requested)) {
-      return undefined;
+      return { status: 'notFound' };
     }
 
     const payloadLocale: SupportedLocale = requested;
@@ -2690,20 +2758,20 @@ E o fallback, `src/core/renderer/ModuleErrorFallback.tsx`, faz o mesmo em espelh
 
 Vale notar o contraste com o `mapPayloadPage`, que atira um `Error` normal quando falta um `id` ([8.5](#85-mappayloadpage-onde-os-dados-mudam-de-forma)) — aí não há isolamento nenhum, e um bloco estragado derruba a página toda, em produção também. As duas fronteiras deviam tratar o problema da mesma maneira.
 
-**A jusante, quem apanha o que escapa.** Um `throw` em desenvolvimento — ou um erro da base de dados em produção — sobe acima do `ModuleRenderer`, e para isso existem dois ficheiros no segmento dinâmico:
+**A jusante, quem apanha o que escapa.** Um `throw` em desenvolvimento — ou um erro da base de dados em produção — sobe acima do `ModuleRenderer`, e para isso existem dois ficheiros no topo do route group, ao lado do `layout.tsx`:
 
 - **`error.tsx`** apanha qualquer erro lançado ao desenhar a página. Tem de ser Client Component (`'use client'`) porque recebe um `reset()` que se liga a um botão — é exigência do Next, não escolha. Em produção o Next **não** envia a mensagem do erro para o browser; envia um `digest`, e é por ele que se encontra o stack trace real nos logs do servidor. Daí o guia mostrá-lo na página.
-- **`not-found.tsx`** é o que o `notFound()` de [1.5](#15-pagetsx-linha-a-linha) desenha. Sem ele, um 404 caía na página genérica do Next, **fora** do layout do site.
+- **`global-error.tsx`** apanha um erro no próprio layout de raiz, onde já não há `<html>` para desenhar o fallback — por isso é o único que traz o seu.
 
-Ambos ficam dentro de `[[...segments]]/`, ao lado do `layout.tsx`.
+Houve aqui um terceiro, o `not-found.tsx`, e ele foi apagado.
 
-> ⚠ **Estes dois ficheiros existem mas ainda não são usados**
+> ✅ **Corrigido**
 >
-> Verificado a correr: um pedido a uma rota inexistente responde 404 com `<html id="__next_error__">` — o invólucro interno do Next —, não com o `not-found.tsx` deste projeto.
+> O ficheiro existia e **nunca aparecia**. Verificado a correr: um caminho inexistente respondia 404 com `<html id="__next_error__">` e corpo vazio, com o conteúdo só no payload RSC.
 >
-> A causa é estrutural. Quando se usam **route groups como raízes separadas**, o Next exige o layout de raiz **no topo do grupo**. O `(payload)` cumpre (`app/(payload)/layout.tsx`); o `(frontend)` **não tem** `app/(frontend)/layout.tsx` — o seu layout está um nível abaixo, dentro de `[[...segments]]`. Sem layout de raiz no grupo, o boundary do not-found não tem `<html>` onde renderizar, e o Next cai no seu próprio.
+> A causa são as **duas raízes de route group**: sem layout na camada de raiz, o Next não tem de onde compor o 404 e usa o shell dele. Subir o layout para o topo do grupo — que foi a primeira tentativa — não chegou, e o streaming, que era a segunda suspeita, foi descartado por medição ([1.5](#15-pagetsx-linha-a-linha)).
 >
-> É o preço concreto da decisão descrita em [1.4](#14-layouttsx-linha-a-linha) — pôr o `<html>` dentro do segmento dinâmico para o `lang` poder vir da página. Resolver implica escolher: subir o `<html>` para o topo do grupo e perder o `lang` por página, ou passar o locale a segmento real de rota (`app/[locale]/`), que é como a maioria dos projetos multilingues em Next o faz. Está no [`TODO.md`](TODO.md).
+> A solução foi outra: **deixar de chamar `notFound()`**. O 404 passou a ser conteúdo que a origem devolve, renderizado pela árvore normal ([1.5](#15-pagetsx-linha-a-linha)), e o boundary deixou de ter razão de existir. O que se perde é o status 404, que passa a 200, e está registado no [`TODO.md`](TODO.md).
 
 Continua a não haver uso de `<Suspense>` nem `loading.tsx`: cada pedido bloqueia na consulta completa antes de emitir HTML. Como o `PageRenderer` já isola os módulos, Suspense por região encaixa naturalmente quando isso passar a doer.
 
@@ -2981,7 +3049,7 @@ O tratamento de erros distingue quatro situações, e a distinção é o que faz
 | Outro estado não-2xx         | `ApiRequestError` com o `status`                 |
 | Corpo que não é JSON         | `ApiRequestError` a dizê-lo                      |
 
-O 404 devolver `undefined` alinha com o contrato do `PageSource` ([0.2](#02-classe-abstrata-o-contrato-que-obriga)), que promete `PageDefinition | undefined`. Tem um senão: um `API_URL` mal escrito produz 404 em tudo, e o site responde 404 em silêncio em vez de dizer que a configuração está errada.
+O cliente devolver `undefined` num 404 não é erro — o `ApiPageSource` traduz isso em `{ status: 'notFound' }`, que é o que o contrato do `PageSource` espera ([0.2](#02-classe-abstrata-o-contrato-que-obriga)). Tem um senão: um `API_URL` mal escrito produz 404 em tudo, e o site responde «não existe» em silêncio em vez de dizer que a configuração está errada.
 
 **O cache**, em `createInit`:
 

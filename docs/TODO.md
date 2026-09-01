@@ -30,6 +30,8 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 ### Providers
 
 - contrato `Provider` com `preview` opcional
+- **o provider responde o status, não só o conteúdo** — `PageResponse` com `ok`, `notFound` e `redirect` em vez de `PageDefinition | undefined`, que dizia três coisas ao mesmo tempo; a página de erro é conteúdo da origem e renderiza pela árvore normal, e os redirects passam a caber no contrato
+- **a chave da cache nomeia o formato do valor** — mudar a forma do que se guarda sem mudar a chave servia entradas velhas com a forma errada, e sem `revalidate` não se corrigia sozinho
 - `createProvider` por variável `PROVIDER`, singleton em `provider.ts`
 - **o locale por omissão é uma resposta do provider** — `SiteDefinition.defaultLocale` declarado em vez de inferido de `locales[0]`, e omitir o `locale` no `getPage` significa «usa o teu default» em vez de «desiste»
 - provider `mocks` — site completo sem base de dados, e sem sequer avaliar o `payload.config.ts` (import dinâmico no `getPayloadClient`)
@@ -59,12 +61,12 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 
 ### App
 
-- **layout de raiz no topo do route group** (`app/(frontend)/layout.tsx`) — o `not-found` e o `error` passaram a renderizar dentro do nosso `<html>` em vez do invólucro interno do Next
+- **layout de raiz no topo do route group** (`app/(frontend)/layout.tsx`)
 - **`global-error.tsx`** para os erros do próprio layout de raiz
 - **`src/proxy.ts`** (a convenção `middleware` está depreciada em Next 16) a expor o pathname no header `x-pathname`, sem reescrever nem redireccionar
 - `<html lang>` por página, vindo do locale da rota
 - `resolvePage` e `resolveSite` partilhados por `generateMetadata` e página, com `cache` do React
-- **`app/` só com ficheiros de rota** — o resto em `_lib/`, e o que é puro saiu de vez (`isSafeRedirectPath` → `core/routing`)
+- **`app/` só com ficheiros de rota** — o resto numa pasta com `_` (`_lib/` para funções, `_components/` para componentes), e o que é puro saiu de vez (`isSafeRedirectPath` → `core/routing`)
 - `isSafeRedirectPath` a fechar o open redirect do preview; `exit-preview` só por `POST`
 
 ### Convenções
@@ -77,43 +79,54 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 
 ### Qualidade
 
-- `typecheck`, `lint` e 181 testes verdes (182 assim que existir um módulo gerado)
+- `typecheck`, `lint` e 185 testes verdes (186 assim que existir um módulo gerado)
 - testes sem carregar o `payload.config.ts`
 - `pnpm build` corre `lint`, `typecheck` e testes antes do `next build` — sem CI, é este o portão antes de produção
 - `.env.example` na raiz
 
 ## Próximos passos
 
-### 1. O 404 não funciona — e subir o layout não chegou
+### 1. O 404 responde 200 — decidido, e porquê
 
-**Verificado contra o browser, em dev (Turbopack e webpack) e num build de produção.**
+Não é uma pendência à espera de solução: é uma troca escolhida com medições. Está aqui
+para não se voltar a investigar do zero.
 
-O que passa:
+O `notFound()` saiu. Um caminho que não existe é um `PageResponse` com
+`status: 'notFound'`, e a página de erro — quando a origem tem uma — renderiza pela
+árvore normal.
 
-- `/` serve `<html lang="pt-PT">` e `/en` serve `<html lang="en-GB">`. O layout de raiz no topo do grupo, o `proxy` com o `x-pathname` e os mocks bilingues funcionam.
-- O status HTTP de um 404 está correcto.
+**A causa do shell vazio não era o streaming.** Isolada por eliminação, num build de
+produção:
 
-O que **não** passa: o corpo de um 404 vem **vazio**. Não é «o invólucro do Next em vez do nosso», como este documento dizia antes — é uma página em branco. O HTML servido é `<html id="__next_error__"><body><div hidden></div></body></html>`, e o conteúdo do `not-found.tsx` existe só no payload RSC, dentro de `<script>`. Para um crawler, ou sem JS, não há nada.
+| o que se variou                                      | shell servido                 |
+| ---------------------------------------------------- | ----------------------------- |
+| `notFound()` com o layout normal (assíncrono)        | `__next_error__`, corpo vazio |
+| o mesmo, com um layout **totalmente síncrono**       | `__next_error__`, corpo vazio |
+| uma página **sem um único `await`**, só `notFound()` | `__next_error__`, corpo vazio |
 
-Causa: o `/_not-found` é uma rota da **camada de raiz** `app/`, e este projeto não tem `app/layout.tsx` — o `(frontend)` e o `(payload)` são duas raízes separadas, cada uma com o seu `<html>`, porque o admin do Payload traz o dele. Sem layout na camada de raiz, o Next usa o dele.
+São as **duas raízes de route group**: sem layout na camada de raiz não há de onde compor
+o 404. E não pode haver — o `(payload)/layout.tsx` traz o `<html>` do Payload.
 
-Quatro coisas testadas e descartadas:
+**A saída pelo proxy foi implementada e medida, e é por isso que não ficou.** Funciona —
+dá 404 e HTML completo — mas o `unstable_cache` não corre no proxy (não há work store),
+portanto cada pedido volta ao Postgres:
 
-| Tentativa                                                        | Resultado                                                                                  |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Subir o layout para `app/(frontend)/layout.tsx`                  | o layout **corre** no 404, mas o `<html>` é substituído                                    |
-| `not-found.tsx` mais fundo, em `[[...segments]]/`                | igual                                                                                      |
-| `experimental.globalNotFound` + `app/global-not-found.tsx`       | compila, mas nunca é usado: só serve a rota `/_not-found`, e o catch-all apanha tudo antes |
-| `app/layout.tsx` pass-through + `app/not-found.tsx` com `<html>` | o conteúdo passa a existir no payload RSC, o HTML continua vazio                           |
+|                         | tempo de resposta, mesma página |
+| ----------------------- | ------------------------------- |
+| como está               | **14 ms**                       |
+| com a consulta no proxy | **177 ms**                      |
 
-Portanto a premissa de que **subir o layout resolvia os boundaries** estava errada, e a documentação foi corrigida em conformidade. O que falta é decidir entre:
+12×, em **todos** os pedidos, para recuperar um código que só o analytics lê — quando o
+`noindex` já resolve a indexação. Não compensa.
 
-- aceitar 404 sem HTML servido (mau para SEO e para quem não corre JS);
-- desistir do `notFound()` no frontend e desenhar o 404 dentro da árvore normal, com o custo de o status passar a 200 — inaceitável sem outra forma de o corrigir;
-- reestruturar para o frontend ser a camada de raiz, o que obriga a tirar o admin do Payload do mesmo `app/` — mudança grande;
-- abrir issue no Next: com duas raízes de route group, o `notFound()` não tem shell.
+Fica uma via por explorar, e é estrutural: **tirar o admin do Payload deste `app/`**, para
+o frontend passar a ser a camada de raiz. Resolve a causa em vez do sintoma, e é uma
+mudança grande.
 
-Ainda por verificar, e independente disto: abrir o Live Preview no admin e confirmar que o `matcher` do proxy não engoliu o `/next/preview`. Precisa de base de dados.
+E fica registado o que se ganha se um dia o status for mesmo obrigatório sem essa
+mudança: trocar o ramo `notFound` por um `notFound()` devolve o status 404 imediatamente,
+ao preço do corpo servido. O conteúdo do provider pode ir para um `not-found.tsx` async,
+que lê o locale do header `x-pathname` como o layout faz.
 
 ### 2. Migrar a cache para `use cache`
 
@@ -131,12 +144,29 @@ Falta ainda **verificar a invalidação contra o admin**: publicar uma página e
 
 ### 4. Cobertura e E2E
 
-Não há cobertura configurada nem framework de E2E — 181 testes, todos unitários. Os componentes de admin já têm testes (o `PageUrl` e o `livePreview.url` da collection), mas nunca foram abertos num browser autenticado: o que está verificado é a lógica, não o render dentro do admin.
+Não há cobertura configurada nem framework de E2E — 185 testes, todos unitários. Os componentes de admin já têm testes (o `PageUrl` e o `livePreview.url` da collection), mas nunca foram abertos num browser autenticado: o que está verificado é a lógica, não o render dentro do admin.
 
 O cenário que interessa é o editorial: publicado A, preview mostra B, público continua A, publicar, público passa a B. Vale a pena corrê-lo à mão assim que o Live Preview estiver verificado contra a base de dados, e automatizá-lo depois como ronda própria — instalar e configurar Playwright com uma base de dados com estado é trabalho a sério.
 
-### 5. Providers realmente permutáveis
+### 5. Tirar o admin do Payload da camada de raiz
 
-Resolvido o essencial: o `payload.config.ts` já não é avaliado com `PROVIDER=mock`, porque o [getPayloadClient.ts](../src/providers/payload/getPayloadClient.ts) o importa dinamicamente. Há teste de regressão em `createProvider.test.ts`.
+A `src/app/(payload)/` é compilada sempre, seja qual for o `PROVIDER`, e traz consigo
+duas consequências que já se pagam:
+
+- **o build exige `PAYLOAD_SECRET` e `DATABASE_URL` mesmo com `PROVIDER=api`**, porque a
+  rota `/api/[...slug]` importa o `payload.config.ts` estaticamente e ele valida o
+  ambiente ao carregar;
+- **o `notFound()` não tem shell**, porque duas raízes de route group não deixam existir
+  um layout na camada de raiz — ver o ponto 1.
+
+As duas têm a mesma causa. Resolver implica separar o admin: um `basePath` próprio, uma
+segunda aplicação, ou outra estrutura de `app/`. É a mudança que fecharia o ponto 1 de
+raiz, e é a maior deste documento.
+
+### 6. Providers realmente permutáveis
+
+Resolvido para as **sources**: o `payload.config.ts` já não é avaliado com `PROVIDER=mock`, porque o [getPayloadClient.ts](../src/providers/payload/getPayloadClient.ts) o importa dinamicamente. Há teste de regressão em `createProvider.test.ts`.
+
+**Não é verdade para as rotas**, e convém não confundir as duas coisas: a `src/app/(payload)/` importa a config estaticamente e por isso um build falha sem `PAYLOAD_SECRET`, mesmo com `PROVIDER=api`. Isso é o ponto 5, não este.
 
 O que resta é cosmético: o [createProvider.ts](../src/providers/createProvider.ts) continua a importar os três providers estaticamente. Os construtores não tocam em ambiente nem em IO, portanto hoje não custa nada além de um pouco de grafo de módulos. Um `await import()` dentro de cada `case` fechava a questão, mas obrigava o `createProvider` a ser assíncrono e isso propaga-se ao singleton `foundation` — não compensa sem outra razão.

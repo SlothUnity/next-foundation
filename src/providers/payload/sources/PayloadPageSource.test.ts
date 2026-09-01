@@ -48,7 +48,7 @@ describe('PayloadPageSource', () => {
   it('gives up on a locale this provider does not know', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    await expect(source.getPage('sobre-nos', 'fr-FR')).resolves.toBeUndefined();
+    await expect(source.getPage('sobre-nos', 'fr-FR')).resolves.toEqual({ status: 'notFound' });
 
     expect(getCachedPage).not.toHaveBeenCalled();
   });

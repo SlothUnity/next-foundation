@@ -57,7 +57,7 @@ createPageRequest({ path, locale, draft })            ⚠️ costura
 ApiClient.get(endpoint, { params, headers, draft, tags })
         │  GET {API_URL}/en/about-us
         │
-        ├── 404 .................................→ undefined  → notFound()
+        ├── 404 .............................→ { status: 'notFound' }
         ├── rede / 5xx / não-JSON ...............→ ApiRequestError
         │
         ▼
@@ -275,7 +275,7 @@ Quando o mapper estiver escrito, [mapApiPage.test.ts](../src/providers/api/mappe
 
 A distinção é deliberada: um é infraestrutura, o outro é contrato. O `ApiRequestError` traz o `url` e o `status`; o `ApiContractError` traz a causa e, na mensagem, o caminho do campo.
 
-Um `404` **não** é erro: o cliente devolve `undefined`, o `getPage` devolve `undefined`, e a aplicação decide o `notFound()`. Um corpo `null` conta como o mesmo. Se a API responder `404` com um corpo para renderizar — uma página de erro própria — é na [ApiPageSource](../src/providers/api/sources/ApiPageSource.ts) que se decide devolvê-lo em vez de `undefined`.
+Um `404` **não** é erro: o cliente devolve `undefined` e o `getPage` responde `{ status: 'notFound' }` — sem página. Um corpo `null` conta como o mesmo. Se a API servir uma página de erro própria, é na [ApiPageSource](../src/providers/api/sources/ApiPageSource.ts) que se decide devolvê-la no `page` da resposta, e aí ela renderiza como qualquer outra ([routing.md](routing.md#o-404-é-conteúdo)). É também aí que entrariam os redirects, se a API os expuser.
 
 ## Cache
 
