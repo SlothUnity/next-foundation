@@ -36,6 +36,7 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 - **camada de autoria dos mocks** — `definePage` com as traduções por chave de locale, `block()` a verificar o `data` contra o tipo do módulo, ids derivados do alias e da posição; estrutura em `pages/` e `sources/`
 - provider `payload`
 - provider `api` — pedido a cru (`API_URL` + caminho) e transporte pronto (cliente, cache, erros, testes), com duas costuras editáveis: `createPageRequest` e `mapApiPage`
+- **o `mapApiPage` fica por escrever de propósito** — o formato é de quem desenhou a API, e um mapper genérico seria um palpite que parece funcionar; a foundation entrega o ponto de partida e os limites conhecidos do transporte estão em [api.md](api.md#o-que-o-transporte-ainda-não-faz)
 - `requireEnv` partilhado: configuração obrigatória em falta derruba o arranque em vez de degradar em silêncio
 
 ### Payload
@@ -53,6 +54,7 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 - **cache entre pedidos** — `unstable_cache` sobre o resultado do mapeamento, com tags grosseiras e hooks `afterChange`/`afterDelete` a invalidar; o rascunho nunca entra, o 404 entra; 133 ms a frio, ~20 ms a quente, medido em produção contra a base de dados
 - a guarda do autosave: um rascunho de uma página nunca publicada não invalida nada, senão a cache do site caía a cada 375ms enquanto um editor escrevia
 - Live Preview server-side: `RefreshRouteOnSave`, `next/preview`, `next/exit-preview`
+- **o `PREVIEW_SECRET` assina, não viaja** — o URL leva um token HMAC preso ao caminho e com uma hora de validade, e o segredo nunca sai do servidor; a verificação distingue expirado de forjado, para um link velho pedir um refresh em vez de parecer um ataque
 - o `PayloadLivePreview` **atira** quando falta o `NEXT_PUBLIC_SERVER_URL`, em vez de passar `''` ao `RefreshRouteOnSave` e falhar a validação de origem em silêncio
 
 ### App
@@ -75,7 +77,7 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 
 ### Qualidade
 
-- `typecheck`, `lint` e 164 testes verdes (165 assim que existir um módulo gerado)
+- `typecheck`, `lint` e 181 testes verdes (182 assim que existir um módulo gerado)
 - testes sem carregar o `payload.config.ts`
 - `pnpm build` corre `lint`, `typecheck` e testes antes do `next build` — sem CI, é este o portão antes de produção
 - `.env.example` na raiz
@@ -121,36 +123,19 @@ O `unstable_cache` está declarado em Next 16 como substituído pela directiva `
 
 Falta ainda **verificar a invalidação contra o admin**: publicar uma página e confirmar que o público muda à primeira. Os hooks estão testados unitariamente e as entradas de cache foram inspeccionadas em produção contra a base de dados real, mas o ciclo completo exige uma escrita.
 
-### 3. `PREVIEW_SECRET` fora do URL
-
-O segredo viaja na query string do iframe do Live Preview, logo fica no DOM do admin, no histórico do browser e em qualquer `Referer` que a página previsualizada envie. Um token curto e assinado resolvia. Não é urgente porque a rota valida também a sessão com `payload.auth()`.
-
-### 4. Mapeamento do provider api
-
-O transporte está feito e o `mapApiPage` está deliberadamente por escrever: arranca com `PROVIDER=api`, e o erro do primeiro pedido diz as chaves que a API devolveu. Ver [api.md](api.md).
-
-Pendências conhecidas, todas por resolver antes de servir um site multilingue:
-
-- as cache tags não incluem o locale, logo idiomas diferentes colidem na mesma entrada;
-- nada chama `revalidateTag` em lado nenhum, portanto as tags são write-only;
-- constrói-se um `ApiClient` novo em cada `getPage`, relendo o ambiente;
-- não há `AbortSignal` nem timeout — um upstream pendurado pendura o render;
-- o `createPageRequest` recebe o `locale` já resolvido mas ainda não o põe no pedido;
-- um `API_URL` mal escrito produz 404 em tudo, e o site responde 404 em silêncio em vez de dizer que a configuração está errada — é a última falha silenciosa por fechar, e fecha-se ao escrever o `mapApiPage`.
-
-### 5. TypeScript
+### 3. TypeScript
 
 **`noUncheckedIndexedAccess`** não está ligado no `tsconfig.json`. Ligá-lo apanha a classe de bugs que este projeto mais tem — `locales[0]`, `docs[0]`, `split('-')[0]` compilam hoje sem guarda. É mecânico, e vale a pena fazê-lo **antes** das rondas grandes, senão escrevem-se as guardas duas vezes.
 
 **`Meta.locale` obrigatório.** Hoje é opcional e nenhum consumidor depende dele — o `<html lang>` passou a sair do locale da rota — mas todos os mappers o preenchem. Torná-lo obrigatório fecha a divergência entre o que o tipo permite e o que a realidade faz.
 
-### 6. Cobertura e E2E
+### 4. Cobertura e E2E
 
-Não há cobertura configurada nem framework de E2E — 164 testes, todos unitários. Os componentes de admin já têm testes (o `PageUrl` e o `livePreview.url` da collection), mas nunca foram abertos num browser autenticado: o que está verificado é a lógica, não o render dentro do admin.
+Não há cobertura configurada nem framework de E2E — 181 testes, todos unitários. Os componentes de admin já têm testes (o `PageUrl` e o `livePreview.url` da collection), mas nunca foram abertos num browser autenticado: o que está verificado é a lógica, não o render dentro do admin.
 
 O cenário que interessa é o editorial: publicado A, preview mostra B, público continua A, publicar, público passa a B. Vale a pena corrê-lo à mão assim que o Live Preview estiver verificado contra a base de dados, e automatizá-lo depois como ronda própria — instalar e configurar Playwright com uma base de dados com estado é trabalho a sério.
 
-### 7. Providers realmente permutáveis
+### 5. Providers realmente permutáveis
 
 Resolvido o essencial: o `payload.config.ts` já não é avaliado com `PROVIDER=mock`, porque o [getPayloadClient.ts](../src/providers/payload/getPayloadClient.ts) o importa dinamicamente. Há teste de regressão em `createProvider.test.ts`.
 

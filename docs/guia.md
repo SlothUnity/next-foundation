@@ -2341,11 +2341,11 @@ O live preview é a funcionalidade que atravessa mais camadas do projeto. Vale a
 ```
 1. Editor abre uma página no admin
 2. Payload chama Pages.admin.livePreview.url({ data, locale, req })
-3. → getLivePreviewUrl() devolve  /next/preview?path=/en/sobre-nos&previewSecret=XXX
+3. → getLivePreviewUrl() devolve  /next/preview?path=/en/sobre-nos&token=XXX
 4. O iframe do admin abre esse endereço
 5. → route handler /next/preview:
-      valida o previewSecret
       valida que o path é seguro
+      valida a assinatura e a validade do token
       valida a sessão com payload.auth()
       draft.enable()  → grava um cookie
       redirect(path)
@@ -2363,9 +2363,11 @@ const lastBreadcrumb = breadcrumbs?.[breadcrumbs.length - 1];
 
 const path = typeof lastBreadcrumb?.url !== 'string' ? '/' : lastBreadcrumb.url;
 
+const pagePath = createPagePath({ path, locale, defaultLocale });
+
 const params = new URLSearchParams({
-  path: createPagePath({ path, locale, defaultLocale }),
-  previewSecret: process.env.PREVIEW_SECRET ?? '',
+  path: pagePath,
+  token: createPreviewToken(pagePath, previewSecret),
 });
 
 return `/next/preview?${params.toString()}`;
@@ -2373,10 +2375,38 @@ return `/next/preview?${params.toString()}`;
 
 O **último** breadcrumb é o caminho da própria página (os anteriores são os antepassados). O `createPagePath` — a função do `core` ([3.2](#32-getlocalesegment-de-pt-pt-para-pt)) — acrescenta o prefixo de idioma quando é preciso. O `URLSearchParams` trata da codificação, o que evita partir tudo com um caminho que tenha caracteres especiais.
 
-> ⚠ **Lapso, não decisão**
+Repara em que é o caminho **já com prefixo de idioma** que é assinado, e não o breadcrumb cru. Tem de ser o mesmo que a rota vai receber, senão a verificação falhava em tudo o que não fosse o idioma por omissão.
+
+### O segredo assina, não viaja
+
+Aqui esteve `previewSecret: process.env.PREVIEW_SECRET ?? ''` — o segredo de produção, em texto, na query string do iframe.
+
+Uma query string acaba em três sítios, e vale a pena nomeá-los porque o mais importante é o que se esquece:
+
+| onde                                          | quanto tempo                     |
+| --------------------------------------------- | -------------------------------- |
+| logs de acesso do servidor, do proxy e da CDN | meses                            |
+| histórico do browser                          | até alguém o limpar              |
+| `src` do iframe, no DOM do admin              | enquanto a página estiver aberta |
+
+Um segredo estático que passe por ali é um segredo vazado para sempre e para o site inteiro, só rodável à mão. O que passou a viajar é um token:
+
+```
+<expiração>.<HMAC-SHA256 de "caminho|expiração", com PREVIEW_SECRET como chave>
+```
+
+Três propriedades, e cada uma tira valor a quem o apanhe: está **preso a um caminho**, logo pré-visualiza aquela página e mais nenhuma; **expira**; e o segredo **nunca sai do servidor**.
+
+A expiração faz parte do que é assinado. Empurrá-la para o futuro não estende o token — invalida a assinatura.
+
+> 🎯 **Decisão**
 >
-> **Por resolver:** o `PREVIEW_SECRET` vai na **query string**, e portanto fica no DOM do admin, no histórico do browser e em qualquer cabeçalho `Referer` que a página previsualizada envie. Um token curto e assinado seria melhor. Ficou deliberadamente de fora por exigir desenho novo, e porque o passo 5 valida também a sessão com `payload.auth()` — está registado no [`TODO.md`](TODO.md). O `?? ''` também faz com que, sem a variável definida, se gere um link que dá sempre 403 sem qualquer aviso.
+> **O TTL é de uma hora, não de um minuto**, e a razão está em como o Payload gera o link: o `url` da collection corre **uma vez**, quando a vista de edição é renderizada, e o resultado fica no `src` do iframe. Um editor que abra o documento e só carregue no botão de preview vinte minutos depois usa o token do início. Com um minuto, veria um 403 sem ter feito nada.
 >
+> Por isso o `verifyPreviewToken` devolve `'valid' | 'expired' | 'invalid'` e não um booleano: um link velho responde «Preview link has expired. Reload the admin and try again.», um link forjado responde «Invalid preview token». Um pede um refresh, o outro não pede nada.
+>
+> E o que isto **não** resolve, para ser dito: o token continua numa query string e continua nos logs. Não há como evitá-lo com um iframe — o `src` não leva cabeçalhos e não faz `POST`. Reduz-se o valor do que lá fica, não o facto de lá ficar.
+
 > ✅ **Corrigido**
 >
 > A função recebia ainda um parâmetro `isHome` que era redundante: como o `generateURL` já exclui a homepage ([9.4](#94-os-plugins-nesteddocs-e-seo)), o `breadcrumbs.url` dela já é `/`. Não fazia mal, mas sugeria uma regra que não existe.
@@ -2384,12 +2414,25 @@ O **último** breadcrumb é o caminho da própria página (os anteriores são os
 **A rota `/next/preview`** (passo 5) — `src/app/(frontend)/next/preview/route.ts`. Um `route.ts` exporta funções com o nome do método HTTP; aqui, `GET`. As validações estão pela ordem certa (barato primeiro, caro depois):
 
 ```ts
-if (!previewSecret || previewSecret !== process.env.PREVIEW_SECRET) {
-  return new Response('Invalid preview secret', { status: 403 });
+if (!previewSecret) {
+  return new Response('Preview is disabled: PREVIEW_SECRET is not set.', { status: 503 });
 }
 
+// Antes da assinatura: o caminho entra no que foi assinado.
 if (!isSafeRedirectPath(path)) {
   return new Response('Invalid path', { status: 400 });
+}
+
+const token = verifyPreviewToken(searchParams.get('token'), path, previewSecret);
+
+if (token === 'expired') {
+  return new Response('Preview link has expired. Reload the admin and try again.', {
+    status: 403,
+  });
+}
+
+if (token === 'invalid') {
+  return new Response('Invalid preview token', { status: 403 });
 }
 
 const payload = await getPayload({ config });
@@ -2832,16 +2875,16 @@ Assim nada chega a produção sem passar eslint, TypeScript e a suite de testes 
 
 ## 11.5 As variáveis de ambiente, uma a uma
 
-| Variável                 | Quem a usa                                            | Obrigatória           | Nota                                                                         |
-| ------------------------ | ----------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------- |
-| `PROVIDER`               | `createProvider.ts:8`                                 | não                   | `payload` (omissão), `api` ou `mock`. Valor desconhecido derruba o arranque. |
-| `DATABASE_URL`           | `payload.config.ts`                                   | **sim**               | ligação ao Postgres. Via `requireEnv` — sem ela a aplicação não arranca.     |
-| `PAYLOAD_SECRET`         | `payload.config.ts`                                   | **sim**               | assina as sessões. Também via `requireEnv`.                                  |
-| `NEXT_PUBLIC_SERVER_URL` | `payload.config.ts:24`, `PayloadLivePreview.tsx:13`   | não                   | o URL público. Sem ela, `http://localhost:3000`.                             |
-| `PREVIEW_SECRET`         | `getLivePreviewUrl.ts:26`, `next/preview/route.ts:13` | para live preview     | ver ⚠ em [9.5](#95-o-circuito-do-live-preview).                              |
-| `API_URL`                | `createApiClient.ts`                                  | só com `PROVIDER=api` | também via `requireEnv`.                                                     |
-| `API_TOKEN`              | `createApiClient.ts`                                  | não                   | vira `Authorization: Bearer ...`.                                            |
-| `API_REVALIDATE`         | `createApiClient.ts:6`                                | não                   | segundos de cache; 60 por omissão. Atira se não for um inteiro não-negativo. |
+| Variável                 | Quem a usa                                          | Obrigatória           | Nota                                                                         |
+| ------------------------ | --------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------- |
+| `PROVIDER`               | `createProvider.ts:8`                               | não                   | `payload` (omissão), `api` ou `mock`. Valor desconhecido derruba o arranque. |
+| `DATABASE_URL`           | `payload.config.ts`                                 | **sim**               | ligação ao Postgres. Via `requireEnv` — sem ela a aplicação não arranca.     |
+| `PAYLOAD_SECRET`         | `payload.config.ts`                                 | **sim**               | assina as sessões. Também via `requireEnv`.                                  |
+| `NEXT_PUBLIC_SERVER_URL` | `payload.config.ts:24`, `PayloadLivePreview.tsx:13` | não                   | o URL público. Sem ela, `http://localhost:3000`.                             |
+| `PREVIEW_SECRET`         | `Pages.ts`, `next/preview/route.ts`                 | para live preview     | assina os links; não viaja no URL — ver [9.5](#o-segredo-assina-não-viaja).  |
+| `API_URL`                | `createApiClient.ts`                                | só com `PROVIDER=api` | também via `requireEnv`.                                                     |
+| `API_TOKEN`              | `createApiClient.ts`                                | não                   | vira `Authorization: Bearer ...`.                                            |
+| `API_REVALIDATE`         | `createApiClient.ts:6`                              | não                   | segundos de cache; 60 por omissão. Atira se não for um inteiro não-negativo. |
 
 As três obrigatórias passam pelo mesmo `requireEnv` de `src/providers/requireEnv.ts`, que atira com o nome da variável e quem precisa dela. Configuração em falta derruba o arranque em vez de degradar em silêncio — há um `.env.example` na raiz para copiar.
 
@@ -2966,7 +3009,7 @@ if (!url) {
 
 Atira. Nada de `|| ''`. É o mesmo problema resolvido bem — e é útil ter os dois lado a lado para veres a diferença ([9.1](#91-payloadconfigts-opção-a-opção)).
 
-Faltam ao cliente um `AbortSignal`/timeout (um upstream pendurado pendura o render) e qualquer retentativa. O `ApiPageSource.ts:28` também cria um `ApiClient` novo a cada `getPage`, relendo o ambiente de cada vez.
+Faltam ao cliente um `AbortSignal`/timeout (um upstream pendurado pendura o render) e qualquer retentativa. O `ApiPageSource.ts:28` também cria um `ApiClient` novo a cada `getPage`, relendo o ambiente de cada vez. A lista completa do que o transporte ainda não faz — e a distinção entre o que é limite da foundation e o que é decisão de quem liga a API — está em [api.md](api.md#o-que-o-transporte-ainda-não-faz).
 
 **A costura por escrever** — `mappers/mapApiPage.ts`:
 
@@ -2985,7 +3028,7 @@ export function mapApiPage(raw: unknown): PageDefinition {
 
 > 🎯 **Decisão**
 >
-> Não é código por acabar — é um **stub que se explica**. Arranca-se com `PROVIDER=api`, faz-se um pedido, e o erro diz que chaves a API devolveu e onde escrever a tradução. É a alternativa a inventar um mapeamento para uma API que ainda não se conhece. Se precisares de contexto no pedido (cabeçalhos, parâmetros), esse é o outro ponto editável: o `createPageRequest`.
+> Não é código por acabar, nem uma tarefa que alguém se esqueceu de fazer: é um **stub que se explica**, e vai ficar assim nesta foundation. Arranca-se com `PROVIDER=api`, faz-se um pedido, e o erro diz que chaves a API devolveu e onde escrever a tradução. É a alternativa a inventar um mapeamento para uma API que ainda não se conhece. Se precisares de contexto no pedido (cabeçalhos, parâmetros), esse é o outro ponto editável: o `createPageRequest`.
 
 Uma coisa por fazer que convém saber antes de pegares nisto: o `createPageRequest` recebe `path`, `locale` e `draft`, mas a implementação por omissão **só usa o `path`**. O locale já lá chega resolvido — o `ApiPageSource` pergunta o default à sua `SiteSource` quando ninguém o indica — mas não se sabe como é que a API o quer (query string? header? caminho?), e por isso a decisão fica na costura, que é o sítio de quem ligar a API.
 

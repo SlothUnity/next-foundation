@@ -44,7 +44,10 @@ describe('Pages livePreview.url', () => {
     const url = await previewUrl(createReq());
 
     expect(String(url)).toContain('/next/preview?');
-    expect(String(url)).toContain('previewSecret=segredo');
+
+    // O segredo assina o caminho, não viaja no URL.
+    expect(String(url)).not.toContain('segredo');
+    expect(String(url)).toContain('token=');
   });
 
   it('keeps working when the site global has no locales', async () => {

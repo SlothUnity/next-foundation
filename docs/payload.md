@@ -351,14 +351,37 @@ page.tsx  →  draftMode().isEnabled  →  getPage(…, { draft: true })
 
 O locale por omissão que entra nesse caminho sai do `mapPayloadSite`, e não de uma leitura própria de `enabledLocales[0]`. A regra é dele e resolve sempre — a cópia que aqui esteve desistia com o global por preencher, e o preview desaparecia sem explicação.
 
-O `previewSecret` é **parâmetro** do `getLivePreviewUrl`, não uma leitura de `process.env` lá dentro. Sem segredo, a função produzia um link com `previewSecret=` vazio e a rota respondia 403 dentro do iframe. Hoje a collection detecta a ausência antes de gerar o link, regista `PREVIEW_SECRET is not set` no log do servidor e devolve `undefined` — o preview fica desligado de propósito, não por acidente.
+O `previewSecret` é **parâmetro** do `getLivePreviewUrl`, não uma leitura de `process.env` lá dentro, e serve de chave de assinatura — não vai no URL (ver [O segredo não viaja](#o-segredo-não-viaja)). A collection detecta a ausência antes de gerar o link, regista `PREVIEW_SECRET is not set` no log do servidor e devolve `undefined` — o preview fica desligado de propósito, não por acidente.
 
-[app/(frontend)/next/preview/route.ts](<../src/app/(frontend)/next/preview/route.ts>) — quatro guardas antes de activar o `draftMode`:
+[app/(frontend)/next/preview/route.ts](<../src/app/(frontend)/next/preview/route.ts>) — as guardas antes de activar o `draftMode`, por esta ordem:
 
-1. `previewSecret` tem de coincidir com `PREVIEW_SECRET` → 403
+1. `PREVIEW_SECRET` tem de estar definido → 503, e a mensagem nomeia a variável
 2. `isSafeRedirectPath(path)` — só caminhos relativos à própria origem → 400 (ver [routing.md](routing.md#issaferedirectpath))
-3. `payload.auth({ headers })` tem de devolver um utilizador → 401
-4. só então `draftMode().enable()` e redirect
+3. `verifyPreviewToken(token, path)` → 403
+4. `payload.auth({ headers })` tem de devolver um utilizador → 401
+5. só então `draftMode().enable()` e redirect
+
+A ordem não é arbitrária: o caminho é validado **antes** do token porque entra no que foi assinado — verificar a assinatura contra um caminho que ainda não se sabe se é seguro seria verificar a coisa errada.
+
+### O segredo não viaja
+
+[utils/previewToken.ts](../src/providers/payload/utils/previewToken.ts)
+
+O `PREVIEW_SECRET` **assina**, não circula. O que vai no URL é um token: `<expiração>.<HMAC-SHA256 de "caminho|expiração">`.
+
+O que isto muda é o valor do que se apanha. Uma query string acaba em três sítios — nos logs de acesso do servidor, do proxy e da CDN, no histórico do browser, e no `src` do iframe dentro do DOM do admin. Antes, o que lá ficava era o segredo de produção, válido para sempre e para o site inteiro, e só rodável à mão. Agora:
+
+- o token está **preso a um caminho**, logo pré-visualiza aquela página e mais nenhuma;
+- **expira**, logo uma linha de log da semana passada não vale nada;
+- e o segredo em si **nunca sai do servidor**.
+
+Uma nota sobre o que isto **não** resolve: o token continua numa query string, portanto continua nos logs. Não há como evitá-lo com um iframe — o `src` não leva cabeçalhos e não faz `POST`. O que se reduz é o valor do que lá fica.
+
+**O TTL é de uma hora, e o número tem uma razão.** O `url` da collection corre uma vez, quando a vista de edição é renderizada, e o resultado fica no `src` do iframe. Um editor que abra o documento e só carregue no botão de preview vinte minutos depois usa o token do início. Com um TTL de um minuto veria um 403 sem ter feito nada de errado.
+
+Por isso a verificação distingue **expirado** de **inválido**: um link velho responde «Preview link has expired. Reload the admin and try again.», e um link forjado responde «Invalid preview token». Um pede um refresh, o outro não pede nada.
+
+A expiração faz parte do que é assinado, portanto empurrá-la para o futuro invalida a assinatura em vez de estender o token.
 
 [next/exit-preview/route.ts](<../src/app/(frontend)/next/exit-preview/route.ts>) desliga o cookie. Sem passar por aqui, a navegação normal continua a servir rascunhos.
 

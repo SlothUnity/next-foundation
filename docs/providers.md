@@ -178,7 +178,7 @@ O pedido vai a cru — `API_URL` mais o caminho onde estamos — e a resposta, q
 
 O `createPageRequest` recebe `path`, `locale` e `draft`. O `locale` chega já resolvido — o `ApiPageSource` pergunta o default à sua `SiteSource` quando ninguém o indica — mas a implementação por omissão ainda não o põe no pedido: é uma das costuras por escrever.
 
-O `mapApiPage` está deliberadamente por escrever: arranca com `PROVIDER=api` e o erro do primeiro pedido diz as chaves que a API devolveu.
+O `mapApiPage` está por escrever, e **fica assim**: o formato da resposta é de quem desenhou a API, e um mapper genérico seria um palpite. Arranca com `PROVIDER=api` e o erro do primeiro pedido diz as chaves que a API devolveu.
 
 Não declara `preview`, por isso é — como o `mocks` — um caso de teste do `preview` opcional.
 

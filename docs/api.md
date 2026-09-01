@@ -285,7 +285,7 @@ Páginas publicadas usam o cache do Next com o `revalidate` configurado, e etiqu
 tags: ['pages', 'page:/sobre-nos'];
 ```
 
-Isso permite revalidar tudo ou uma página só, quando existir um webhook do CMS a fazê-lo. **Hoje nada chama `revalidateTag`**, portanto estas tags ainda são só escrita — está no [TODO.md](TODO.md). O provider payload já tem o circuito fechado, e serve de referência para o desenho: ver [payload.md § Cache](payload.md#cache), em particular a razão de as tags lá serem grosseiras e a de o segundo argumento do `revalidateTag` ser `{ expire: 0 }` e não `'max'`.
+Isso permite revalidar tudo ou uma página só, quando existir um webhook do CMS a fazê-lo — hoje ainda não existe, ver [O que o transporte ainda não faz](#o-que-o-transporte-ainda-não-faz). O provider payload já tem o circuito fechado e serve de referência para o desenho: ver [payload.md § Cache](payload.md#cache), em particular a razão de as tags lá serem grosseiras e a de o segundo argumento do `revalidateTag` ser `{ expire: 0 }` e não `'max'`.
 
 Rascunhos (`draft: true`) passam a `cache: 'no-store'`. Quem grava precisa de ver o que gravou, e não uma resposta de há um minuto.
 
@@ -322,6 +322,39 @@ return {
 Com um único idioma na lista, nada é reconhecido como prefixo e **o caminho passa inteiro** — que é exactamente o que se quer enquanto o mapeamento não estiver escrito. Este é o ficheiro a editar se um projecto precisar de o frontend distinguir idiomas (para gerar links com prefixo, ou um selector). Não é configuração de ambiente porque não é do transporte: é uma característica do site, como o `enabledLocales` do global `Site` é no provider Payload.
 
 Se a API que aparecer expuser definições de site, troca-se esta classe por um `client.get()` e um mapper, como a de páginas faz.
+
+## O mapper é teu, e é assim de propósito
+
+O `mapApiPage` está por escrever e **vai continuar por escrever nesta foundation.** Não é uma tarefa pendente que alguém se esqueceu de fazer: é a única peça que não pode existir aqui.
+
+O provider Payload sabe o formato do que lê porque o formato é definido no mesmo repositório. Aqui não. A resposta vem de uma API que outra pessoa desenhou, com nomes de campos, aninhamento e convenções que só se conhecem quando ela aparece. Escrever um mapper «genérico» seria escrever um palpite, e um palpite errado é pior do que um ficheiro por preencher — porque parece que funciona.
+
+Por isso o que a foundation entrega aqui é um **ponto de partida**: o transporte inteiro montado e testado, e duas costuras marcadas a dizer «isto é teu».
+
+| Direcção | Ficheiro                                                            | O que o projecto decide                                                       |
+| -------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Sai      | [createPageRequest.ts](../src/providers/api/createPageRequest.ts)   | se o locale entra no pedido, e como: prefixo no caminho, query string, header |
+| Entra    | [mappers/mapApiPage.ts](../src/providers/api/mappers/mapApiPage.ts) | como o corpo da resposta vira um `PageDefinition`                             |
+
+O `ApiPageSource` já resolve o locale antes de chamar o `createPageRequest` — quer o pedido tenha vindo com um, quer tenha caído no default da `SiteSource`. O que ele **não** faz é decidir por ti se esse locale vai no URL, num parâmetro ou num cabeçalho, porque essa é uma característica da API que se vai ligar.
+
+A [receita passo a passo](#ligar-uma-api-nova-por-passos) está no fim deste documento, e o primeiro erro que a aplicação atira já te diz as chaves que a API devolveu.
+
+## O que o transporte ainda não faz
+
+Isto é o outro lado da moeda, e não é decisão de projecto nenhum: são limites do código que a foundation **traz feito**. Nenhum impede ligar uma API e ver páginas; todos merecem uma linha antes de pôr isto em produção.
+
+| Limite                                            | Consequência                                                                            |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| As cache tags não incluem o locale                | duas traduções da mesma página colidem na mesma entrada de cache                        |
+| Nada chama `revalidateTag`                        | as tags são só escrita; sem um webhook do CMS remoto, o conteúdo só actualiza por tempo |
+| Constrói-se um `ApiClient` novo em cada `getPage` | relê o ambiente a cada pedido, em vez de o fazer uma vez                                |
+| Não há `AbortSignal` nem timeout                  | um upstream pendurado pendura o render, sem limite                                      |
+| Um `API_URL` mal escrito devolve 404 em tudo      | o site responde 404 em silêncio em vez de dizer que a configuração está errada          |
+
+O primeiro e o quarto são os que mordem a sério: o primeiro serve conteúdo no idioma errado, o quarto derruba o tempo de resposta de todo o site por causa de um upstream lento. Os outros três são incómodos.
+
+O segundo tem uma nota: parte dele **é** do projecto. Invalidar por evento exige saber que eventos o CMS remoto emite e por onde, e isso não se pode escrever sem o conhecer. O que a foundation devia trazer, e não traz, é a rota que os recebe. Para ver como fica o circuito fechado do outro lado, ver [payload.md § Cache](payload.md#cache).
 
 ## O que não tem
 
