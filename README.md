@@ -48,6 +48,8 @@ O [guia.md](docs/guia.md) tem 3500 linhas e percorre o projeto ficheiro a fichei
 
 ## Arrancar
 
+### Experimentar, antes de escolher
+
 A forma mais rápida de ver o site a funcionar **não precisa de base de dados nenhuma**:
 
 ```bash
@@ -56,6 +58,26 @@ PROVIDER=mock pnpm dev
 ```
 
 O provider `mocks` serve páginas escritas à mão em [src/providers/mocks/pages/](src/providers/mocks/pages/), em português e inglês. Abre `/` e `/en`.
+
+### Escolher o tipo de projecto
+
+Esta foundation traz **três** providers montados, e um projecto real usa um. O primeiro passo num projecto novo é dizer qual:
+
+```bash
+pnpm setup:provider
+```
+
+Pergunta qual dos três é (`payload`, `api` ou `mock`) e **apaga o que não é preciso**: os outros dois providers, e — se o Payload sair — o `payload.config.ts`, o `src/app/(payload)/`, as rotas de preview, as sete dependências, os scripts `payload:*`, o `withPayload`, os caminhos `@payload-*` e o documento do provider removido. Com um provider só, a variável `PROVIDER` e o `createProvider` deixam de fazer sentido e saem também.
+
+Chama-se `setup:provider` e não `setup` porque **`pnpm setup` é um comando do próprio pnpm** — um script com esse nome ficaria à sombra dele.
+
+Três coisas que vale saber antes de correr:
+
+- **recusa arrancar com alterações não commitadas**, para tudo o que ele faz caber num só `git diff` legível. `pnpm setup:provider --dry-run` imprime o plano sem tocar em nada;
+- **para quando não reconhece um ficheiro.** Cada operação falha em voz alta se a âncora que espera não estiver lá, em vez de editar à sorte. Se personalizaste algum destes ficheiros, o comando pára e diz qual;
+- **apaga-se a si mesmo no fim.** Um comando destes esquecido dentro de um projecto de cliente é uma armadilha. `--keep` para o manter.
+
+No fim lista as referências em prosa que ficaram a apontar para o documento apagado. São frases, não linhas de tabela, portanto quem as lê é uma pessoa e não um script.
 
 Com o Payload e o Postgres:
 
@@ -132,6 +154,7 @@ Duas regras de pastas que evitam a maior parte das dúvidas:
 | `pnpm format`               | prettier em toda a árvore                                    |
 | `pnpm format:check`         | verifica sem escrever                                        |
 | `pnpm generate`             | gera um módulo novo, com bloco do Payload incluído (Plop)    |
+| `pnpm setup:provider`       | escolhe o provider do projecto e apaga os outros dois        |
 | `pnpm generate:payload`     | `generate:types` + `generate:importMap`                      |
 
 Corre `pnpm generate:payload` (ou arranca com `pnpm dev:payload`) sempre que mudares collections, globals, campos ou o caminho de um componente de admin.

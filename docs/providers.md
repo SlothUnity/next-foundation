@@ -183,10 +183,25 @@ O core não muda. O renderer não muda. Os módulos não mudam.
 ## Remover o Payload
 
 Esta foundation traz o Payload montado, mas ele é **um** provider e não a fundação. Se o
-conteúdo vier de outro lado, o Payload sai — e sair inteiro é preciso, porque enquanto o
-`src/app/(payload)/` existir o build exige `PAYLOAD_SECRET` e `DATABASE_URL` **mesmo com
-`PROVIDER=api`**: a rota `/api/[...slug]` importa o `payload.config.ts` estaticamente, e
-ele valida o ambiente ao carregar.
+conteúdo vier de outro lado, o Payload sai — e sair inteiro é preciso, porque enquanto
+houver uma rota a importar o `payload.config.ts` estaticamente o build exige
+`PAYLOAD_SECRET` e `DATABASE_URL` **mesmo com `PROVIDER=api`**. São duas: a
+`/api/[...slug]` do grupo `(payload)`, e a `next/preview`, que está no `(frontend)` — o
+`payload.config.ts` valida o ambiente ao carregar, e o `next build` compila todas as rotas.
+
+**Isto já não se faz à mão.** O comando
+
+```bash
+pnpm setup:provider
+```
+
+pergunta qual dos três providers este projecto usa e apaga o resto — incluindo tudo o que
+está nesta secção. Ele recusa arrancar com a árvore suja, para o resultado inteiro caber
+num `git diff`; tem `--dry-run`; e pára em voz alta se algum dos ficheiros abaixo tiver
+sido personalizado, em vez de o editar à sorte. Depois de correr, apaga-se.
+
+A lista continua aqui porque é a documentação do **acoplamento**, e é ela que explica
+porque é que sair pela metade não funciona.
 
 O que apagar:
 
@@ -204,6 +219,13 @@ E depois duas edições:
   existir parte a compilação;
 - os scripts `payload:*` e `dev:payload` do `package.json`, o `withPayload` do
   [next.config.ts](../next.config.ts), e as dependências `payload`, `@payloadcms/*`.
+
+O `setup:provider` vai um passo mais longe do que estas duas edições, e de propósito: com
+um provider só, o `switch` e a variável `PROVIDER` são código morto. Ele apaga o
+`createProvider.ts` e o teste dele, e reescreve o [provider.ts](../src/providers/provider.ts)
+como um re-export directo do provider escolhido. O contrato em
+[Provider.types.ts](../src/providers/Provider.types.ts) fica intacto — é ele que permite
+voltar a acrescentar um provider mais tarde.
 
 Fica o `core`, os `modules`, o `app/(frontend)` e os providers `api` e `mocks`. O
 [gerador](modules.md) já conta com isto: sem `src/providers/payload/blocks/index.ts` não
