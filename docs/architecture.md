@@ -6,6 +6,8 @@ Uma página não é código — é dados. O CMS produz um documento, um adaptado
 
 Nada no caminho de renderização sabe que CMS está por baixo.
 
+Este documento diz **como as camadas se relacionam**. Para **o que acontece em execução**, na ordem em que acontece e com o ficheiro de cada passo, ver [fluxos.md](fluxos.md).
+
 ## Camadas
 
 ```
@@ -44,6 +46,8 @@ Nada no caminho de renderização sabe que CMS está por baixo.
 Se um dia `core/` precisar de importar de `providers/`, é sinal de que um conceito está na camada errada.
 
 ## Fluxo de um pedido
+
+A versão curta. Os dez fluxos — pedido, 404, redirect, pré-visualização, publicação, arranque, render de um módulo, gerador — estão em [fluxos.md](fluxos.md).
 
 ```
 URL /en/servicos/consultoria

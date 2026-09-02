@@ -38,8 +38,6 @@ describe('loadPayloadPage', () => {
 
     await loadPayloadPage('sobre-nos', 'pt-PT', false);
 
-    // A segunda consulta só existe no caminho de falha. Se corresse sempre, cada
-    // página do site custava o dobro.
     expect(resolvePayloadNotFoundPage).not.toHaveBeenCalled();
   });
 

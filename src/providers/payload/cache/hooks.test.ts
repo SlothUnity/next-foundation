@@ -36,9 +36,6 @@ describe('revalidatePagesOnChange', () => {
   });
 
   it('invalidates the redirects too, because their targets are page URLs', () => {
-    // Um destino por referência traz o URL da página apontada. Mudar o slug dessa
-    // página deixava o mapa a apontar para um URL que já não existe, e a tag dos
-    // redirects sozinha nunca o saberia.
     change('published', 'published');
 
     expect(revalidatePayloadTag).toHaveBeenCalledWith(REDIRECTS_TAG);
@@ -51,8 +48,6 @@ describe('revalidatePagesOnChange', () => {
   });
 
   it('ignores a draft of a page that was never published', () => {
-    // O autosave grava de 375 em 375ms. Sem esta guarda, escrever um rascunho
-    // invalidava a cache do site inteiro a cada tecla.
     change('draft', 'draft');
 
     expect(revalidatePayloadTag).not.toHaveBeenCalled();
@@ -95,8 +90,6 @@ describe('revalidateRedirectsOnChange', () => {
   });
 
   it('leaves the pages alone, because the dependency only runs one way', () => {
-    // Uma página gravada invalida as duas tags — o destino de um redirect é um URL
-    // de página. O contrário não: gravar um redirect não toca em página nenhuma.
     revalidateRedirectsOnChange({ doc: { from: '/a' } } as never);
 
     expect(revalidatePayloadTag).not.toHaveBeenCalledWith(PAGES_TAG);

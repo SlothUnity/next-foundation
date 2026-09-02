@@ -6,12 +6,6 @@ import { mockSite } from '../mockSite';
 import { mockNotFoundPages, mockPages, mockRedirects } from '../pages';
 
 export class MockPageSource extends PageSource {
-  /**
-   * A ordem é a de qualquer CMS: primeiro o redirect, senão a página, senão o 404.
-   *
-   * O redirect vem antes da página de propósito. Se um caminho tiver as duas coisas,
-   * ganha o redirect — é o que permite substituir uma página sem a apagar.
-   */
   async getPage(path: string, locale?: string): Promise<PageResponse> {
     const resolvedLocale = locale ?? mockSite.defaultLocale;
 

@@ -42,8 +42,6 @@ describe('uniqueFlagField', () => {
 
     await validate(req, true, 7);
 
-    // Sem o not_equals, gravar a própria página marcada era o suficiente para ela
-    // se autodetectar como conflito e ficar impossível de guardar.
     expect(find).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { and: expect.arrayContaining([{ id: { not_equals: 7 } }]) },
@@ -64,8 +62,6 @@ describe('uniqueFlagField', () => {
   it('never asks the database to turn the flag off', async () => {
     const { req, find } = createReq([{ id: 7 }]);
 
-    // Desligar tem de poder falhar nunca, senão um documento marcado por engano
-    // ficava preso com a marca.
     await expect(validate(req, false)).resolves.toBe(true);
     expect(find).not.toHaveBeenCalled();
   });

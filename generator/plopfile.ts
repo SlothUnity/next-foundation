@@ -3,25 +3,11 @@ import path from 'node:path';
 
 import type { ActionType, NodePlopAPI } from 'plop';
 
-/**
- * Gerador de módulos.
- *
- * Escreve sempre o módulo. O bloco do Payload **só** é escrito se o provider payload
- * existir neste projecto: uma foundation servida por `api` ou por `mocks` pode ter
- * apagado `src/providers/payload/` inteiro, e nesse caso um bloco não teria onde viver.
- *
- * Os templates vivem em `generator/templates/` e estão no `.prettierignore`: o parser
- * de handlebars do Prettier reescreve os `.hbs` e destrói a indentação do código que
- * eles geram.
- */
 export default function generator(plop: NodePlopAPI): void {
-  // `getPlopfilePath()` devolve a **pasta** do plopfile, não o ficheiro.
   const projectRoot = path.resolve(plop.getPlopfilePath(), '..');
 
   const blocksIndex = path.join(projectRoot, 'src/providers/payload/blocks/index.ts');
 
-  // Testa o `index.ts` e não só a pasta: é nele que as duas âncoras `// plop:` vivem,
-  // e sem elas não há onde registar o bloco.
   const hasPayloadBlocks = existsSync(blocksIndex);
 
   const moduleActions: ActionType[] = [
@@ -63,8 +49,6 @@ export default function generator(plop: NodePlopAPI): void {
     {
       type: 'append',
       path: '../src/modules/index.ts',
-      // Separador vazio e quebra de linha no fim: o append por omissão deixaria o
-      // ficheiro sem newline final, e o `format:check` reprova-o.
       separator: '',
       template: "export { {{camelCase name}}Module } from './{{pascalCase name}}';\n",
       unique: true,
@@ -78,9 +62,6 @@ export default function generator(plop: NodePlopAPI): void {
       templateFile: './templates/module/block.hbs',
     },
     {
-      // As âncoras `// plop: …` existem porque aqui são precisas duas inserções no
-      // mesmo ficheiro — o import e a entrada no array — e um append cego só sabe
-      // escrever no fim.
       type: 'append',
       path: '../src/providers/payload/blocks/index.ts',
       pattern: /\/\/ plop: import/,

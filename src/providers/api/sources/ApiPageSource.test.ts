@@ -70,7 +70,6 @@ describe('ApiPageSource', () => {
   it('answers notFound when the api has no page', async () => {
     const { source } = createSource(undefined);
 
-    // Sem página de erro: onde vive a dela é uma característica da API que se ligar.
     await expect(source.getPage('nao-existe', 'pt-PT')).resolves.toEqual({ status: 'notFound' });
   });
 

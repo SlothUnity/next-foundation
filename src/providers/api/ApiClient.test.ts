@@ -6,7 +6,6 @@ import { callArg } from '@/testing/callArg';
 import { ApiClient } from './ApiClient';
 import { ApiRequestError } from './errors';
 
-/** O `RequestInit` que este cliente monta, na forma que os testes lhe lêem. */
 interface FetchInit {
   headers?: Record<string, string>;
   cache?: string;

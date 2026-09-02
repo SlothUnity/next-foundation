@@ -22,8 +22,6 @@ describe('revalidatePayloadTag', () => {
   it('expires the tag immediately instead of serving it stale', () => {
     revalidatePayloadTag('payload:pages');
 
-    // `'max'` serviria o conteúdo velho enquanto revalida em fundo — quem publica no
-    // admin veria a página antiga à primeira.
     expect(revalidateTag).toHaveBeenCalledWith('payload:pages', { expire: 0 });
   });
 
@@ -32,7 +30,6 @@ describe('revalidatePayloadTag', () => {
       throw nextError('E263');
     });
 
-    // Um script de seed ou uma migração corre os mesmos hooks e não tem cache nenhuma.
     expect(() => revalidatePayloadTag('payload:pages')).not.toThrow();
   });
 

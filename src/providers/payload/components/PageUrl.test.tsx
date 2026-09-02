@@ -62,7 +62,6 @@ describe('PageUrl', () => {
   it('still resolves a locale when the site global is empty', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    // Antes lia enabledLocales[0] por sua conta e o campo desaparecia do admin.
     await show({ breadcrumbs: [{ url: '/sobre-nos' }], enabledLocales: [] });
 
     expect(screen.getByRole('link')).toHaveAttribute('href', `${ORIGIN}/sobre-nos`);

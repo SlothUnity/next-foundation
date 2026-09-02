@@ -1,9 +1,5 @@
 import { draftMode } from 'next/headers';
 
-/**
- * POST, e não GET: desligar o modo rascunho muda estado, e um GET anónimo era
- * accionável por qualquer `<img src>` de terceiros (CSRF).
- */
 export async function POST(): Promise<Response> {
   const draft = await draftMode();
   draft.disable();

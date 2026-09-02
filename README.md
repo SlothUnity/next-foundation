@@ -6,26 +6,39 @@ A consequência prática: **trocar de CMS não obriga a tocar no frontend**, e a
 
 ## Ordem para ler
 
-Se é a primeira vez que abres este repositório, segue esta ordem. Cada passo assume o anterior.
+**Não há comentários no código deste projecto.** O raciocínio vive todo em `docs/`, e é por isso que a documentação é grande — ver [conventions.md § Comentários](docs/conventions.md#comentários).
+
+Há três portas de entrada, conforme o tempo que tens:
+
+| Tens…      | Lê                                        | Sais com                                              |
+| ---------- | ----------------------------------------- | ----------------------------------------------------- |
+| 10 minutos | [resumo.md](docs/resumo.md)               | a ideia, o mapa, e o que surpreende                   |
+| uma hora   | este README + [fluxos.md](docs/fluxos.md) | o site a correr, e por onde passa cada pedido         |
+| uma semana | [guia.md](docs/guia.md)                   | tudo, ficheiro a ficheiro, com o porquê de cada linha |
+
+Se é a primeira vez e queres o percurso completo, esta é a ordem. Cada passo assume o anterior.
 
 | #   | Lê                                                              | Para saíres com                                                                                                         |
 | --- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| 1   | **este README**, até ao fim                                     | o site a correr com `PROVIDER=mock`, e o mapa do `src/` na cabeça                                                       |
-| 2   | [guia.md](docs/guia.md), **Cap. 0 a 3**                         | o vocabulário (classes abstratas, generics, singletons, RSC) e o percurso de um pedido do URL até ao `{ locale, path }` |
-| 3   | [architecture.md](docs/architecture.md)                         | as camadas e a regra que as governa: tudo aponta para o `core`, e o `core` não aponta para ninguém                      |
-| 4   | [core.md](docs/core.md)                                         | os contratos — `PageSource`, `SiteSource`, `PageDefinition`, `Module`. É o vocabulário que o resto do projeto fala      |
-| 5   | [modules.md](docs/modules.md) + [renderer.md](docs/renderer.md) | como um bloco do CMS vira um componente React, e o que acontece quando corre mal                                        |
-| 6   | [providers.md](docs/providers.md)                               | como a fonte de conteúdo se troca, e porque é que o locale por omissão é uma resposta do provider                       |
-| 7   | [routing.md](docs/routing.md)                                   | URLs, locales, metadata, o `proxy`, e porque é que o frontend é SSR                                                     |
-| 8   | [conventions.md](docs/conventions.md)                           | onde pôr um ficheiro novo e como o nomear. **Lê antes de escreveres o primeiro**                                        |
-| 9   | [TODO.md](docs/TODO.md)                                         | o que está feito, o que falta, e o que está decidido mas por correr                                                     |
+| 1   | [resumo.md](docs/resumo.md)                                     | a ideia inteira em dez minutos, e os nomes das peças                                                                    |
+| 2   | **este README**, até ao fim                                     | o site a correr com `PROVIDER=mock`, e o mapa do `src/` na cabeça                                                       |
+| 3   | [fluxos.md](docs/fluxos.md)                                     | por onde passa um pedido, um 404, um redirect e uma publicação — ficheiro a ficheiro                                    |
+| 4   | [guia.md](docs/guia.md), **Cap. 0 a 3**                         | o vocabulário (classes abstratas, generics, singletons, RSC) e o percurso de um pedido do URL até ao `{ locale, path }` |
+| 5   | [architecture.md](docs/architecture.md)                         | as camadas e a regra que as governa: tudo aponta para o `core`, e o `core` não aponta para ninguém                      |
+| 6   | [core.md](docs/core.md)                                         | os contratos — `PageSource`, `SiteSource`, `PageDefinition`, `Module`. É o vocabulário que o resto do projeto fala      |
+| 7   | [modules.md](docs/modules.md) + [renderer.md](docs/renderer.md) | como um bloco do CMS vira um componente React, e o que acontece quando corre mal                                        |
+| 8   | [providers.md](docs/providers.md)                               | como a fonte de conteúdo se troca, e porque é que o locale por omissão é uma resposta do provider                       |
+| 9   | [routing.md](docs/routing.md)                                   | URLs, locales, metadata, o `proxy`, e porque é que o frontend é SSR                                                     |
+| 10  | [conventions.md](docs/conventions.md)                           | onde pôr um ficheiro novo e como o nomear. **Lê antes de escreveres o primeiro**                                        |
+| 11  | [TODO.md](docs/TODO.md)                                         | o que está feito, o que falta, e o que está decidido mas por correr                                                     |
 
-O [guia.md](docs/guia.md) tem 2900 linhas e percorre o projeto ficheiro a ficheiro, com o editor aberto ao lado. Os passos 3 a 8 são documentação de referência — cobrem o mesmo terreno em resumo, e são onde voltas depois. Se só tiveres uma tarde, faz 1, 2 e 3.
+O [guia.md](docs/guia.md) tem 3500 linhas e percorre o projeto ficheiro a ficheiro, com o editor aberto ao lado. Os passos 5 a 10 são documentação de referência — cobrem o mesmo terreno em resumo, e são onde voltas depois. Se só tiveres uma tarde, faz 1, 2 e 3.
 
 ### Atalhos, se já conheces o projeto
 
 | Vais fazer                     | Vai a                                                                       |
 | ------------------------------ | --------------------------------------------------------------------------- |
+| perceber onde algo corre       | [fluxos.md](docs/fluxos.md)                                                 |
 | um módulo de conteúdo novo     | `pnpm generate` — e [modules.md](docs/modules.md) para perceber o que gerou |
 | ligar outro CMS                | [providers.md](docs/providers.md)                                           |
 | ligar uma API externa          | [api.md](docs/api.md)                                                       |
@@ -148,6 +161,8 @@ pnpm test --run
 
 | Documento                               | Responde a                                                 |
 | --------------------------------------- | ---------------------------------------------------------- |
+| [resumo.md](docs/resumo.md)             | O projecto inteiro em dez minutos                          |
+| [fluxos.md](docs/fluxos.md)             | Por onde passa cada pedido, ficheiro a ficheiro            |
 | [guia.md](docs/guia.md)                 | Porque é que cada peça está como está, ficheiro a ficheiro |
 | [architecture.md](docs/architecture.md) | Como está organizado e porquê                              |
 | [conventions.md](docs/conventions.md)   | Onde ponho um ficheiro novo e como o nomeio                |

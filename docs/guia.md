@@ -4,6 +4,10 @@ Este guia explica o projeto peça a peça: o que cada coisa faz e, sobretudo, **
 
 No fim deves conseguir abrir qualquer ficheiro do `src/` e explicar o que lá está a alguém.
 
+> **Não há comentários no código deste projecto.** Este guia é onde o raciocínio vive, e é por isso que ele é longo — ver [conventions.md § Comentários](conventions.md#comentários).
+>
+> Se não tens tempo para o percurso todo: o [resumo.md](resumo.md) dá a ideia inteira em dez minutos, e o [fluxos.md](fluxos.md) dá por onde passa cada pedido, ficheiro a ficheiro.
+
 ## Como ler este guia
 
 **Para quem é.** Para quem sabe JavaScript mas olha para este projeto e não percebe o vocabulário: porquê classes nuns sítios e funções noutros, o que é uma classe abstrata, para que serve um `Registry` genérico, porque é que há um ficheiro que exporta uma variável já criada. O Capítulo 0 dá esse vocabulário todo antes de o percurso começar.
@@ -3084,18 +3088,30 @@ export default withPayload(nextConfig);
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(() => ({
-  resolve: { alias: { '@': path.resolve(dirname, './src') } },
+  resolve: {
+    alias: {
+      '@': path.resolve(dirname, './src'),
+      '@payload-config': path.resolve(dirname, './payload.config.ts'),
+      '@payload-types': path.resolve(dirname, './payload-types.ts'),
+    },
+  },
   test: { environment: 'jsdom', setupFiles: ['./vitest.setup.ts'] },
 }));
 ```
 
-O alias `@` tem de ser repetido aqui, porque o Vitest não lê o `tsconfig`. O `environment: 'jsdom'` simula um DOM em Node, para se poder renderizar componentes nos testes.
+Os três aliases têm de ser repetidos aqui, porque o Vitest não lê o `tsconfig`. O `environment: 'jsdom'` simula um DOM em Node, para se poder renderizar componentes nos testes.
+
+O `@payload-config` só precisa de **resolver**, não de ser avaliado: o `getPayloadClient` importa-o dinamicamente e nenhum teste chega a pedir dados ao Payload ([8.2](#82-payloadsitesource-e-a-local-api)).
 
 > ✅ **Corrigido**
 >
 > A config usava `__dirname`, que não existe num projeto `"type": "module"` — funcionava só porque o Vite pré-processa o ficheiro, e o próprio Vite já avisava que o futuro `configLoader: 'native'` deixaria de o suportar. Hoje deriva de `import.meta.url`, como o `payload.config.ts` sempre fez.
 
-**O estado dos testes.** São 17 ficheiros e 113 casos, colocados ao lado do código que testam (sem pasta `__tests__/`). Cobrem o `core` (registry, renderer, routing), o transporte do provider `api`, e a fronteira do provider Payload: o `resolvePayloadPage` e o `mapPayloadPage`.
+**O estado dos testes.** São 31 ficheiros e 236 casos, colocados ao lado do código que testam (sem pasta `__tests__/`). Cobrem o `core` (registry, renderer, routing), o transporte do provider `api`, e a fronteira do provider Payload: as queries, os mappers, a cache, os campos de admin e o token de pré-visualização.
+
+**Um teste que prova o valor dos outros dois.** O `createProvider.test.ts` afirma que o provider `mocks` corre sem base de dados nenhuma. Isso só é verdade enquanto o `payload.config.ts` não for avaliado — e para o provar há um terceiro teste que importa a config de propósito e **exige que ela rebente** por falta de `PAYLOAD_SECRET`. Sem essa prova, os dois primeiros passariam mesmo que o `requireEnv` deixasse de exigir seja o que for.
+
+Esse ficheiro importa o `createProvider` dentro de cada caso, a seguir a um `vi.resetModules()`. É preciso porque o ambiente que o teste prepara tem de valer no momento em que os módulos são avaliados: sem o reset, a primeira importação ficava em cache e os testes seguintes não veriam o ambiente novo.
 
 Vale a pena saber o que o `resolvePayloadPage.test.ts` está lá a fazer, porque não é cobertura por cobertura: com `overrideAccess: true`, o filtro `_status: 'published'` é a única coisa que mantém rascunhos fora do site público ([8.4](#84-resolvepayloadpage-opção-a-opção)). Há dois testes só para essa condição — um a confirmar que ela existe fora do modo rascunho, outro a confirmar que desaparece dentro dele. Se alguém a apagar num refactor, os testes falham em vez de o site passar a servir conteúdo por publicar em silêncio.
 

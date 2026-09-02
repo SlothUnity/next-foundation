@@ -29,8 +29,6 @@ describe('getLivePreviewUrl', () => {
       previewSecret: SECRET,
     });
 
-    // O segredo assina, não viaja: uma query string acaba nos logs de acesso, no
-    // histórico do browser e no DOM do admin.
     expect(url).not.toContain(SECRET);
     expect(paramsOf(url).get('previewSecret')).toBeNull();
   });
@@ -60,8 +58,6 @@ describe('getLivePreviewUrl', () => {
 
     const params = paramsOf(url);
 
-    // A rota valida o token contra o `path` que recebe. Assinar o caminho sem
-    // prefixo dava um 403 em tudo o que não fosse o idioma por omissão.
     expect(params.get('path')).toBe('/en/about-us');
     expect(verifyPreviewToken(params.get('token'), '/en/about-us', SECRET)).toBe('valid');
   });
@@ -78,7 +74,6 @@ describe('getLivePreviewUrl', () => {
   });
 
   it('falls back to the root when there are no breadcrumbs', () => {
-    // O generateURL do nested-docs exclui a homepage, portanto o url dela é "/".
     const url = getLivePreviewUrl({
       breadcrumbs: [],
       locale: 'pt-PT',

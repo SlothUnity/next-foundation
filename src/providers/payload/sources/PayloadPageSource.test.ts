@@ -35,7 +35,6 @@ describe('PayloadPageSource', () => {
   });
 
   it('keeps a draft out of the cache', async () => {
-    // O que o editor vê é a versão dele. Guardá-la arriscava servi-la a um visitante.
     await source.getPage('sobre-nos', 'pt-PT', { draft: true });
 
     expect(loadPayloadPage).toHaveBeenCalledWith('sobre-nos', 'pt-PT', true);
@@ -66,25 +65,18 @@ describe('PayloadPageSource', () => {
       permanent: true,
     });
 
-    // O redirect ganha à página: é o que permite substituir um URL sem apagar o
-    // conteúdo que estava nele.
     expect(getCachedPage).not.toHaveBeenCalled();
   });
 
   it('reads the redirects of the locale being served, against the site default', async () => {
     await source.getPage('sobre-nos', 'en-GB');
 
-    // O default entra na chave da cache de propósito: os destinos por referência
-    // trazem o prefixo de idioma, e lido dentro do loader mudá-lo deixava entradas
-    // com prefixos errados sem nada que as invalidasse.
     expect(getCachedRedirects).toHaveBeenCalledWith('en-GB', 'pt-PT');
   });
 
   it('does not let a redirect hijack a preview', async () => {
     getCachedRedirects.mockResolvedValue({ 'pagina-antiga': { to: '/', permanent: true } });
 
-    // O editor pediu este documento. Um redirect a apanhar o caminho dele partia a
-    // pré-visualização da própria página que ele está a escrever.
     await source.getPage('pagina-antiga', 'pt-PT', { draft: true });
 
     expect(loadPayloadPage).toHaveBeenCalledWith('pagina-antiga', 'pt-PT', true);
@@ -94,8 +86,6 @@ describe('PayloadPageSource', () => {
   it('says out loud that the locale is a configuration divergence', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    // Um visitante não chega aqui — o resolveRoute só devolve locales que o global
-    // declara. Sem o aviso, isto ficava indistinguível de uma página inexistente.
     await source.getPage('sobre-nos', 'fr-FR');
 
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('fr-FR'));

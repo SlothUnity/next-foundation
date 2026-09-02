@@ -32,15 +32,6 @@ const resolve = cache(async (path: string): Promise<ResolvedPage> => {
   return { response, route, site };
 });
 
-/**
- * Nunca devolve `undefined` — a origem responde sempre, nem que seja `notFound`.
- * Quem chama decide o que fazer com o status.
- *
- * O `join('/')` não é cosmético: o `cache()` do React compara argumentos por
- * identidade, e o `await params` do layout e o da página devolvem arrays
- * diferentes com o mesmo conteúdo. Sem esta normalização a cache nunca acertava,
- * e isso não parte teste nenhum — só duplica as consultas em silêncio.
- */
 export function resolvePage(segments: string[]): Promise<ResolvedPage> {
   return resolve(segments.join('/'));
 }

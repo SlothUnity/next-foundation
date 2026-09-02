@@ -32,8 +32,6 @@ describe('MockPageSource', () => {
 
 describe('MockPageSource, when the path is unknown', () => {
   it('answers notFound with the error page as content', async () => {
-    // O 404 é conteúdo do provider, não um ficheiro do app/. É isto que faz com que
-    // ele renderize pela árvore normal e chegue inteiro ao HTML servido.
     await expect(source.getPage('nao-existe', 'pt-PT')).resolves.toEqual({
       status: 'notFound',
       page: notFoundPt?.page,
@@ -54,8 +52,6 @@ describe('MockPageSource, when the path is unknown', () => {
   });
 
   it('answers notFound without a page for a locale it does not serve', async () => {
-    // Sem tradução da página de erro não há nada honesto para servir; quem chama
-    // desenha o seu fallback.
     await expect(source.getPage('', 'fr-FR')).resolves.toEqual({ status: 'notFound' });
   });
 });
@@ -75,7 +71,6 @@ describe('MockPageSource, when the path is a redirect', () => {
       to: '/en',
     });
 
-    // O caminho inglês não existe em português.
     await expect(source.getPage('old-page', 'pt-PT')).resolves.toMatchObject({
       status: 'notFound',
     });

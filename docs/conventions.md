@@ -165,6 +165,42 @@ Alguns caminhos vivem em strings e o `typecheck` passa por eles sem os validar:
 
 Sempre que renomeares algo dentro de `src/providers/payload/`, procura o nome antigo em strings antes de assumir que o `typecheck` verde significa que está feito.
 
+## Comentários
+
+**Não há comentários no código.** O raciocínio vive em `docs/`.
+
+Não é aversão a explicar — é o contrário. Este projecto tinha 229 comentários, muitos deles com o porquê de uma decisão, e o porquê de uma decisão é a coisa que mais depressa fica desactualizada num ficheiro que alguém edita por outro motivo. Um docblock a explicar uma medição que já não é verdade é pior do que nenhum: parece autoridade.
+
+Nos documentos o mesmo raciocínio é revisível, pesquisável, e liga-se ao resto. E há um verificador de links a apanhar as referências que apodrecem.
+
+### Onde é que o raciocínio vai parar
+
+| O que o comentário dizia               | Onde passa a viver                                                             |
+| -------------------------------------- | ------------------------------------------------------------------------------ |
+| o que esta função faz                  | no nome dela; se não couber no nome, a função é grande                         |
+| porque é que está escrita assim        | o documento do assunto — [payload.md](payload.md), [routing.md](routing.md), … |
+| por onde passa isto em execução        | [fluxos.md](fluxos.md)                                                         |
+| que decisão isto fecha, e o que custou | [guia.md](guia.md), nos blocos de decisão                                      |
+| o que aqui esteve e saiu               | [guia.md](guia.md), nos blocos de correcção                                    |
+| um caso de fronteira que não é óbvio   | o **nome de um teste**                                                         |
+
+A última linha é a que mais trabalho poupa. Um `it('keeps unpublished pages off the public site')` diz o mesmo que um comentário e **falha** quando deixa de ser verdade.
+
+### As duas excepções
+
+```ts
+// plop: import
+// plop: block
+```
+
+Vivem em [blocks/index.ts](../src/providers/payload/blocks/index.ts) e são **funcionais**: o gerador procura-as por regex para saber onde inserir. Apagá-las parte o `pnpm generate` sem partir nem o `typecheck` nem os testes.
+
+Os quatro ficheiros em `src/app/(payload)/` são gerados pelo Payload e trazem o cabeçalho dele. Não se editam.
+
+### Se mesmo assim precisares de um
+
+Precisas de escrever um comentário quando o código faz uma coisa que parece errada e não é — uma ordem de operações que importa, um contorno de um bug de biblioteca. Nesse caso, o comentário é uma linha e diz **porquê**, não o quê. E depois pergunta-te se não é antes um teste com um nome bom.
+
 ## Finais de linha
 
 [.gitattributes](../.gitattributes) declara `* text=auto eol=lf`, e as duas metades fazem coisas diferentes: o `text=auto` normaliza para LF **no que o Git guarda**, e o `eol=lf` força LF **no disco**.

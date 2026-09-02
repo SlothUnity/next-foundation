@@ -52,8 +52,6 @@ describe('Redirects — the target', () => {
   });
 
   it('stops asking for a page once the target is a custom path', () => {
-    // A condição do admin esconde o campo, mas esconder não é dispensar: é a
-    // validação que decide pelo type, não a UI.
     expect(validate('reference', null, CUSTOM)).toBe(true);
   });
 
@@ -67,8 +65,6 @@ describe('Redirects — the target', () => {
   });
 
   it('refuses a custom path outside this site', () => {
-    // Um redirect para fora é decisão de projecto. O que não pode é acontecer por
-    // distração num campo de texto, assinado pelo nosso domínio.
     expect(validate('custom', 'https://sitemau.com', CUSTOM)).toContain('path on this site');
     expect(validate('custom', '//sitemau.com', CUSTOM)).toContain('path on this site');
     expect(validate('custom', '/\\sitemau.com', CUSTOM)).toContain('path on this site');
@@ -87,9 +83,6 @@ describe('Redirects — the shape', () => {
   });
 
   it('does not localize the page reference, because a document is one document', () => {
-    // O que muda por idioma é o URL da página, e esse é derivado dos breadcrumbs na
-    // leitura. Localizar a referência era abrir a porta a apontar o redirect
-    // português para a página errada.
     expect(fieldNamed('reference').localized).toBeUndefined();
   });
 
@@ -98,7 +91,6 @@ describe('Redirects — the shape', () => {
   });
 
   it('has no drafts, so every save is a publish', () => {
-    // É o que dispensa a guarda de _status que os hooks da Pages precisam.
     expect(Redirects.versions).toBeUndefined();
   });
 });

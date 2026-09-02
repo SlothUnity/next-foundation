@@ -12,15 +12,10 @@ import { callArg } from '@/testing/callArg';
 
 import { loadPayloadRedirects, normalizeRedirectPath } from './loadPayloadRedirects';
 
-/** Os argumentos de uma das duas consultas: 0 é a dos redirects, 1 a das páginas. */
 function queryOf(callIndex: number) {
   return callArg<{ depth?: number; where?: unknown; select?: unknown }>(find, 0, callIndex);
 }
 
-/**
- * O loader faz duas consultas: a tabela de redirects, e depois as páginas apontadas.
- * A segunda só existe se a primeira trouxer referências.
- */
 function withDocs(redirects: unknown[], pages: unknown[] = [], totalDocs = redirects.length) {
   find.mockReset();
   find.mockResolvedValueOnce({ docs: redirects, totalDocs });
@@ -68,8 +63,6 @@ describe('loadPayloadRedirects', () => {
 
     await loadPayloadRedirects('pt-PT', 'pt-PT');
 
-    // depth: 0 traz ids. Com depth: 1 vinha o documento inteiro de cada página
-    // apontada — blocos, media, relações — só para se lhe ler o breadcrumb.
     expect(queryOf(0).depth).toBe(0);
   });
 
@@ -115,8 +108,6 @@ describe('loadPayloadRedirects', () => {
   it('prefixes the destination in a language that is not the default', async () => {
     withDocs([{ from: '/old-page', type: 'reference', reference: 7 }], [page(7, '/about-us')]);
 
-    // O editor escolhe a página uma vez; cada idioma recebe o URL dele. É o que um
-    // campo de texto não consegue dar sem duas hipóteses de o escrever ao contrário.
     await expect(loadPayloadRedirects('en-GB', 'pt-PT')).resolves.toEqual({
       'old-page': { to: '/en/about-us', permanent: false },
     });
@@ -143,8 +134,6 @@ describe('loadPayloadRedirects', () => {
 
     withDocs([{ from: '/a', type: 'reference', reference: 7 }], []);
 
-    // Sendo 308, o browser guardava o caminho e continuava a ir ao 404 mesmo depois
-    // de o problema estar resolvido. É pior do que não haver redirect nenhum.
     await expect(loadPayloadRedirects('pt-PT', 'pt-PT')).resolves.toEqual({});
 
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('/a'));
@@ -159,8 +148,6 @@ describe('loadPayloadRedirects', () => {
   });
 
   it('skips a locale that has no translation for the redirect', async () => {
-    // Com fallbackLocale: false, um documento escrito só em português chega ao
-    // inglês com os campos vazios. Isso é a ausência do redirect, não um erro.
     withDocs([{ from: null, type: 'custom', custom: null }]);
 
     await expect(loadPayloadRedirects('en-GB', 'pt-PT')).resolves.toEqual({});
@@ -169,8 +156,6 @@ describe('loadPayloadRedirects', () => {
   it('refuses a custom destination that leaves this site, and names it', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    // A validação do campo já o recusa. Isto apanha as linhas que não passaram por
-    // ela — um seed, uma migração, a REST API — e que davam um open redirect.
     withDocs([{ from: '/a', type: 'custom', custom: 'https://sitemau.com' }]);
 
     await expect(loadPayloadRedirects('pt-PT', 'pt-PT')).resolves.toEqual({});

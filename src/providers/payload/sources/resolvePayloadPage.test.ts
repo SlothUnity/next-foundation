@@ -15,7 +15,6 @@ function createPayload(docs: unknown[] = [PAGE]) {
   return { payload: { find } as unknown as Payload, find };
 }
 
-/** A forma que estes testes assumem da consulta — declarada, não presumida. */
 interface PageQuery {
   where: Where;
   draft: boolean;
@@ -53,8 +52,6 @@ describe('resolvePayloadPage', () => {
 
     await resolvePayloadPage(payload, 'sobre-nos', 'pt-PT', false);
 
-    // Com overrideAccess: true o Payload não filtra nada por si. Este _status é
-    // a única coisa que impede um rascunho de aparecer a um visitante anónimo.
     expect(JSON.stringify(argsOf(find).where)).toContain('published');
   });
 
@@ -127,8 +124,6 @@ describe('resolvePayloadNotFoundPage', () => {
 
     await resolvePayloadNotFoundPage(payload, 'pt-PT');
 
-    // Um 404 em rascunho é pior do que nenhum: aparecia a toda a gente sem ninguém
-    // o ter publicado.
     expect(JSON.stringify(argsOf(find).where)).toContain('published');
   });
 
@@ -157,8 +152,6 @@ describe('resolvePayloadNotFoundPage', () => {
   it('returns undefined when nobody marked a page as the error page', async () => {
     const { payload } = createPayload([]);
 
-    // Estado legítimo, não erro: um site acabado de instalar ainda não a tem, e a
-    // aplicação desenha o fallback mínimo.
     await expect(resolvePayloadNotFoundPage(payload, 'pt-PT')).resolves.toBeUndefined();
   });
 });
