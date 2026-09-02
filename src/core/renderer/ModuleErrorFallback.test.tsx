@@ -2,14 +2,14 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createFoundation } from '@/core/foundation';
-import { MockPageSource, MockSiteSource } from '@/providers/mocks';
+import { TestPageSource, TestSiteSource } from '@/testing/testSources';
 
 import { ModuleRenderer } from './ModuleRenderer';
 
 function createTestFoundation() {
   return createFoundation({
-    page: new MockPageSource(),
-    site: new MockSiteSource(),
+    page: new TestPageSource(),
+    site: new TestSiteSource(),
   });
 }
 
