@@ -19,8 +19,16 @@ import { Media } from '@/providers/payload/collections/Media';
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
 
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+
 export default buildConfig({
   secret: requireEnv('PAYLOAD_SECRET', 'Payload to sign session tokens'),
+
+  upload: {
+    limits: {
+      fileSize: MAX_UPLOAD_BYTES,
+    },
+  },
 
   serverURL: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
 

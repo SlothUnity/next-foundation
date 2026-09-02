@@ -224,6 +224,10 @@ export interface HeroBlock {
  */
 export interface Media {
   id: number;
+  /**
+   * What the image shows, for someone who cannot see it. Leave a decorative image described as decorative.
+   */
+  alt: string;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -437,6 +441,7 @@ export interface RedirectsSelect<T extends boolean = true> {
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
+  alt?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;

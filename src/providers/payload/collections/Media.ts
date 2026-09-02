@@ -2,6 +2,15 @@ import { CollectionConfig } from 'payload';
 
 import { isEditor, isPublic } from '@/providers/payload/access';
 
+export const allowedMediaMimeTypes = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/gif',
+  'application/pdf',
+];
+
 export const Media: CollectionConfig = {
   slug: 'media',
 
@@ -19,9 +28,25 @@ export const Media: CollectionConfig = {
 
   admin: {
     group: 'Content',
+    useAsTitle: 'alt',
   },
 
-  upload: true,
+  upload: {
+    mimeTypes: allowedMediaMimeTypes,
+  },
 
-  fields: [],
+  fields: [
+    {
+      name: 'alt',
+      type: 'text',
+      label: 'Alternative text',
+      required: true,
+      localized: true,
+
+      admin: {
+        description:
+          'What the image shows, for someone who cannot see it. Leave a decorative image described as decorative.',
+      },
+    },
+  ],
 };
