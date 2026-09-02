@@ -97,7 +97,7 @@ export default function generator(plop: NodePlopAPI): void {
   ];
 
   const closingNote: ActionType = hasPayloadBlocks
-    ? () => 'Falta correr `pnpm generate:payload` para os tipos do Payload apanharem o bloco novo.'
+    ? () => 'Falta correr `pnpm payload:generate` para os tipos do Payload apanharem o bloco novo.'
     : () =>
         'Provider payload não encontrado — só o módulo foi criado. Liga-o à tua origem de conteúdo.';
 

@@ -125,7 +125,7 @@ E adicioná-lo a [blocks/index.ts](../src/providers/payload/blocks/index.ts):
 export const pageBlocks = [HeroBlock, GalleryBlock];
 ```
 
-**4. `pnpm generate:payload`** para regenerar os tipos.
+**4. `pnpm payload:generate`** para regenerar os tipos.
 
 O `slug` do bloco tem de ser igual ao `alias` do módulo — é essa a única ligação entre o CMS e o frontend. O mapper usa `blockType` como alias, e o registry procura por esse alias. Se não coincidirem, dá `ModuleRenderError` em desenvolvimento.
 
@@ -197,7 +197,7 @@ src/providers/payload/blocks/index.ts             + CtaBlock em pageBlocks
 
 O `alias` do módulo e o `slug` do bloco saem ambos do `camelCase` do nome que deste, por isso **coincidem por construção** — que é o erro mais fácil de cometer à mão e o mais difícil de diagnosticar.
 
-**Falta um passo, e é de propósito:** correr `pnpm generate:payload` a seguir, para os tipos do Payload apanharem o bloco novo. O gerador lembra-te no fim.
+**Falta um passo, e é de propósito:** correr `pnpm payload:generate` a seguir, para os tipos do Payload apanharem o bloco novo. O gerador lembra-te no fim.
 
 ### Sem o provider payload, não há bloco
 

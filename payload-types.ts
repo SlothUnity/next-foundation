@@ -83,16 +83,14 @@ export interface Config {
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
-    'payload-locked-documents':
-      PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
+    'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
   };
   db: {
     defaultIDType: number;
   };
-  fallbackLocale:
-    ('false' | 'none' | 'null') | false | null | ('pt-PT' | 'en-GB') | ('pt-PT' | 'en-GB')[];
+  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('pt-PT' | 'en-GB') | ('pt-PT' | 'en-GB')[];
   globals: {
     site: Site;
   };
@@ -528,6 +526,7 @@ export interface CollectionsWidget {
 export interface Auth {
   [k: string]: unknown;
 }
+
 
 declare module 'payload' {
   export interface GeneratedTypes extends Config {}

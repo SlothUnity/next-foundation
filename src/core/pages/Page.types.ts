@@ -1,7 +1,18 @@
 import type { ModuleInstance } from '@/core/modules';
 
 export interface Meta {
-  locale?: string;
+  /**
+   * Obrigatório, ao contrário de tudo o resto aqui.
+   *
+   * Era opcional, e nenhum consumidor dependia dele — o `<html lang>` sai do locale
+   * da rota. Mas todos os mappers o preenchiam, e um tipo que permite menos do que a
+   * realidade faz é uma divergência à espera de alguém a resolver na direcção errada:
+   * escrever a guarda em quem lê, em vez de a exigir a quem escreve.
+   *
+   * Uma página é sempre servida **num** idioma. Se uma origem não souber qual, o
+   * problema é dela e não do tipo.
+   */
+  locale: string;
 
   title?: string;
   description?: string;

@@ -4,3 +4,15 @@ coverage
 dist
 pnpm-lock.yaml
 generator/templates
+
+# Gerados pelo Payload, e não por nós.
+#
+# O `next dev` com o `withPayload` reescreve os dois a cada recompilação, sem o
+# Prettier deste projecto. Formatá-los não é só inútil — com o dev server a correr é
+# um ciclo: o Prettier escreve, o watcher vê a alteração e regenera.
+#
+# Tentou-se a alternativa (um `prettier --write` a seguir ao `payload:generate`) e ela
+# só cobre quem corre o script à mão. Ficam de fora, e o `pnpm format:check` volta a
+# dizer a verdade sobre os ficheiros que alguém escreve.
+payload-types.ts
+src/app/(payload)/admin/importMap.js

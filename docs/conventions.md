@@ -77,6 +77,8 @@ Para confirmar que o disco e o git concordam, compara `git ls-files` com os nome
 
 Ao lado do que testam, não numa pasta `__tests__/`. Ler uma unidade não deve obrigar a navegar duas árvores, e o `.test` no nome já os distingue à vista.
 
+A excepção é o que os testes **partilham**: [src/testing/](../src/testing/) para helpers usados por testes de camadas diferentes. Um helper vive ao lado do teste enquanto só um o usa; quando o segundo aparece, sobe para lá, pela mesma regra das pastas logo abaixo.
+
 ## Pastas
 
 **Uma pasta justifica-se a partir de dois ficheiros.** Criar `components/` para um componente ou `types/` para um tipo é custo sem retorno — a pasta nasce quando o segundo ficheiro aparecer.
@@ -159,6 +161,29 @@ Usa sempre `import type` para tipos. É apagado na compilação, o que evita arr
 Alguns caminhos vivem em strings e o `typecheck` passa por eles sem os validar:
 
 - **Componentes de admin do Payload** — `Field: '/providers/payload/components/PageUrl#default'` em [Pages.ts](../src/providers/payload/collections/Pages.ts). Se o caminho ficar desalinhado, o campo desaparece do admin sem um único erro.
-- **[importMap.js](<../src/app/(payload)/admin/importMap.js>)** — gerado a partir dessas strings. Corre `pnpm generate:payload` depois de mover qualquer componente de admin.
+- **[importMap.js](<../src/app/(payload)/admin/importMap.js>)** — gerado a partir dessas strings. Corre `pnpm payload:generate` depois de mover qualquer componente de admin.
 
 Sempre que renomeares algo dentro de `src/providers/payload/`, procura o nome antigo em strings antes de assumir que o `typecheck` verde significa que está feito.
+
+## Finais de linha
+
+[.gitattributes](../.gitattributes) declara `* text=auto eol=lf`, e as duas metades fazem coisas diferentes: o `text=auto` normaliza para LF **no que o Git guarda**, e o `eol=lf` força LF **no disco**.
+
+É a segunda que resolve o problema real. O repositório já guardava LF, mas com `core.autocrlf=true` — o default de muitas instalações do Git em Windows — o checkout escrevia CRLF, e o Prettier (que corre com `endOfLine: "lf"`) reprovava seis ficheiros que ninguém tinha editado. A única forma de os «corrigir» era um commit de ruído que o próximo checkout desfazia.
+
+Com isto no repositório, a decisão deixa de depender da configuração de cada máquina.
+
+## Ficheiros gerados
+
+Dois ficheiros são escritos pelo Payload e não por nós:
+
+| Ficheiro                                                  | Quem o escreve               |
+| --------------------------------------------------------- | ---------------------------- |
+| [payload-types.ts](../payload-types.ts)                   | `payload generate:types`     |
+| [importMap.js](<../src/app/(payload)/admin/importMap.js>) | `payload generate:importmap` |
+
+Estão os dois no [.prettierignore](../.prettierignore), e a razão é operacional: **o `next dev` com o `withPayload` reescreve-os a cada recompilação**, sem o Prettier deste projecto. Formatá-los não é só inútil — com o dev server a correr é um ciclo, porque o Prettier escreve, o watcher vê a alteração e regenera.
+
+A alternativa tentada — um `prettier --write` a seguir ao `payload:generate` — funciona, mas só para quem corre o script à mão. Ficam de fora, e o `pnpm format:check` volta a dizer a verdade sobre os ficheiros que alguém escreve.
+
+Nenhum dos dois se edita à mão. Se algum ficar desalinhado, a correção é correr `pnpm payload:generate`.

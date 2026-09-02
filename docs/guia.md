@@ -1018,7 +1018,7 @@ O `createPagePath` — a outra função de routing, que constrói caminhos em ve
 >
 > O `createPagePath` tinha a mesma expressão escrita à mão (`locale.split('-')[0]?.toLowerCase() ?? ''`), com uma guarda a mais, em vez de chamar o `getLocaleSegment`. Nenhuma das duas versões estava errada — `split()` devolve sempre pelo menos um elemento, logo o `[0]` nunca é `undefined` em execução — mas ter a mesma regra escrita em dois sítios com formas diferentes é precisamente o que esta função existia para evitar. Se um dia mudar a forma dos segmentos de locale no URL, agora muda-se num sítio só.
 
-(Se algum dia se ligar a opção `noUncheckedIndexedAccess` no `tsconfig` — está no [`TODO.md`](TODO.md) —, o TypeScript passa a exigir a guarda também aqui.)
+Com o `noUncheckedIndexedAccess` ligado, o TypeScript passou a exigir a guarda aqui — e a forma que ficou escreve a intenção em vez de a afirmar: `const [language = locale] = locale.split('-')`. O default diz o que a regra sempre foi, que um locale sem hífen é ele próprio o segmento ([11.2](#112-tsconfigjson-opção-a-opção)).
 
 ## 3.3 O locale por omissão é declarado, não adivinhado
 
@@ -3012,12 +3012,12 @@ Corre lint e verificação de tipos **antes** de arrancar. É invulgar — o nor
 | `typecheck`               | `tsc --noEmit` — verifica tipos sem gerar ficheiros                      |
 | `test`                    | `vitest` em modo de observação. Uma só passagem: `pnpm test --run`       |
 | `format` / `format:check` | prettier a escrever / só a verificar                                     |
-| `generate:types`          | regenera o `payload-types.ts` a partir das collections                   |
-| `generate:importMap`      | regenera o mapa dos componentes de admin ([9.2](#92-a-collection-pages)) |
-| `generate:payload`        | os dois acima                                                            |
+| `payload:types`           | regenera o `payload-types.ts` a partir das collections                   |
+| `payload:importMap`       | regenera o mapa dos componentes de admin ([9.2](#92-a-collection-pages)) |
+| `payload:generate`        | os dois acima                                                            |
 | `prepare`                 | instala os hooks do husky (corre sozinho depois do `install`)            |
 
-**Quando é preciso correr o `generate:payload`:** sempre que mexeres em collections, globals, blocos ou campos — os tipos gerados deixam de bater certo — e sempre que mexeres em caminhos de componentes de admin. É o passo esquecido mais comum, e o sintoma é o TypeScript a queixar-se de campos que tu juraste ter criado.
+**Quando é preciso correr o `payload:generate`:** sempre que mexeres em collections, globals, blocos ou campos — os tipos gerados deixam de bater certo — e sempre que mexeres em caminhos de componentes de admin. É o passo esquecido mais comum, e o sintoma é o TypeScript a queixar-se de campos que tu juraste ter criado.
 
 O `cross-env` nos scripts de geração existe para a variável `PAYLOAD_CONFIG_PATH` funcionar igual em Windows e em Unix.
 
@@ -3026,6 +3026,7 @@ O `cross-env` nos scripts de geração existe para a variável `PAYLOAD_CONFIG_P
 | Opção                                                      | O que faz                                                                                                                                      |
 | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `"strict": true`                                           | liga todas as verificações rigorosas de uma vez (`strictNullChecks`, `noImplicitAny`, etc.). É a única linha realmente importante do ficheiro. |
+| `"noUncheckedIndexedAccess": true`                         | `array[0]` passa a ter tipo `elemento \| undefined`. Ver abaixo — é a opção deste ficheiro que mais mudou código.                              |
 | `"target": "ES2017"`                                       | nível de JavaScript gerado                                                                                                                     |
 | `"lib": ["dom", "dom.iterable", "esnext"]`                 | que APIs existem: DOM (browser) e as mais recentes da linguagem                                                                                |
 | `"module": "esnext"` + `"moduleResolution": "bundler"`     | deixa o bundler resolver imports; permite omitir extensões e usar `exports` dos pacotes                                                        |
@@ -3049,7 +3050,16 @@ E os **`paths`**, que são os que vês em todos os imports do projeto:
 
 O `@/` evita cadeias de `../../../`. Os outros dois são exigidos pelo Payload, que espera encontrar a config e os tipos gerados por estes nomes exatos.
 
-**Uma opção que não está lá e faria diferença:** `noUncheckedIndexedAccess`. Sem ela, `array[0]` tem o tipo do elemento; com ela, tem `elemento | undefined`, o que obriga a tratar o caso de o array estar vazio. É a razão pela qual `locales[0]` ([3.3](#33-o-locale-por-omissão-é-declarado-não-adivinhado)), `docs[0]` ([8.4](#84-resolvepayloadpage-opção-a-opção)) e `split('-')[0]` ([3.2](#32-getlocalesegment-de-pt-pt-para-pt)) compilam sem guardas. Ligá-la agora obrigaria a algumas correções, mas apanhava exatamente a classe de bugs que este projeto mais tem.
+**`noUncheckedIndexedAccess`** merece uma nota, porque é a opção deste ficheiro que mais mudou código. Sem ela, `array[0]` tem o tipo do elemento; com ela, tem `elemento | undefined`, o que obriga a tratar o caso de o array estar vazio — exactamente a classe de bugs que este projeto mais teve (`locales[0]`, `docs[0]`, `split('-')[0]`).
+
+O que ela apanhou ao ser ligada é a parte interessante: **um erro em código de produção e vinte e seis em testes.** O de produção era o `getLocaleSegment` ([3.2](#32-getlocalesegment-de-pt-pt-para-pt)). Os dos testes eram todos `mock.calls[0][0]`.
+
+E a tentação, nos testes, era pôr `!` em vinte e seis sítios — que é precisamente a afirmação por verificar que a flag existe para apanhar. O que se fez em vez disso:
+
+- onde a asserção era «foi chamado com isto», passou a usar os matchers do Vitest (`expect.stringContaining`, `expect.objectContaining`). Lêem-se melhor e dão melhores mensagens de falha;
+- onde o teste precisava mesmo do valor, um helper partilhado, [src/testing/callArg.ts](../src/testing/callArg.ts), que verifica o índice e diz **qual** mock não foi chamado e quantas vezes o foi — em vez do `Cannot read properties of undefined` que o `!` daria.
+
+Uma flag que só se pagasse em `!` não valeria a pena. Esta pagou-se em mensagens de erro.
 
 ## 11.3 `next.config.ts`
 
@@ -3422,7 +3432,7 @@ export { ctaModule } from './cta'; // NÃO uses export * aqui — ver 4.3
 
 1. `alias` ≠ `slug` → o módulo não aparece, sem erro em produção.
 2. `export *` em `src/modules/index.ts` → falha estranha no arranque ([4.3](#43-registermodules-registo-por-convenção)).
-3. Esquecer o `generate:payload` → o TypeScript não conhece o bloco.
+3. Esquecer o `payload:generate` → o TypeScript não conhece o bloco.
 4. Esquecer o `schema` → sem validação, e a asserção de tipo do adaptador passa a ser uma mentira ([6.4](#64-createmodulecomponent-o-adaptador-e-onde-ele-mente)).
 
 Não é preciso tocar em: `PageRenderer`, `ModuleRenderer`, `Registry`, `mapPayloadPage`, `Pages.ts` nem em nada do `core`. Se te vires a mexer num destes para acrescentar um módulo, alguma coisa está errada no desenho.

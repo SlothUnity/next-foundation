@@ -1,0 +1,24 @@
+# Finais de linha, decididos pelo repositório e não pela máquina de quem clona.
+#
+# O que estava a acontecer: o repositório guarda LF, mas com `core.autocrlf=true` — o
+# default de muitas instalações do Git em Windows — o checkout escrevia CRLF no disco.
+# O Prettier corre com `endOfLine: "lf"`, portanto `pnpm format:check` reprovava seis
+# ficheiros que ninguém tinha editado, e a única forma de os "corrigir" era um commit
+# de ruído que o próximo checkout desfazia.
+#
+# `text=auto` deixa o Git detectar o que é texto e normalizar para LF no que guarda.
+# O `eol=lf` é a metade que resolve isto: força LF **no disco** também, e ganha ao
+# `core.autocrlf` de quem clona.
+* text=auto eol=lf
+
+# Binários, declarados para o caso de a detecção automática hesitar.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.avif binary
+*.woff binary
+*.woff2 binary
+*.pdf binary

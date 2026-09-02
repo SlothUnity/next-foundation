@@ -98,6 +98,6 @@ describe('PayloadPageSource', () => {
     // declara. Sem o aviso, isto ficava indistinguível de uma página inexistente.
     await source.getPage('sobre-nos', 'fr-FR');
 
-    expect(String(warn.mock.calls[0][0])).toContain('fr-FR');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('fr-FR'));
   });
 });

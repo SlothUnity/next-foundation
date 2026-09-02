@@ -67,7 +67,7 @@ describe('Pages livePreview.url', () => {
 
     await expect(previewUrl(req)).resolves.toBeUndefined();
 
-    expect(String(req.error.mock.calls[0][0])).toContain('PREVIEW_SECRET');
+    expect(req.error).toHaveBeenCalledWith(expect.stringContaining('PREVIEW_SECRET'));
   });
 
   it('does not even ask the database when the secret is missing', async () => {

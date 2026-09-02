@@ -8,7 +8,14 @@ const { getPayloadClient, find } = vi.hoisted(() => {
 
 vi.mock('@/providers/payload/getPayloadClient', () => ({ getPayloadClient }));
 
+import { callArg } from '@/testing/callArg';
+
 import { loadPayloadRedirects, normalizeRedirectPath } from './loadPayloadRedirects';
+
+/** Os argumentos de uma das duas consultas: 0 é a dos redirects, 1 a das páginas. */
+function queryOf(callIndex: number) {
+  return callArg<{ depth?: number; where?: unknown; select?: unknown }>(find, 0, callIndex);
+}
 
 /**
  * O loader faz duas consultas: a tabela de redirects, e depois as páginas apontadas.
@@ -47,7 +54,7 @@ describe('loadPayloadRedirects', () => {
 
     await loadPayloadRedirects('en-GB', 'pt-PT');
 
-    expect(find.mock.calls[0][0]).toMatchObject({
+    expect(queryOf(0)).toMatchObject({
       collection: 'redirects',
       locale: 'en-GB',
       fallbackLocale: false,
@@ -63,7 +70,7 @@ describe('loadPayloadRedirects', () => {
 
     // depth: 0 traz ids. Com depth: 1 vinha o documento inteiro de cada página
     // apontada — blocos, media, relações — só para se lhe ler o breadcrumb.
-    expect(find.mock.calls[0][0].depth).toBe(0);
+    expect(queryOf(0).depth).toBe(0);
   });
 
   it('resolves every referenced page in a single second query', async () => {
@@ -78,12 +85,12 @@ describe('loadPayloadRedirects', () => {
     await loadPayloadRedirects('pt-PT', 'pt-PT');
 
     expect(find).toHaveBeenCalledTimes(2);
-    expect(find.mock.calls[1][0]).toMatchObject({
+    expect(queryOf(1)).toMatchObject({
       collection: 'pages',
       depth: 0,
       select: { breadcrumbs: true },
     });
-    expect(JSON.stringify(find.mock.calls[1][0].where)).toContain('[7,9]');
+    expect(JSON.stringify(queryOf(1).where)).toContain('[7,9]');
   });
 
   it('skips the second query when nothing points at a page', async () => {
@@ -128,7 +135,7 @@ describe('loadPayloadRedirects', () => {
 
     await loadPayloadRedirects('pt-PT', 'pt-PT');
 
-    expect(JSON.stringify(find.mock.calls[1][0].where)).toContain('published');
+    expect(JSON.stringify(queryOf(1).where)).toContain('published');
   });
 
   it('drops a redirect whose target is unpublished, and says why', async () => {
@@ -140,7 +147,7 @@ describe('loadPayloadRedirects', () => {
     // de o problema estar resolvido. É pior do que não haver redirect nenhum.
     await expect(loadPayloadRedirects('pt-PT', 'pt-PT')).resolves.toEqual({});
 
-    expect(String(warn.mock.calls[0][0])).toContain('/a');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('/a'));
   });
 
   it('keeps the custom path verbatim', async () => {
@@ -168,7 +175,7 @@ describe('loadPayloadRedirects', () => {
 
     await expect(loadPayloadRedirects('pt-PT', 'pt-PT')).resolves.toEqual({});
 
-    expect(String(warn.mock.calls[0][0])).toContain('/a');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('/a'));
   });
 
   it('says out loud when the table is larger than what it serves', async () => {
@@ -178,6 +185,6 @@ describe('loadPayloadRedirects', () => {
 
     await loadPayloadRedirects('pt-PT', 'pt-PT');
 
-    expect(String(warn.mock.calls[0][0])).toContain('4000');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('4000'));
   });
 });

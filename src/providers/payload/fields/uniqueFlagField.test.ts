@@ -44,7 +44,11 @@ describe('uniqueFlagField', () => {
 
     // Sem o not_equals, gravar a própria página marcada era o suficiente para ela
     // se autodetectar como conflito e ficar impossível de guardar.
-    expect(find.mock.calls[0][0].where.and).toContainEqual({ id: { not_equals: 7 } });
+    expect(find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { and: expect.arrayContaining([{ id: { not_equals: 7 } }]) },
+      }),
+    );
   });
 
   it('has no id to exclude while the document is being created', async () => {
@@ -52,7 +56,9 @@ describe('uniqueFlagField', () => {
 
     await validate(req, true);
 
-    expect(find.mock.calls[0][0].where.and).toEqual([{ is404: { equals: true } }]);
+    expect(find).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { and: [{ is404: { equals: true } }] } }),
+    );
   });
 
   it('never asks the database to turn the flag off', async () => {
@@ -69,6 +75,6 @@ describe('uniqueFlagField', () => {
 
     await validate(req, true);
 
-    expect(find.mock.calls[0][0]).toMatchObject({ collection: 'pages', limit: 1 });
+    expect(find).toHaveBeenCalledWith(expect.objectContaining({ collection: 'pages', limit: 1 }));
   });
 });

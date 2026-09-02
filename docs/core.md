@@ -71,7 +71,7 @@ Três regiões: uma navegação opcional, uma lista de módulos, um footer opcio
 
 ```ts
 export interface Meta {
-  locale?: string;
+  locale: string;
 
   title?: string;
   description?: string;

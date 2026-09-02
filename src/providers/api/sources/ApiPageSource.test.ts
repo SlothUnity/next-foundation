@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
+
+import { callArg } from '@/testing/callArg';
 
 import type { ApiClient } from '../ApiClient';
 
@@ -13,8 +16,12 @@ function createSource(body: unknown) {
   return { source, get };
 }
 
-function endpointOf(get: ReturnType<typeof vi.fn>): string {
-  return String(get.mock.calls[0][0]);
+function endpointOf(get: Mock): string {
+  return String(callArg(get));
+}
+
+function optionsOf(get: Mock) {
+  return callArg(get, 1);
 }
 
 describe('ApiPageSource', () => {
@@ -47,7 +54,7 @@ describe('ApiPageSource', () => {
 
     await source.getPage('sobre-nos', 'pt-PT').catch(() => undefined);
 
-    expect(get.mock.calls[0][1]).toMatchObject({
+    expect(optionsOf(get)).toMatchObject({
       tags: ['pages', 'page:/sobre-nos'],
     });
   });
@@ -57,7 +64,7 @@ describe('ApiPageSource', () => {
 
     await source.getPage('sobre-nos', 'pt-PT', { draft: true }).catch(() => undefined);
 
-    expect(get.mock.calls[0][1]).toMatchObject({ draft: true });
+    expect(optionsOf(get)).toMatchObject({ draft: true });
   });
 
   it('answers notFound when the api has no page', async () => {

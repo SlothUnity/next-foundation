@@ -33,7 +33,7 @@ describe('mapPayloadSite', () => {
 
     // Sem isto, a única pista era o PageUrl deixar de renderizar no admin.
     expect(warn).toHaveBeenCalledOnce();
-    expect(String(warn.mock.calls[0][0])).toContain('enabledLocales');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('enabledLocales'));
   });
 
   it('stays quiet when the global is filled in', () => {

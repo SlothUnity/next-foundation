@@ -87,18 +87,23 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md).
 - os dois sistemas de nome (`<Assunto>.<papel>.ts` vs `<NomeDoExport>.ts`) explicados em [conventions.md](conventions.md)
 - regra escrita para o que vive dentro de `app/`
 - `createModuleComponent.tsx` em camelCase, como a regra sempre pediu
-- corrigidas duas divergências de caixa entre o disco e o índice do git (`foundation.ts`, `createModuleComponent.tsx`) — **quebravam o build em Linux**, ver aviso em [conventions.md](conventions.md)
+- corrigidas **três** divergências de caixa entre o disco e o índice do git — `foundation.ts`, `createModuleComponent.tsx`, e a pasta `src/modules/hero/` que o índice tinha em minúsculas com o disco em `Hero/`. **Quebravam o build em Linux**, e a terceira quebrava-o com o import do `.style.scss` a não resolver; ver a receita em [conventions.md](conventions.md#cuidado-com-a-caixa-dos-nomes-em-windows)
+- **finais de linha decididos pelo repositório** — `.gitattributes` com `* text=auto eol=lf`: o repositório já guardava LF, mas o `core.autocrlf=true` do Git em Windows escrevia CRLF no checkout e reprovava seis ficheiros que ninguém tinha editado
+- **os dois ficheiros gerados pelo Payload fora do alcance do Prettier** — o `next dev` com o `withPayload` reescreve-os a cada recompilação, portanto formatá-los era um ciclo contra o watcher; a alternativa (Prettier a seguir ao `payload:generate`) só cobria quem corre o script à mão
+- regra escrita para os dois assuntos em [conventions.md](conventions.md#finais-de-linha)
 
 ### Qualidade
 
-- `typecheck`, `lint` e 236 testes verdes (237 assim que existir um módulo gerado)
+- `typecheck`, `lint`, `format:check` e 236 testes verdes (237 assim que existir um módulo gerado)
+- **`noUncheckedIndexedAccess` ligado** — apanha a classe de bugs que este projecto mais teve (`locales[0]`, `docs[0]`, `split('-')[0]`). Ao ser ligado apanhou um erro em produção (`getLocaleSegment`) e vinte e seis em testes
+- **os vinte e seis não se fecharam com `!`** — isso era a afirmação por verificar que a flag existe para apanhar. Onde a asserção era «foi chamado com isto», passaram a matchers do Vitest, que dão melhores mensagens; onde o teste precisava do valor, um [callArg](../src/testing/callArg.ts) partilhado que diz **qual** mock não foi chamado
+- **`Meta.locale` obrigatório** — era opcional e todos os mappers o preenchiam, e um tipo que permite menos do que a realidade faz é uma divergência à espera de ser resolvida na direcção errada. O único sítio que não o tinha era o fallback de 404, e aí o locale da rota é a resposta certa
+- `pnpm format:check` passa — era o comando que mentia
 - testes sem carregar o `payload.config.ts`
 - `pnpm build` corre `lint`, `typecheck` e testes antes do `next build` — sem CI, é este o portão antes de produção
 - `.env.example` na raiz
 
 ## Próximos passos
-
-Por ordem do que faz sentido fazer a seguir, não de importância.
 
 Isto é um **ponto de partida**, não um produto: cobertura de testes, framework de E2E,
 sistema de tema e a estrutura do `app/` são decisões de quem monta o site, e por isso não
@@ -106,8 +111,9 @@ estão aqui. O que está é o que a foundation ainda deve a si própria.
 
 ### 1. Verificar o ciclo editorial contra o admin
 
-Quatro coisas construídas e nunca vistas a funcionar ponta a ponta, porque todas exigem
-uma escrita na base de dados e uma sessão de editor:
+O que sobra da lista, e sobra porque **exige mãos**: uma sessão de editor no admin e
+escritas na base de dados. Quatro coisas construídas e nunca vistas a funcionar ponta a
+ponta:
 
 - **a invalidação da cache** — publicar uma página e confirmar que o público muda à
   primeira. Os hooks estão testados unitariamente e as entradas de cache foram
@@ -123,30 +129,6 @@ uma escrita na base de dados e uma sessão de editor:
 O cenário que interessa para os dois primeiros é: publicado A, preview mostra B, público
 continua A, publicar, público passa a B.
 
-**Antes de tudo isto:** o `redirects` é uma tabela nova e o `is404` uma coluna nova. O
-adaptador de Postgres empurra as duas no primeiro `pnpm dev`; em produção é preciso uma
-migração.
-
-### 2. Finais de linha
-
-`pnpm format:check` reprova **oito ficheiros que ninguém edita à mão**, e nenhum deles por
-causa de estilo:
-
-- seis são CRLF vindo do `core.autocrlf=true` do git;
-- o `payload-types.ts` e o `importMap.js` são **regenerados a cada `next build`** sem o
-  Prettier do projecto, portanto voltam a divergir sozinhos.
-
-Um `.gitattributes` com `* text=auto eol=lf` e um renormalize fecham os primeiros. Os dois
-gerados ou entram no `.prettierignore`, ou o `payload:generate` passa a correr o Prettier
-a seguir. É meia hora e devolve um comando que hoje mente.
-
-### 3. TypeScript mais apertado
-
-**`noUncheckedIndexedAccess`** não está ligado no `tsconfig.json`. Apanha a classe de bugs
-que este projeto mais teve — `locales[0]`, `docs[0]`, `split('-')[0]` compilam hoje sem
-guarda. É mecânico, e vale a pena **antes** das rondas grandes, senão escrevem-se as
-guardas duas vezes.
-
-**`Meta.locale` obrigatório.** Hoje é opcional e nenhum consumidor depende dele — o
-`<html lang>` sai do locale da rota — mas todos os mappers o preenchem. Torná-lo
-obrigatório fecha a divergência entre o que o tipo permite e o que a realidade faz.
+**O esquema já está empurrado.** A tabela `redirects` e a coluna `is404` existem na base de
+dados de desenvolvimento — confirmado por leitura, com o `pnpm dev` a tê-lo feito no
+arranque. Em produção continua a ser preciso uma migração.

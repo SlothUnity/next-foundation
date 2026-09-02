@@ -18,7 +18,7 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { segments = [] } = await params;
 
-  const { response } = await resolvePage(segments);
+  const { response, route } = await resolvePage(segments);
 
   if (response.status === 'redirect') {
     return {};
@@ -30,7 +30,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // não tem meta nenhuma vinda da origem.
   const noIndex = response.status === 'notFound' ? true : response.page.meta.noIndex;
 
-  return createMetadata({ ...response.page?.meta, noIndex });
+  // O locale da rota é o default, não um remendo: quando a origem responde `notFound`
+  // sem conteúdo não há `meta` nenhuma de onde o tirar, e o idioma que o visitante
+  // pediu continua a descrever correctamente a página que lhe é servida.
+  return createMetadata({ locale: route.locale, ...response.page?.meta, noIndex });
 }
 
 /**

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 
-import type { Payload } from 'payload';
+import type { Payload, Where } from 'payload';
+
+import { callArg } from '@/testing/callArg';
 
 import { resolvePayloadNotFoundPage, resolvePayloadPage } from './resolvePayloadPage';
 
@@ -12,8 +15,16 @@ function createPayload(docs: unknown[] = [PAGE]) {
   return { payload: { find } as unknown as Payload, find };
 }
 
-function argsOf(find: ReturnType<typeof vi.fn>) {
-  return find.mock.calls[0][0];
+/** A forma que estes testes assumem da consulta — declarada, não presumida. */
+interface PageQuery {
+  where: Where;
+  draft: boolean;
+  collection: string;
+  locale: string;
+}
+
+function argsOf(find: Mock): PageQuery {
+  return callArg<PageQuery>(find);
 }
 
 describe('resolvePayloadPage', () => {

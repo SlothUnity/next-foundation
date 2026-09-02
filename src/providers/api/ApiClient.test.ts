@@ -1,7 +1,25 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
+
+import { callArg } from '@/testing/callArg';
 
 import { ApiClient } from './ApiClient';
 import { ApiRequestError } from './errors';
+
+/** O `RequestInit` que este cliente monta, na forma que os testes lhe lêem. */
+interface FetchInit {
+  headers?: Record<string, string>;
+  cache?: string;
+  next?: { revalidate?: number; tags?: string[] };
+}
+
+function requestUrl(fetch: Mock): string {
+  return String(callArg(fetch));
+}
+
+function requestInit(fetch: Mock): FetchInit {
+  return callArg<FetchInit>(fetch, 1);
+}
 
 function createClient(token?: string) {
   return new ApiClient({
@@ -43,7 +61,7 @@ describe('ApiClient', () => {
 
     await createClient().get('/site');
 
-    expect(fetch.mock.calls[0][0]).toBe('https://cms.example.com/api/site');
+    expect(requestUrl(fetch)).toBe('https://cms.example.com/api/site');
   });
 
   it('appends the params and omits the undefined ones', async () => {
@@ -53,7 +71,7 @@ describe('ApiClient', () => {
       params: { path: 'servicos', locale: 'pt-PT', draft: undefined },
     });
 
-    const url = new URL(String(fetch.mock.calls[0][0]));
+    const url = new URL(requestUrl(fetch));
 
     expect(url.searchParams.get('path')).toBe('servicos');
     expect(url.searchParams.get('locale')).toBe('pt-PT');
@@ -65,7 +83,7 @@ describe('ApiClient', () => {
 
     await createClient('s3cret').get('/site');
 
-    expect(fetch.mock.calls[0][1]).toMatchObject({
+    expect(requestInit(fetch)).toMatchObject({
       headers: { Authorization: 'Bearer s3cret' },
     });
   });
@@ -75,7 +93,7 @@ describe('ApiClient', () => {
 
     await createClient().get('/site');
 
-    expect(fetch.mock.calls[0][1].headers).not.toHaveProperty('Authorization');
+    expect(requestInit(fetch).headers).not.toHaveProperty('Authorization');
   });
 
   it('sends the headers the request asks for', async () => {
@@ -83,7 +101,7 @@ describe('ApiClient', () => {
 
     await createClient().get('/sobre-nos', { headers: { 'X-Site': 'super-bock' } });
 
-    expect(fetch.mock.calls[0][1]).toMatchObject({
+    expect(requestInit(fetch)).toMatchObject({
       headers: { 'X-Site': 'super-bock' },
     });
   });
@@ -95,7 +113,7 @@ describe('ApiClient', () => {
       headers: { Authorization: 'Basic other' },
     });
 
-    expect(fetch.mock.calls[0][1].headers.Authorization).toBe('Basic other');
+    expect(requestInit(fetch).headers?.Authorization).toBe('Basic other');
   });
 
   it('caches published requests with the configured revalidate and tags', async () => {
@@ -103,7 +121,7 @@ describe('ApiClient', () => {
 
     await createClient().get('/pages', { tags: ['pages'] });
 
-    expect(fetch.mock.calls[0][1]).toMatchObject({
+    expect(requestInit(fetch)).toMatchObject({
       next: { revalidate: 60, tags: ['pages'] },
     });
   });
@@ -113,7 +131,7 @@ describe('ApiClient', () => {
 
     await createClient().get('/pages', { draft: true, tags: ['pages'] });
 
-    const init = fetch.mock.calls[0][1];
+    const init = requestInit(fetch);
 
     expect(init.cache).toBe('no-store');
     expect(init.next).toBeUndefined();
