@@ -33,6 +33,12 @@ export const Media: CollectionConfig = {
 
   upload: {
     mimeTypes: allowedMediaMimeTypes,
+
+    imageSizes: [
+      { name: 'thumbnail', width: 400, withoutEnlargement: true },
+      { name: 'medium', width: 900, withoutEnlargement: true },
+      { name: 'large', width: 1600, withoutEnlargement: true },
+    ],
   },
 
   fields: [

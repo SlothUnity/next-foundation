@@ -38,6 +38,27 @@ A parte que decide o desenho é a cache. O `resolvePage` está envolvido no `cac
 
 O [normalizeQuery](../src/core/routing/normalizeQuery.ts) ordena as chaves, para `?a=1&b=2` e `?b=2&a=1` partilharem uma entrada, e **preserva a ordem dos valores repetidos**, porque essa ordem tem significado.
 
+### Imagens
+
+```ts
+export const imageSchema = z.object({
+  url: z.string(),
+  alt: z.string(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+});
+
+export type ImageData = z.infer<typeof imageSchema>;
+```
+
+Quatro campos, porque são os que um renderer precisa. O tipo **deriva do schema** e não o contrário, como em qualquer módulo.
+
+O schema está aqui, e não em `modules/`, para os módulos não repetirem a forma nem a deixarem divergir: um módulo com imagem escreve `image: imageSchema.optional()` e ganha a validação e o tipo de uma vez. Traduzir a forma do CMS para esta é trabalho do provider — ver [payload.md](payload.md#do-upload-ao-contrato).
+
+Nota sobre a dependência: o `ModuleSchema` do [contrato de módulo](#tipos-de-módulo) continua a ser **estrutural**, portanto o zod é uma escolha e não uma imposição. Este schema é opt-in — um módulo que não o importe não fica preso a ele.
+
+O `width` e o `height` são opcionais porque um PDF não os tem, e o `next/image` precisa dos dois: o `Hero` só desenha a imagem quando ambos existem, em vez de inventar um tamanho.
+
 ### Listar caminhos
 
 ```ts

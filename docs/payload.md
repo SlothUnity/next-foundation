@@ -26,8 +26,9 @@ providers/payload/
 ```ts
 export default buildConfig({
   secret: requireEnv('PAYLOAD_SECRET', 'Payload to sign session tokens'),
-  serverURL: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
+  serverURL: requireEnv('NEXT_PUBLIC_SERVER_URL', …),
 
+  sharp,
   upload: { limits: { fileSize: 8 * 1024 * 1024 } },
 
   localization: { … },
@@ -241,6 +242,16 @@ Tem um `afterChange` a invalidar a tag `payload:site` — sem guarda nenhuma, po
 O `mimeTypes` é uma allowlist e não uma blocklist, para um formato em que ninguém pensou ser recusado até alguém o acrescentar. **O SVG está deliberadamente fora:** um `.svg` servido da mesma origem do site executa script nessa origem, e sem CSP nada o atenua. Um projecto que precise de logótipos vectoriais tem de os sanear ou servi-los de outra origem — herdar o buraco por omissão não é a troca a fazer num boilerplate. O tecto de tamanho são 8 MB, declarado no `upload` da raiz do config porque a opção do parser é global e não por collection.
 
 O `alt` é obrigatório porque sem ele **uma imagem acessível não é exprimível no modelo de conteúdo**, e serve de `useAsTitle` da collection.
+
+O `imageSizes` gera três derivadas (400, 900 e 1600 de largura, sem ampliar o original) e **exige o `sharp`**, que é passado ao `buildConfig`. Sem ele o Payload não redimensiona nem lê dimensões — e não se queixa: o `imageSizes` ficava a não fazer nada. É por isso que o `sharp` é dependência declarada e o `pnpm-workspace.yaml` deixou de lhe ignorar o build.
+
+### Do upload ao contrato
+
+Um bloco com um campo `upload` chega ao mapper já populado, porque a consulta usa `depth: 2`. Se essa forma passasse tal e qual para o módulo, o `modules/` passava a conhecer o CMS — o que a [regra de camadas](architecture.md) proíbe.
+
+É por isso que a tradução vive no provider, em [mapPayloadImage.ts](../src/providers/payload/mappers/mapPayloadImage.ts): o `cleanValue` do mapper reconhece um upload **pela forma** (tem `url` e `filename`) e devolve o `ImageData` do [core](core.md#imagens). Não há lista de nomes de campos a manter — um campo de imagem novo em qualquer bloco é traduzido sem se tocar no mapper.
+
+O reconhecimento por forma tem um limite que vale dizer: uma relação **não** populada é só um id e não é reconhecida, e um objecto qualquer com `url` e `filename` seria. É uma troca a favor de não ter uma lista que apodrece.
 
 [Users.ts](../src/providers/payload/collections/Users.ts) — `auth: true`, usada como `admin.user`. É a autenticação que a rota de preview valida. Tem um campo `roles` (`admin` ou `editor`) cujo default conta os utilizadores existentes, para que a **primeira** conta criada seja administradora.
 

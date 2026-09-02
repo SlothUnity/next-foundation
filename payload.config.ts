@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { buildConfig } from 'payload';
 import { postgresAdapter } from '@payloadcms/db-postgres';
+import sharp from 'sharp';
 
 import { requireEnv } from '@/providers/requireEnv';
 
@@ -23,6 +24,8 @@ const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
 export default buildConfig({
   secret: requireEnv('PAYLOAD_SECRET', 'Payload to sign session tokens'),
+
+  sharp,
 
   upload: {
     limits: {

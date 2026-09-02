@@ -23,5 +23,11 @@ export const HeroBlock: Block = {
       type: 'textarea',
       localized: true,
     },
+
+    {
+      name: 'image',
+      type: 'upload',
+      relationTo: 'media',
+    },
   ],
 };
