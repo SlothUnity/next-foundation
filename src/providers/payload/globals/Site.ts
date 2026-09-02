@@ -1,5 +1,6 @@
 import type { GlobalConfig } from 'payload';
 
+import { isAdmin, isEditor } from '@/providers/payload/access';
 import { revalidateSiteOnChange } from '@/providers/payload/cache';
 import { availableLocales } from '@/providers/payload/locales';
 
@@ -7,6 +8,11 @@ export const Site: GlobalConfig = {
   slug: 'site',
 
   label: 'Site Settings',
+
+  access: {
+    read: isEditor,
+    update: isAdmin,
+  },
 
   admin: {
     group: 'Website',

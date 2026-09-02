@@ -131,6 +131,10 @@ export interface UserAuthOperations {
  */
 export interface User {
   id: number;
+  /**
+   * Administrators manage users and site settings. Editors manage content. The first user created is an administrator.
+   */
+  roles: ('admin' | 'editor')[];
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -350,6 +354,7 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  roles?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;

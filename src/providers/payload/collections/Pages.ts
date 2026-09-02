@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload';
 
+import { isEditor } from '@/providers/payload/access';
 import { pageBlocks } from '@/providers/payload/blocks';
 import { revalidatePagesOnChange, revalidatePagesOnDelete } from '@/providers/payload/cache';
 import { uniqueFlagField } from '@/providers/payload/fields';
@@ -9,6 +10,13 @@ import { getLivePreviewUrl } from '@/providers/payload/utils/getLivePreviewUrl';
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
+
+  access: {
+    read: isEditor,
+    create: isEditor,
+    update: isEditor,
+    delete: isEditor,
+  },
 
   hooks: {
     afterChange: [revalidatePagesOnChange],

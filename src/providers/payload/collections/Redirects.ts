@@ -5,6 +5,7 @@ import type {
 } from 'payload';
 
 import { isSafeRedirectPath } from '@/core/routing';
+import { isEditor } from '@/providers/payload/access';
 import {
   revalidateRedirectsOnChange,
   revalidateRedirectsOnDelete,
@@ -66,6 +67,13 @@ const validateReference: RelationshipFieldSingleValidation = (value, options) =>
 
 export const Redirects: CollectionConfig = {
   slug: 'redirects',
+
+  access: {
+    read: isEditor,
+    create: isEditor,
+    update: isEditor,
+    delete: isEditor,
+  },
 
   hooks: {
     afterChange: [revalidateRedirectsOnChange],
