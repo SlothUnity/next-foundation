@@ -137,6 +137,19 @@ Não reescreve nem redirecciona: só copia o pathname para o header `x-pathname`
 
 O `matcher` exclui o admin, a API do Payload, as rotas de preview, os assets do Next e os ficheiros com extensão. Como não se reescreve nada, apanhar o resto seria inofensivo — mas é trabalho por pedido a troco de nada.
 
+## Cabeçalhos de resposta
+
+As definições estão em [securityHeaders.ts](../src/app/_lib/securityHeaders.ts) e não no `next.config.ts`, para poderem ser testadas — quem alargar a política tem de mexer num teste, o que é o ponto.
+
+**São dois conjuntos, e a divisão é uma admissão de ignorância.** O `nosniff`, o `Referrer-Policy`, o `HSTS` e o `Permissions-Policy` valem para tudo. O **CSP** só se aplica aos caminhos públicos: o padrão exclui `/admin` e `/api`, com fronteira de segmento, porque o admin do Payload é uma aplicação que não escrevemos e uma política apertada podia parti-la sem que ninguém percebesse. Verificado com o servidor a correr — `/administracao` recebe o CSP, `/admin` não.
+
+Duas directivas merecem nota:
+
+- **`frame-ancestors 'self'`** e não `DENY`. O Live Preview mete o site público num iframe do admin, na mesma origem: bloquear framing por completo desligava-o;
+- **`script-src` e `style-src` com `'unsafe-inline'`.** O Next injecta script e estilo inline, e o admin também. A alternativa é um CSP com nonce, que obriga a passar o nonce do [proxy](#o-proxy) até ao layout — o `PATHNAME_HEADER` mostra que o caminho existe. Fica por fazer, e é a diferença entre esta política e uma apertada a sério.
+
+O `poweredByHeader` está desligado: não há razão para anunciar a versão do framework.
+
 ## O que é rota e o que não é
 
 ```
