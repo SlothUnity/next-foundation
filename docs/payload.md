@@ -6,13 +6,15 @@ Tudo o que é específico do Payload vive em [src/providers/payload/](../src/pro
 providers/payload/
 ├── provider.ts        ← o bundle: page, site, preview
 ├── locales.ts         ← idiomas suportados
+├── roles.ts           ← papéis de utilizador
+├── access/            ← uma função por regra de acesso
 ├── sources/           ← PageSource e SiteSource + as queries
 ├── mappers/           ← documento Payload → contrato do core
 ├── collections/       ← Pages, Redirects, Media, Users
 ├── globals/           ← Site
 ├── blocks/            ← blocos de conteúdo (espelham os módulos)
 ├── fields/            ← campos partilhados por collections
-├── plugins/           ← nestedDocs, breadcrumbs, seo
+├── plugins/           ← nestedDocs, breadcrumbs, seo, storage
 ├── components/        ← componentes de admin (React)
 └── utils/             ← createSlug, getLivePreviewUrl
 ```
@@ -26,6 +28,8 @@ export default buildConfig({
   secret: requireEnv('PAYLOAD_SECRET', 'Payload to sign session tokens'),
   serverURL: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
 
+  upload: { limits: { fileSize: 8 * 1024 * 1024 } },
+
   localization: { … },
   admin: { … },
 
@@ -33,7 +37,7 @@ export default buildConfig({
   globals: [Site],
 
   db: postgresAdapter({ pool: { connectionString: requireEnv('DATABASE_URL', …) } }),
-  plugins: [nestedDocs, seo],
+  plugins: [nestedDocs, seo, storage],
 });
 ```
 
@@ -232,21 +236,36 @@ Tem um `afterChange` a invalidar a tag `payload:site` — sem guarda nenhuma, po
 
 ## Media e Users
 
-[Media.ts](../src/providers/payload/collections/Media.ts) — `upload: true`, sem campos próprios. Leitura pública: é a única collection aberta, porque as imagens de um site público têm de ser carregadas pelo browser.
+[Media.ts](../src/providers/payload/collections/Media.ts) — `upload` com **allowlist de mimeTypes**, mais um campo `alt` obrigatório e localizado. Leitura pública: é a única collection aberta, porque as imagens de um site público têm de ser carregadas pelo browser.
 
-[Users.ts](../src/providers/payload/collections/Users.ts) — `auth: true`, usada como `admin.user`. É a autenticação que a rota de preview valida.
+O `mimeTypes` é uma allowlist e não uma blocklist, para um formato em que ninguém pensou ser recusado até alguém o acrescentar. **O SVG está deliberadamente fora:** um `.svg` servido da mesma origem do site executa script nessa origem, e sem CSP nada o atenua. Um projecto que precise de logótipos vectoriais tem de os sanear ou servi-los de outra origem — herdar o buraco por omissão não é a troca a fazer num boilerplate. O tecto de tamanho são 8 MB, declarado no `upload` da raiz do config porque a opção do parser é global e não por collection.
+
+O `alt` é obrigatório porque sem ele **uma imagem acessível não é exprimível no modelo de conteúdo**, e serve de `useAsTitle` da collection.
+
+[Users.ts](../src/providers/payload/collections/Users.ts) — `auth: true`, usada como `admin.user`. É a autenticação que a rota de preview valida. Tem um campo `roles` (`admin` ou `editor`) cujo default conta os utilizadores existentes, para que a **primeira** conta criada seja administradora.
 
 ## Access control
 
-**O default do Payload é `({ req: { user } }) => Boolean(user)`.** Uma collection sem `access` declarado exige utilizador para tudo, incluindo ler — e é isso que se quer aqui: o CMS e a sua REST API ficam fechados.
+O default do Payload é `({ req: { user } }) => Boolean(user)`: uma collection sem `access` declarado exige utilizador para tudo, incluindo ler. Isso fecha o CMS ao anónimo — e **não distingue nada entre quem já entrou.** Com uma só classe de conta, qualquer editor podia mudar o email e a password do dono do site, apagar as outras contas e reescrever as Site Settings.
 
-A única excepção é a leitura de `Media`, porque o browser tem de conseguir carregar as imagens:
+Os papéis estão em [roles.ts](../src/providers/payload/roles.ts) e as regras em [access/](../src/providers/payload/access/), uma função por regra. A matriz é esta:
 
-```ts
-access: {
-  read: () => true,
-}
-```
+|                      | read                      | create | update                    | delete |
+| -------------------- | ------------------------- | ------ | ------------------------- | ------ |
+| `Users`              | próprio, ou tudo se admin | admin  | próprio, ou tudo se admin | admin  |
+| `Pages`, `Redirects` | editor                    | editor | editor                    | editor |
+| `Media`              | **público**               | editor | editor                    | editor |
+| `Site` (global)      | editor                    | —      | admin                     | —      |
+
+Três detalhes que sustentam o resto:
+
+- **o campo `roles` tem access próprio, admin-only.** Sem isso, o `update: isAdminOrSelf` da `Users` deixava um editor dar-se a si mesmo o papel de admin — a alteração de acesso criava a escalada que devia impedir;
+- **um editor a ler `Users` recebe um `Where`** que o limita à sua própria linha, em vez de uma recusa seca, para a página de conta continuar a funcionar;
+- **o `Site` fica legível ao editor de propósito:** o `filterAvailableLocales` do [payload.config.ts](../payload.config.ts) pede o global com o utilizador do pedido, e sem essa leitura o selector de idioma do admin apaga-se.
+
+O `create: isAdmin` da `Users` não tranca ninguém fora de uma instalação nova: o `registerFirstUser` do Payload corre com `overrideAccess: true`, portanto o ecrã de criar o primeiro utilizador continua a funcionar.
+
+A leitura de `Media` é a única aberta, porque o browser tem de conseguir carregar as imagens.
 
 O frontend não passa por access control nenhum: lê pela Local API com `overrideAccess: true`, como consumidor de confiança que corre no servidor. Não é um atalho — é a distinção entre "quem chega pela rede" e "o nosso próprio render".
 
@@ -261,6 +280,20 @@ Consequência a ter presente: uma página que nunca foi publicada dá 404 em pú
 [plugins/breadcrumbsField.ts](../src/providers/payload/plugins/breadcrumbsField.ts) — o campo em si, oculto no admin. Está separado do plugin porque é adicionado explicitamente à `Pages`, e não pelo plugin.
 
 [plugins/seo.ts](../src/providers/payload/plugins/seo.ts) — `@payloadcms/plugin-seo` com `tabbedUI`, mais quatro campos: `ogTitle`, `ogDescription`, `noIndex`, `noFollow`. Os campos default do plugin são relaxados para opcionais.
+
+[plugins/storage.ts](../src/providers/payload/plugins/storage.ts) — `@payloadcms/storage-vercel-blob` para a `Media`. Sem adaptador, o Payload escreve numa pasta ao lado do config, e no Vercel esse disco não sobrevive ao deploy seguinte: o primeiro logótipo carregado em produção desaparecia.
+
+O adaptador **já** cai para o disco local quando falta o `BLOB_READ_WRITE_TOKEN` — a documentação dele di-lo — e é essa queda silenciosa o problema. O plugin acrescenta a guarda que falta: token em falta **com `VERCEL=1`** atira.
+
+A condição é o `VERCEL` e não o `NODE_ENV`, de propósito. O `next build` corre como produção, portanto uma guarda por `NODE_ENV` derrubava todos os builds locais por causa de uma credencial que o build não usa — e o `pnpm build` é o portão do projecto. A condição real é «este disco é efémero», e é isso que o `VERCEL` declara. O limite desta escolha, dito em vez de escondido: outro host com disco efémero é avisado, não travado.
+
+O `alwaysInsertFields` mantém o campo `prefix` no schema esteja o plugin activo ou não, para o desenvolvimento e a produção não divergirem — o Payload liga isto por omissão na v4.
+
+### Rich text: por escolher, de propósito
+
+Não há `@payloadcms/richtext-lexical`, não há `editor` no config, e não há tipo de rich text no contrato do `core`. **É decisão de quem arranca o projecto**, pela mesma razão que o [mapApiPage](api.md) fica por escrever: o conjunto de features do editor é uma escolha de produto, e um default seria um palpite que parece funcionar.
+
+O que a foundation deve dizer, e diz aqui, é onde é que a escolha colide: um serializador de Lexical para React **não pode viver no `core`**, que não conhece o Payload ([architecture.md](architecture.md)), e duplicá-lo por módulo é pior. Quem adicionar rich text tem de decidir esse sítio primeiro — provavelmente um módulo partilhado sob `modules/`, com o schema a tratar a árvore como opaca.
 
 ## Sources
 

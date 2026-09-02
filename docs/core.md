@@ -9,17 +9,50 @@ Abstracção de obtenção de páginas. [core/pages/PageSource.ts](../src/core/p
 ```ts
 export interface GetPageOptions {
   draft?: boolean;
+  query?: PageQuery;
 }
 
 export abstract class PageSource {
   abstract getPage(path: string, locale?: string, options?: GetPageOptions): Promise<PageResponse>;
+
+  listPaths?(): Promise<PagePath[]>;
 }
 ```
 
 - `path` é o caminho **sem** prefixo de locale — `''` para a homepage, `'servicos/consultoria'` para uma página aninhada.
 - `locale` é o código completo (`'pt-PT'`), não o segmento de URL (`'pt'`). **Omiti-lo significa «usa o teu locale por omissão»**, não «desiste»: quem chama nem sempre sabe que locales a origem serve, e é a origem que responde qual é o seu default.
 - `options.draft` pede a versão de rascunho. É um conceito de domínio, não do Payload: qualquer CMS headless tem publicado/rascunho. Implementações que não o suportem ignoram-no.
+- `options.query` é a query string do pedido, normalizada. Ver [A query do pedido](#a-query-do-pedido).
+- `listPaths` é **opcional na abstracção**, não abstracto. Ver [Listar caminhos](#listar-caminhos).
 - **A resposta é sempre um `PageResponse`.** Nunca `undefined`, nunca uma excepção, nunca um `notFound()`.
+
+### A query do pedido
+
+```ts
+export type PageQuery = Record<string, string | string[]>;
+```
+
+Sem isto, **nenhum módulo conseguia reagir a uma query string**: não havia `?page=2`, filtros, ordenação nem pesquisa, porque o `page.tsx` declarava só `params`. É a origem que recebe a query, porque é a origem que possui os dados — um módulo é um componente que recebe `data`, não um sítio de onde se vai buscar.
+
+A parte que decide o desenho é a cache. O `resolvePage` está envolvido no `cache()` do React, que compara os argumentos **por identidade** — logo passar a query como objecto falhava a cache em todos os pedidos, e deixá-la fora dos argumentos servia os dados da primeira query à segunda. A chave é por isso a query serializada, e a função em cache volta a parsear a string. Esse ida-e-volta não é enfeite: é o que torna demonstrável que o valor que a origem vê é o mesmo que a chave codifica.
+
+O [normalizeQuery](../src/core/routing/normalizeQuery.ts) ordena as chaves, para `?a=1&b=2` e `?b=2&a=1` partilharem uma entrada, e **preserva a ordem dos valores repetidos**, porque essa ordem tem significado.
+
+### Listar caminhos
+
+```ts
+export interface PagePath {
+  path: string;
+  locale: string;
+  updatedAt?: string;
+}
+```
+
+O `path` é o caminho final do site, já com o prefixo de locale quando há um — é o que um sitemap precisa.
+
+É **opcional** no contrato, e não abstracto, para o provider `api` poder continuar a não responder: o formato do índice de um CMS remoto é de quem desenhou a API, exactamente como o `mapApiPage`. Quem não implementa não quebra; quem consome verifica antes de chamar.
+
+Isto abria dois buracos ao mesmo tempo — sem forma de enumerar os próprios URLs não havia sitemap nem paginação. Ver [routing.md](routing.md#sitemap-e-robots).
 
 ### PageResponse
 

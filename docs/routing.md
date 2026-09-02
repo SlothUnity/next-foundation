@@ -149,26 +149,42 @@ O `matcher` exclui o admin, a API do Payload, as rotas de preview, os assets do 
 ## O que é rota e o que não é
 
 ```
-app/(frontend)/
-├── _components/         ← não é rota: o prefixo _ tira a pasta do router
-│   └── MissingNotFoundPage.tsx
+app/
 ├── _lib/
-│   ├── createMetadata.ts
-│   ├── resolvePage.ts
-│   └── resolveSite.ts
-├── layout.tsx           ← o layout de raiz do grupo
-├── error.tsx
-├── global-error.tsx
-├── [[...segments]]/
-│   └── page.tsx         ← todas as páginas
-└── next/
-    ├── preview/         ← activa o draftMode
-    └── exit-preview/    ← desactiva
+│   └── requestOrigin.ts ← partilhado pelos dois grupos
+├── robots.ts            ← na raiz, e não no grupo: ver abaixo
+├── (frontend)/
+│   ├── _components/     ← não é rota: o prefixo _ tira a pasta do router
+│   │   └── MissingNotFoundPage.tsx
+│   ├── _lib/
+│   │   ├── createMetadata.ts
+│   │   ├── resolvePage.ts
+│   │   └── resolveSite.ts
+│   ├── layout.tsx       ← o layout de raiz do grupo
+│   ├── error.tsx
+│   ├── global-error.tsx
+│   ├── sitemap.ts
+│   ├── [[...segments]]/
+│   │   └── page.tsx     ← todas as páginas
+│   └── next/
+│       ├── preview/     ← activa o draftMode
+│       └── exit-preview/ ← desactiva
+└── (payload)/           ← gerado pelo Payload
 ```
 
 Dentro de `app/` só ficheiros de rota; o resto vai para uma pasta com `_` — `_lib/` para funções, `_components/` para componentes. Sem essa regra, um `.ts` solto no meio das rotas não se distingue de uma convenção do Next à qual falta reconhecer o nome.
 
 O prefixo `next/` isola as rotas de framework do namespace de conteúdo — é a convenção do template oficial do Payload. Rotas estáticas têm precedência sobre o catch-all, por isso não há conflito, mas qualquer path que se acrescente aqui deixa de estar disponível para conteúdo.
+
+## Sitemap e robots
+
+O [sitemap.ts](<../src/app/(frontend)/sitemap.ts>) pergunta os caminhos à origem — o `listPaths` do [core.md](core.md#listar-caminhos) — e torna-os absolutos. O [robots.ts](../src/app/robots.ts) desautoriza `/admin`, `/api` e `/next/`, e aponta para o sitemap.
+
+**O `robots.ts` está na raiz do `app/` e o `sitemap.ts` dentro do grupo. Isso não é preferência.** O Next casa a convenção do sitemap com um padrão não ancorado, portanto ela resolve dentro de um route group; casa a do robots com `/^[\\/]robots/`, **ancorado**. Um `robots.ts` dentro do `(frontend)` é descartado sem rota, sem output e sem aviso nenhum — só se percebe a ler o `is-metadata-route.js` do Next. Se algum dia o `/robots.txt` desaparecer da tabela de rotas do build, é aqui que se olha.
+
+O URL absoluto vem do **host do pedido** ([requestOrigin.ts](../src/app/_lib/requestOrigin.ts)) e não do `NEXT_PUBLIC_SERVER_URL`. São três razões: uma fonte de verdade em vez de duas, correcção quando um deploy serve vários domínios, e — a razão prática — o `next build` continua verde sem ambiente nenhum, que é a garantia que o [setup:provider](providers.md#remover-o-payload) estabeleceu para os providers `api` e `mock`.
+
+Ambas as rotas leem `headers()`, portanto são dinâmicas e o Next não as pré-renderiza. Numa origem que não sabe listar, o sitemap responde vazio **com um aviso no log** em vez de atirar.
 
 ## O 404 é conteúdo
 
