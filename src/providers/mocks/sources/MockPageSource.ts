@@ -1,6 +1,7 @@
-import type { PageResponse } from '@/core/pages';
+import type { PagePath, PageResponse } from '@/core/pages';
 
 import { PageSource } from '@/core/pages/PageSource';
+import { createPagePath } from '@/core/routing';
 
 import { mockSite } from '../mockSite';
 import { mockNotFoundPages, mockPages, mockRedirects } from '../pages';
@@ -28,5 +29,17 @@ export class MockPageSource extends PageSource {
     const notFound = mockNotFoundPages.find((mockPage) => mockPage.locale === resolvedLocale);
 
     return { status: 'notFound', page: notFound?.page };
+  }
+
+  async listPaths(): Promise<PagePath[]> {
+    return mockPages.map((mockPage) => ({
+      path: createPagePath({
+        path: mockPage.path,
+        locale: mockPage.locale,
+        defaultLocale: mockSite.defaultLocale,
+      }),
+
+      locale: mockPage.locale,
+    }));
   }
 }

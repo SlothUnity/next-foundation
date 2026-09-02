@@ -76,3 +76,12 @@ describe('MockPageSource, when the path is a redirect', () => {
     });
   });
 });
+
+describe('MockPageSource, when asked to list its paths', () => {
+  it('answers one URL per translation, prefixed like the site serves them', async () => {
+    await expect(source.listPaths()).resolves.toEqual([
+      { path: '/', locale: 'pt-PT' },
+      { path: '/en', locale: 'en-GB' },
+    ]);
+  });
+});

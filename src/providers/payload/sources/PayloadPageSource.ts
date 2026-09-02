@@ -1,9 +1,10 @@
-import type { PageResponse } from '@/core/pages';
+import type { PagePath, PageResponse } from '@/core/pages';
 
 import { PageSource } from '@/core/pages/PageSource';
 import type { GetPageOptions } from '@/core/pages/PageSource';
 
 import { getCachedPage } from '@/providers/payload/cache/getCachedPage';
+import { getCachedPaths } from '@/providers/payload/cache/getCachedPaths';
 import { getCachedRedirects } from '@/providers/payload/cache/getCachedRedirects';
 import { getCachedSite } from '@/providers/payload/cache/getCachedSite';
 import { isSupportedLocale, type SupportedLocale } from '@/providers/payload/locales';
@@ -51,6 +52,12 @@ export class PayloadPageSource extends PageSource {
     }
 
     return { status: 'redirect', to: match.to, permanent: match.permanent };
+  }
+
+  async listPaths(): Promise<PagePath[]> {
+    const { locales, defaultLocale } = await getCachedSite();
+
+    return getCachedPaths(locales, defaultLocale);
   }
 
   private async getDefaultLocale(): Promise<string> {

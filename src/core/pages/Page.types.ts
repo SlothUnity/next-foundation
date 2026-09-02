@@ -22,6 +22,12 @@ export interface PageDefinition {
 
 export type PageQuery = Record<string, string | string[]>;
 
+export interface PagePath {
+  path: string;
+  locale: string;
+  updatedAt?: string;
+}
+
 export type PageResponse =
   | { status: 'ok'; page: PageDefinition }
   | { status: 'notFound'; page?: PageDefinition }

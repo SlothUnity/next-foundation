@@ -1,4 +1,5 @@
 export { getCachedPage } from './getCachedPage';
+export { getCachedPaths } from './getCachedPaths';
 export { getCachedRedirects } from './getCachedRedirects';
 export { getCachedSite } from './getCachedSite';
 export {
