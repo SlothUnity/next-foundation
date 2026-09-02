@@ -1,7 +1,8 @@
-import type { PageResponse } from './Page.types';
+import type { PageQuery, PageResponse } from './Page.types';
 
 export interface GetPageOptions {
   draft?: boolean;
+  query?: PageQuery;
 }
 
 export abstract class PageSource {

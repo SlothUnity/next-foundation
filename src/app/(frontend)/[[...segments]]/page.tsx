@@ -4,6 +4,7 @@ import { permanentRedirect, redirect } from 'next/navigation';
 
 import { foundation } from '@/core/foundation/foundation';
 import { PageRenderer } from '@/core/renderer';
+import type { RawQuery } from '@/core/routing';
 
 import { createMetadata } from '../_lib/createMetadata';
 import { MissingNotFoundPage } from '../_components/MissingNotFoundPage';
@@ -13,12 +14,14 @@ interface PageProps {
   params: Promise<{
     segments?: string[];
   }>;
+
+  searchParams: Promise<RawQuery>;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { segments = [] } = await params;
 
-  const { response, route } = await resolvePage(segments);
+  const { response, route } = await resolvePage(segments, await searchParams);
 
   if (response.status === 'redirect') {
     return {};
@@ -29,10 +32,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return createMetadata({ locale: route.locale, ...response.page?.meta, noIndex });
 }
 
-export default async function Page({ params }: PageProps) {
+export default async function Page({ params, searchParams }: PageProps) {
   const { segments = [] } = await params;
 
-  const { response } = await resolvePage(segments);
+  const { response } = await resolvePage(segments, await searchParams);
 
   if (response.status === 'redirect') {
     return response.permanent ? permanentRedirect(response.to) : redirect(response.to);

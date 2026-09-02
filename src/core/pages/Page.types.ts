@@ -20,6 +20,8 @@ export interface PageDefinition {
   footer?: ModuleInstance;
 }
 
+export type PageQuery = Record<string, string | string[]>;
+
 export type PageResponse =
   | { status: 'ok'; page: PageDefinition }
   | { status: 'notFound'; page?: PageDefinition }
