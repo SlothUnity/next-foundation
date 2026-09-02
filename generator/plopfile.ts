@@ -28,13 +28,13 @@ export default function generator(plop: NodePlopAPI): void {
     },
     {
       type: 'add',
-      path: '../src/modules/{{pascalCase name}}/{{pascalCase name}}.module.ts',
-      templateFile: './templates/module/module.module.hbs',
+      path: '../src/modules/{{pascalCase name}}/{{pascalCase name}}.definition.ts',
+      templateFile: './templates/module/module.definition.hbs',
     },
     {
       type: 'add',
-      path: '../src/modules/{{pascalCase name}}/{{pascalCase name}}.style.scss',
-      templateFile: './templates/module/module.style.hbs',
+      path: '../src/modules/{{pascalCase name}}/{{pascalCase name}}.module.scss',
+      templateFile: './templates/module/module.styles.hbs',
     },
     {
       type: 'add',

@@ -1265,7 +1265,7 @@ Se houver uma confusão a evitar neste projeto, é esta. Há **dois** tipos com 
 | --------------- | -------------------------------------- | ------------------------------------------ |
 | O que é         | a **definição** do tipo de bloco       | uma **ocorrência** concreta numa página    |
 | Quantos existem | um por tipo (um `hero`, um `carousel`) | tantos quantos os blocos das páginas todas |
-| Onde nasce      | no código, em `Hero.module.ts`         | nos dados, vindo do CMS                    |
+| Onde nasce      | no código, em `Hero.definition.ts`     | nos dados, vindo do CMS                    |
 | Onde vive       | no `ModuleRegistry`                    | dentro de um `PageDefinition`              |
 | Tem             | `alias`, `name`, `component`, `schema` | `id`, `alias`, `name?`, `data`             |
 | Sabe desenhar?  | sim — tem o componente                 | não — só tem os dados                      |
@@ -1456,23 +1456,32 @@ O `{subtitle && <p>...</p>}` é o padrão normal de renderização condicional. 
 >
 > A mesma leitura vale para o `<section>`: sem nome acessível não conta como _landmark_, e dar-lhe um `aria-labelledby` implica um `id` único que vive na instância, não no componente.
 
-**`Hero.style.scss`** — os estilos, importados pelo componente com um `import './Hero.style.scss'` e mais nada:
+**`Hero.module.scss`** — os estilos, importados como **CSS Module**:
 
 ```scss
-h1 {
-  color: red;
+.hero {
+  display: grid;
+  gap: 0.5rem;
 }
 ```
 
-Vermelho porque é um exemplo, e serve só para se ver que o `.scss` compila. Há duas coisas a reter, e nenhuma é o vermelho.
+```tsx
+import styles from './Hero.module.scss';
+…
+<section className={styles.hero}>
+```
 
-A primeira é o **nome**. É `.style.scss` e não `.module.scss`, o sufixo habitual de CSS Modules em Next. A razão é local a este projeto: `Hero.module.ts` é a **definição do módulo**, e um `Hero.module.scss` na mesma pasta tornava a palavra «module» ambígua — ora bloco de conteúdo, ora ficheiro com scope de CSS.
+Há duas coisas a reter.
+
+A primeira é o **scope**. O sufixo `.module.scss` faz o Next gerar um nome de classe único por ficheiro, portanto o que este módulo escreve não chega a nenhum outro. Aqui esteve um `h1 { color: red }` numa folha global, e ele restilava **todos** os `<h1>` do site — incluindo os do `error.tsx`. Era o exemplo perfeito do problema: dois módulos escritos por duas pessoas colidiam sem aviso.
+
+Foi isso que forçou a decisão que este capítulo antes deixava em aberto: a definição do módulo passou a `.definition.ts`, para o `.module.*` significar uma coisa só nesta pasta.
 
 A segunda é o que **não** existe. Não há sistema de tema: nem variáveis, nem tokens, nem reset, nem escala tipográfica. Não é um esquecimento — é a mesma linha que separa o nível do título acima. A foundation garante onde os estilos de um módulo vivem e como se chamam; o que lá dentro se escreve é decisão de quem monta o site.
 
 O `sass` é uma devDependency declarada. Chegou a compilar sem estar no `package.json`, por vir por arrasto do `@payloadcms/ui` — o tipo de dependência que funciona até alguém actualizar a de cima.
 
-**`Hero.module.ts`** — a definição, a juntar as peças:
+**`Hero.definition.ts`** — a definição, a juntar as peças:
 
 ```ts
 export const heroModule = defineModule({
@@ -1485,7 +1494,7 @@ export const heroModule = defineModule({
 
 Quatro linhas onde tudo o que vimos neste capítulo se encontra.
 
-⚠️ Atenção ao nome do ficheiro: `.module.ts` aqui quer dizer **«definição de módulo do projeto»**, e não CSS Module. É uma armadilha à espera — se um dia se adotarem CSS Modules, aparece um `Hero.module.css` ao lado e a convenção passa a ler-se mal. Vale a pena decidir isto antes de acontecer.
+O nome do ficheiro é `.definition.ts` e não `.module.ts` por causa disto: `.module.*` está reservado para CSS Modules. Este parágrafo dizia antes que a colisão era «uma armadilha à espera» e que valia a pena decidir antes de acontecer — aconteceu ao adoptar CSS Modules, e foi assim que se decidiu.
 
 **`index.ts`** — o barrel do módulo:
 
@@ -3174,13 +3183,13 @@ Por isso `PAYLOAD_SECRET` e `DATABASE_URL` **nunca** podem levar o prefixo, e `N
 
 O projeto usa um **vocabulário fechado** de sufixos. Está em [`conventions.md`](conventions.md); resumo do essencial:
 
-| Sufixo        | Contém                                                                                     |
-| ------------- | ------------------------------------------------------------------------------------------ |
-| `.types.ts`   | só tipos e interfaces                                                                      |
-| `.schema.ts`  | um schema de validação                                                                     |
-| `.module.ts`  | uma definição de módulo (**não** é CSS Module — ver [6.5](#65-o-hero-ficheiro-a-ficheiro)) |
-| `.test.ts(x)` | testes, ao lado do código testado                                                          |
-| sem sufixo    | implementação                                                                              |
+| Sufixo           | Contém                            |
+| ---------------- | --------------------------------- |
+| `.types.ts`      | só tipos e interfaces             |
+| `.schema.ts`     | um schema de validação            |
+| `.definition.ts` | uma definição de módulo           |
+| `.test.ts(x)`    | testes, ao lado do código testado |
+| sem sufixo       | implementação                     |
 
 E as regras à volta:
 
@@ -3421,7 +3430,7 @@ export function Cta({ title, href }: CtaProps) {
   return <a href={href}>{title}</a>;
 }
 
-// Cta.module.ts
+// Cta.definition.ts
 export const ctaModule = defineModule({
   alias: 'cta', // ← igual ao slug do passo 1
   name: 'CTA',

@@ -391,7 +391,7 @@ pnpm generate
   ├─ nome do módulo: "Cta"
   │
   ├─ sete ficheiros em src/modules/Cta/
-  │     Cta.tsx  .schema.ts  .types.ts  .module.ts  .style.scss  .test.tsx  index.ts
+  │     Cta.tsx  .schema.ts  .types.ts  .definition.ts.module.scss .test.tsx  index.ts
   │
   ├─ append em src/modules/index.ts
   │     export { ctaModule } from './Cta';

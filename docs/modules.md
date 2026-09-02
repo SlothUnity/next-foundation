@@ -21,12 +21,14 @@ src/modules/Hero/
 ├── Hero.tsx           ← o componente
 ├── Hero.types.ts      ← os props, derivados do schema
 ├── Hero.schema.ts     ← validação de runtime
-├── Hero.module.ts     ← o registo
-├── Hero.style.scss    ← os estilos
+├── Hero.definition.ts ← o registo
+├── Hero.module.scss   ← os estilos, com scope
 └── index.ts
 ```
 
-O sufixo do ficheiro de estilos é `.style.scss` e não `.module.scss` de propósito: `Hero.module.ts` é a **definição do módulo** deste projecto, e um `Hero.module.scss` ao lado tornaria a palavra «module» ambígua na mesma pasta.
+Os estilos são um **CSS Module**: o `.module.scss` faz o Next gerar nomes de classe únicos, portanto o que um módulo escreve não escapa para os outros. Antes eram uma folha global — e o `h1 { color: red }` do Hero restilava todos os `<h1>` do site, incluindo os das páginas de erro.
+
+Foi isso que obrigou a renomear a definição do módulo para `.definition.ts`. As duas coisas queriam chamar-se `.module.*` com significados diferentes, e o [guia.md](guia.md) já tinha marcado a colisão como «uma armadilha à espera». O `.module.*` passa a querer dizer só uma coisa nesta pasta: CSS com scope.
 
 O `sass` está declarado como devDependency — o Next compila `.scss` assim que o pacote existe, sem configuração nenhuma. **Não há sistema de tema, e é deliberado**: variáveis, tokens, reset, escalas — a foundation não impõe nenhum, porque isso é decisão de quem monta o site. O que ela garante é o sítio onde os estilos de um módulo vivem e o nome que têm.
 
@@ -56,7 +58,7 @@ Assim o schema e o tipo não podem divergir.
 ```tsx
 // Hero.tsx
 import type { HeroProps } from './Hero.types';
-import './Hero.style.scss';
+import styles from './Hero.module.scss';
 
 export function Hero({ title, subtitle }: HeroProps) {
   return (
@@ -70,7 +72,7 @@ export function Hero({ title, subtitle }: HeroProps) {
 ```
 
 ```ts
-// Hero.module.ts
+// Hero.definition.ts
 import { createModuleComponent, defineModule } from '@/core/modules';
 
 import { Hero } from './Hero';
@@ -185,8 +187,8 @@ src/modules/Cta/
 ├── Cta.tsx              o componente, já a desenhar o title
 ├── Cta.schema.ts        z.object({ title: z.string() })
 ├── Cta.types.ts         z.infer do schema
-├── Cta.module.ts        alias 'cta', name 'Cta'
-├── Cta.style.scss       .cta { }
+├── Cta.definition.ts        alias 'cta', name 'Cta'
+├── Cta.module.scss       .cta { }
 ├── Cta.test.tsx         renderiza e procura o heading
 └── index.ts
 

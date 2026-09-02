@@ -1,3 +1,3 @@
 export * from './Hero';
-export * from './Hero.module';
+export * from './Hero.definition';
 export * from './Hero.types';

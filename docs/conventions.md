@@ -4,13 +4,13 @@
 
 **`<Assunto>.<papel>.<ext>`** — o prefixo diz o assunto, o sufixo diz o papel. Sem sufixo é a implementação.
 
-| Sufixo        | Papel                      | Exemplo                          |
-| ------------- | -------------------------- | -------------------------------- |
-| _(nenhum)_    | implementação              | `Hero.tsx`, `PageSource.ts`      |
-| `.types.ts`   | apenas tipos e interfaces  | `Page.types.ts`, `Hero.types.ts` |
-| `.schema.ts`  | validação de runtime (zod) | `Hero.schema.ts`                 |
-| `.module.ts`  | registo de módulo          | `Hero.module.ts`                 |
-| `.test.ts(x)` | testes                     | `ModuleRenderer.test.tsx`        |
+| Sufixo           | Papel                      | Exemplo                          |
+| ---------------- | -------------------------- | -------------------------------- |
+| _(nenhum)_       | implementação              | `Hero.tsx`, `PageSource.ts`      |
+| `.types.ts`      | apenas tipos e interfaces  | `Page.types.ts`, `Hero.types.ts` |
+| `.schema.ts`     | validação de runtime (zod) | `Hero.schema.ts`                 |
+| `.definition.ts` | registo de módulo          | `Hero.definition.ts`             |
+| `.test.ts(x)`    | testes                     | `ModuleRenderer.test.tsx`        |
 
 O vocabulário é fechado. Um sufixo novo só entra se representar um papel genuinamente distinto — cinco papéis são legíveis, quinze são ruído.
 
@@ -48,11 +48,11 @@ core/site/
 
 Parece incoerente e não é — são dois sistemas, cada um para o seu caso:
 
-| Sistema                | Para                                     | Exemplos                                            |
-| ---------------------- | ---------------------------------------- | --------------------------------------------------- |
-| `<Assunto>.<papel>.ts` | ficheiros que **descrevem** um assunto   | `Site.types.ts`, `Hero.schema.ts`, `Hero.module.ts` |
-| `<NomeDoExport>.ts`    | ficheiros que **são** uma coisa com nome | `SiteSource.ts`, `Registry.ts`, `createSlug.ts`     |
-| `<colectivo>.ts`       | um punhado de ajudantes irmãos           | `locales.ts`, `normalize.ts`                        |
+| Sistema                | Para                                     | Exemplos                                                |
+| ---------------------- | ---------------------------------------- | ------------------------------------------------------- |
+| `<Assunto>.<papel>.ts` | ficheiros que **descrevem** um assunto   | `Site.types.ts`, `Hero.schema.ts`, `Hero.definition.ts` |
+| `<NomeDoExport>.ts`    | ficheiros que **são** uma coisa com nome | `SiteSource.ts`, `Registry.ts`, `createSlug.ts`         |
+| `<colectivo>.ts`       | um punhado de ajudantes irmãos           | `locales.ts`, `normalize.ts`                            |
 
 `SiteSource` é uma coisa — uma classe, com nome próprio, que se instancia e se estende. `SiteDefinition` é a forma de um dado, e o ficheiro existe para a descrever. Daí `SiteSource.ts` e não `Site.source.ts`: o vocabulário de sufixos é fechado, e `source` não entra nele.
 
@@ -90,7 +90,7 @@ modules/hero/
 ├── Hero.tsx
 ├── Hero.types.ts
 ├── Hero.schema.ts
-├── Hero.module.ts
+├── Hero.definition.ts
 └── index.ts
 ```
 
