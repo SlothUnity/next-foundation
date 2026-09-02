@@ -30,7 +30,6 @@ Se é a primeira vez e queres o percurso completo, esta é a ordem. Cada passo a
 | 8   | [providers.md](docs/providers.md)                               | como a fonte de conteúdo se troca, e porque é que o locale por omissão é uma resposta do provider                       |
 | 9   | [routing.md](docs/routing.md)                                   | URLs, locales, metadata, o `proxy`, e porque é que o frontend é SSR                                                     |
 | 10  | [conventions.md](docs/conventions.md)                           | onde pôr um ficheiro novo e como o nomear. **Lê antes de escreveres o primeiro**                                        |
-| 11  | [TODO.md](docs/TODO.md)                                         | o que está feito, o que falta, e o que está decidido mas por correr                                                     |
 
 O [guia.md](docs/guia.md) tem 3500 linhas e percorre o projeto ficheiro a ficheiro, com o editor aberto ao lado. Os passos 5 a 10 são documentação de referência — cobrem o mesmo terreno em resumo, e são onde voltas depois. Se só tiveres uma tarde, faz 1, 2 e 3.
 
@@ -196,7 +195,6 @@ pnpm test --run
 | [payload.md](docs/payload.md)           | Como está configurado o Payload                            |
 | [api.md](docs/api.md)                   | Como ligo uma API externa                                  |
 | [routing.md](docs/routing.md)           | Como funcionam URLs, locales e metadata                    |
-| [TODO.md](docs/TODO.md)                 | Estado e próximos passos                                   |
 
 ## Stack
 

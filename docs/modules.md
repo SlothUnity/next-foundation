@@ -257,10 +257,16 @@ Não é trabalho pendente da foundation — é o que se descobre ao construir o 
 
 ## O que a foundation não decide por ti
 
-Duas coisas ficam ao critério de quem escreve o módulo, porque dependem da página onde ele vai cair e a foundation não tem como as adivinhar.
+Ficam ao critério de quem monta o projecto, porque dependem da página onde o módulo cai ou do produto que se está a construir — e a foundation não tem como os adivinhar.
 
 **O nível do título.** O gerador emite `<h2>`, que é o que costuma estar certo: uma página tem um `<h1>` e os módulos vêm abaixo dele. Mas o [Hero.tsx](../src/modules/Hero/Hero.tsx) emite `<h1>` — dois heros na mesma página dariam dois `<h1>`, o que é um erro de estrutura de documento. O `Hero` é um exemplo para provar que o mecanismo funciona, não um modelo a copiar nesse ponto.
 
 Se um projecto precisar de o resolver a sério, o módulo tem de saber a sua posição na página, e isso **altera o contrato dos módulos** — ou o `ModuleRenderer` passa a dar o índice, ou o nível vem de um campo do CMS. É uma decisão do projecto.
 
 **O nome acessível do `<section>`.** Um `<section>` sem nome não conta como landmark para um leitor de ecrã. Dar-lhe um `aria-labelledby` a apontar para o próprio título é o que o torna navegável, e implica gerar um `id` único — outra vez, informação que vive na instância e não no componente.
+
+**Formulários e interactividade.** Não há módulo cliente nem padrão para um. Um módulo é hoje um componente de servidor que recebe `data`; um formulário precisa de estado no browser, de uma server action e de um sítio para guardar a submissão. Onde vive a action é a pergunta a decidir primeiro: não pode ser no `core`, que não conhece o Next, e `modules/` não pode conhecer providers. Nota prática para quem o fizer: as props atravessam a fronteira RSC, portanto um `.transform()` que devolva um `Date` ou uma classe no schema produz uma prop não serializável.
+
+**Variantes de página.** O `PageDefinition` admite um layout: uma navegação, uma lista de módulos, um footer. Não há campo `template`, nem variante de header, nem forma de ter uma landing sem navegação — e o `navigation` é **um** `ModuleInstance` e não um array, portanto uma barra de anúncios acima da nav precisaria de um módulo composto. Acrescentar um eixo de variantes altera o contrato, e o desenho depende de quantas variantes o projecto tem: um campo `template` na collection, uma classe no `<body>`, ou rotas distintas são respostas diferentes para necessidades diferentes.
+
+**Navegação e footer.** As regiões existem no contrato e o renderer desenha-as; onde o conteúdo delas vive no CMS é do projecto — ver [renderer.md](renderer.md#pagerenderer).

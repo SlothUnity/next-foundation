@@ -114,4 +114,3 @@ O `pnpm build` corre `lint`, `typecheck` e os testes antes do `next build` — s
 | [renderer.md](renderer.md)         | como um alias vira HTML                         |
 | [routing.md](routing.md)           | URLs, locales, metadata, 404 e redirects        |
 | [conventions.md](conventions.md)   | nomes, pastas, imports, comentários             |
-| [TODO.md](TODO.md)                 | o que está feito e o que falta                  |

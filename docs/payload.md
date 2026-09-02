@@ -542,7 +542,7 @@ escrita e uma sessão.
 empurra as duas no primeiro arranque em desenvolvimento (`pnpm dev`); em produção é
 preciso uma migração.
 
-O cenário que fecha isto está no [TODO.md](TODO.md).
+O cenário que fecha isto exige uma sessão de editor no admin.
 
 ### O que confunde
 
