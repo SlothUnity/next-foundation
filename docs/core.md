@@ -132,15 +132,20 @@ export interface Meta {
 
   ogTitle?: string;
   ogDescription?: string;
+  image?: ImageData;
+
+  alternates?: Record<string, string>;
 
   noIndex?: boolean;
   noFollow?: boolean;
 }
 ```
 
-Todos os campos são opcionais, incluindo o `locale`. A tradução para o formato do Next acontece na camada `app` — ver [routing.md](routing.md#metadata).
+O `locale` é o único obrigatório. Os restantes são opcionais porque um editor pode não os preencher, e a tradução para o formato do Next acontece na camada `app` — ver [routing.md](routing.md#metadata).
 
-O `locale` opcional é uma decisão por fechar: hoje nenhum consumidor depende dele — o `<html lang>` passou a sair do locale da rota, não da página — mas todos os mappers o preenchem. Torná-lo obrigatório está no [TODO.md](TODO.md).
+O `image` é a imagem de partilha, na forma do [contrato de imagens](#imagens). O plugin de SEO do Payload já a pedia ao editor, e ela era ignorada pelo mapper: um campo preenchido no CMS que não chegava a nenhum sítio.
+
+O `alternates` é o caminho desta página em cada idioma, para o `hreflang`. É um mapa de código de locale para caminho, e quem o preenche é o provider — o `app` só o traduz. Uma origem que não saiba responder deixa-o de fora.
 
 ## SiteDefinition
 

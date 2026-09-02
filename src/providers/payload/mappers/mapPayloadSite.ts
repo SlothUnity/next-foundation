@@ -13,8 +13,14 @@ export function mapPayloadSite(site: Site): SiteDefinition {
     );
   }
 
+  if (!site.name) {
+    console.warn(
+      'The `site` global has no name. The page title template falls back to the page title alone — fill it in the admin, under Website → Site Settings.',
+    );
+  }
+
   return {
-    name: site.name,
+    name: site.name || '',
     locales,
 
     defaultLocale: locales[0] ?? payloadDefaultLocale,

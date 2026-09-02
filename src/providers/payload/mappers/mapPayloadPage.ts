@@ -46,7 +46,13 @@ function removeNullValues(data: Record<string, unknown>): Record<string, unknown
   );
 }
 
-export function mapPayloadPage(page: Page, locale: string): PageDefinition {
+export function mapPayloadPage(
+  page: Page,
+  locale: string,
+  alternates?: Record<string, string>,
+): PageDefinition {
+  const image = page.meta?.image;
+
   return {
     meta: {
       locale,
@@ -54,6 +60,8 @@ export function mapPayloadPage(page: Page, locale: string): PageDefinition {
       description: page.meta?.description ?? undefined,
       ogTitle: page.meta?.ogTitle ?? undefined,
       ogDescription: page.meta?.ogDescription ?? undefined,
+      image: isPayloadUpload(image) ? mapPayloadImage(image) : undefined,
+      alternates,
       noIndex: page.meta?.noIndex ?? false,
       noFollow: page.meta?.noFollow ?? false,
     },

@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getPayloadClient, resolvePayloadNotFoundPage, resolvePayloadPage } = vi.hoisted(() => ({
-  getPayloadClient: vi.fn().mockResolvedValue({}),
-  resolvePayloadNotFoundPage: vi.fn(),
-  resolvePayloadPage: vi.fn(),
-}));
+const { findByID, getPayloadClient, resolvePayloadNotFoundPage, resolvePayloadPage } = vi.hoisted(
+  () => {
+    const findByID = vi.fn();
+
+    return {
+      findByID,
+      getPayloadClient: vi.fn().mockResolvedValue({ findByID }),
+      resolvePayloadNotFoundPage: vi.fn(),
+      resolvePayloadPage: vi.fn(),
+    };
+  },
+);
 
 vi.mock('@/providers/payload/getPayloadClient', () => ({ getPayloadClient }));
 vi.mock('@/providers/payload/sources/resolvePayloadPage', () => ({
@@ -22,6 +29,13 @@ describe('loadPayloadPage', () => {
   beforeEach(() => {
     resolvePayloadPage.mockReset().mockResolvedValue(undefined);
     resolvePayloadNotFoundPage.mockReset().mockResolvedValue(undefined);
+
+    findByID.mockReset().mockResolvedValue({
+      breadcrumbs: {
+        'pt-PT': [{ url: '/sobre-nos' }],
+        'en-GB': [{ url: '/about-us' }],
+      },
+    });
   });
 
   it('maps a page that exists into an ok response', async () => {
@@ -60,7 +74,36 @@ describe('loadPayloadPage', () => {
   it('carries the draft flag into both queries', async () => {
     await loadPayloadPage('nao-existe', 'pt-PT', true);
 
-    expect(resolvePayloadPage).toHaveBeenCalledWith({}, 'nao-existe', 'pt-PT', true);
-    expect(resolvePayloadNotFoundPage).toHaveBeenCalledWith({}, 'pt-PT', true);
+    expect(resolvePayloadPage).toHaveBeenCalledWith({ findByID }, 'nao-existe', 'pt-PT', true);
+
+    expect(resolvePayloadNotFoundPage).toHaveBeenCalledWith({ findByID }, 'pt-PT', true);
+  });
+
+  it('resolves the alternate path of every locale the site serves', async () => {
+    resolvePayloadPage.mockResolvedValue(payloadPage('Sobre nós'));
+
+    const response = await loadPayloadPage(
+      'sobre-nos',
+      'pt-PT',
+      false,
+      ['pt-PT', 'en-GB'],
+      'pt-PT',
+    );
+
+    expect(response).toMatchObject({
+      page: {
+        meta: {
+          alternates: { 'pt-PT': '/sobre-nos', 'en-GB': '/en/about-us' },
+        },
+      },
+    });
+  });
+
+  it('asks for no alternates when the caller passes no locales', async () => {
+    resolvePayloadPage.mockResolvedValue(payloadPage('Sobre nós'));
+
+    const response = await loadPayloadPage('sobre-nos', 'pt-PT', false);
+
+    expect(response).toMatchObject({ page: { meta: { alternates: {} } } });
   });
 });

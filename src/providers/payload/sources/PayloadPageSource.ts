@@ -24,8 +24,10 @@ export class PayloadPageSource extends PageSource {
 
     const payloadLocale: SupportedLocale = requested;
 
+    const { locales, defaultLocale } = await getCachedSite();
+
     if (options?.draft) {
-      return loadPayloadPage(path, payloadLocale, true);
+      return loadPayloadPage(path, payloadLocale, true, locales, defaultLocale);
     }
 
     const redirect = await this.resolveRedirect(path, payloadLocale);
@@ -34,7 +36,7 @@ export class PayloadPageSource extends PageSource {
       return redirect;
     }
 
-    return getCachedPage(path, payloadLocale);
+    return getCachedPage(path, payloadLocale, locales, defaultLocale);
   }
 
   private async resolveRedirect(

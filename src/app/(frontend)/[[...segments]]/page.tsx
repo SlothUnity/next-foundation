@@ -4,6 +4,7 @@ import { permanentRedirect, redirect } from 'next/navigation';
 
 import { foundation } from '@/core/foundation/foundation';
 import { PageRenderer } from '@/core/renderer';
+import { createPagePath } from '@/core/routing';
 import type { RawQuery } from '@/core/routing';
 
 import { createMetadata } from '../_lib/createMetadata';
@@ -21,7 +22,7 @@ interface PageProps {
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { segments = [] } = await params;
 
-  const { response, route } = await resolvePage(segments, await searchParams);
+  const { response, route, site } = await resolvePage(segments, await searchParams);
 
   if (response.status === 'redirect') {
     return {};
@@ -29,7 +30,16 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 
   const noIndex = response.status === 'notFound' ? true : response.page.meta.noIndex;
 
-  return createMetadata({ locale: route.locale, ...response.page?.meta, noIndex });
+  const canonical = createPagePath({
+    path: route.path,
+    locale: route.locale,
+    defaultLocale: site.defaultLocale,
+  });
+
+  return createMetadata({
+    meta: { locale: route.locale, ...response.page?.meta, noIndex },
+    canonical,
+  });
 }
 
 export default async function Page({ params, searchParams }: PageProps) {

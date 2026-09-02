@@ -93,28 +93,19 @@ Nota: o `breadcrumbs.url` só é recalculado quando o documento é gravado. Um t
 
 [app/(frontend)/\_lib/createMetadata.ts](<../src/app/(frontend)/_lib/createMetadata.ts>) traduz o `Meta` do domínio para o `Metadata` do Next.
 
-```ts
-export function createMetadata(meta: Meta): Metadata {
-  return {
-    title: meta.title,
-    description: meta.description,
-
-    openGraph: {
-      title: meta.ogTitle ?? meta.title,
-      description: meta.ogDescription ?? meta.description,
-    },
-
-    robots: {
-      index: !meta.noIndex,
-      follow: !meta.noFollow,
-    },
-  };
-}
-```
-
-Os campos de Open Graph caem para os campos gerais quando não estão preenchidos, e os booleanos invertem-se: o CMS pergunta «não indexar?», o Next quer saber «indexar?».
+Os campos de Open Graph caem para os campos gerais quando não estão preenchidos, e os booleanos invertem-se: o CMS pergunta «não indexar?», o Next quer saber «indexar?». O cartão do Twitter passa a `summary_large_image` quando há imagem e a `summary` quando não há.
 
 Vive na camada `app` e não no `core` porque depende de tipos do Next. O `core` não conhece o framework.
+
+**A metadata está repartida entre o layout e a página, e a divisão não é arbitrária.**
+
+O layout responde o que é do site: o `metadataBase`, o `title.template` e o `openGraph.siteName`. Os três saem do `SiteDefinition.name` — que até aqui era um campo obrigatório no CMS **sem um único leitor**. O `metadataBase` é o que torna os URLs relativos da página resolúveis, portanto tem de estar acima dela.
+
+A página responde o que é dela: `title`, `description`, o `canonical`, o `hreflang`, a imagem de OG e os `robots`.
+
+O `canonical` sai do `createPagePath` com o locale da rota, o que o torna a mitigação do caminho duplicado descrito em [resolveRoute](#resolveroute): `/pt/sobre-nos` e `/sobre-nos` servem o mesmo conteúdo, e ambos declaram o segundo como canónico.
+
+O **hreflang** não se pode adivinhar prefixando o caminho actual com cada idioma, porque os slugs são traduzidos — o URL sairia errado. Vem do provider, que responde o caminho da mesma página em cada idioma: no Payload, o campo `breadcrumbs` é localizado, portanto um `findByID` com `locale: 'all'` traz todos de uma vez. É uma consulta a mais por página, dentro da mesma entrada de cache. Uma origem que não saiba responder deixa o `alternates` vazio, e o `hreflang` simplesmente não é emitido.
 
 O `generateMetadata` e a página chamam ambos o mesmo [resolvePage](<../src/app/(frontend)/_lib/resolvePage.ts>), envolvido no `cache` do React: duas chamadas, uma resolução por pedido. A chave é o caminho em string e não o array de segmentos, porque o `cache` compara argumentos por identidade e cada `await params` devolve um array novo.
 

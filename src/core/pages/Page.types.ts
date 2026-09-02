@@ -1,3 +1,4 @@
+import type { ImageData } from '@/core/media';
 import type { ModuleInstance } from '@/core/modules';
 
 export interface Meta {
@@ -8,6 +9,9 @@ export interface Meta {
 
   ogTitle?: string;
   ogDescription?: string;
+  image?: ImageData;
+
+  alternates?: Record<string, string>;
 
   noIndex?: boolean;
   noFollow?: boolean;

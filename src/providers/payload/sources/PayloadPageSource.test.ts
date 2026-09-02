@@ -5,7 +5,9 @@ import { PayloadPageSource } from './PayloadPageSource';
 const { getCachedPage, getCachedRedirects, getCachedSite, loadPayloadPage } = vi.hoisted(() => ({
   getCachedPage: vi.fn().mockResolvedValue(undefined),
   getCachedRedirects: vi.fn().mockResolvedValue({}),
-  getCachedSite: vi.fn().mockResolvedValue({ name: 'Foundation', locales: [], defaultLocale: '' }),
+  getCachedSite: vi
+    .fn()
+    .mockResolvedValue({ name: 'Foundation', locales: ['pt-PT', 'en-GB'], defaultLocale: 'pt-PT' }),
   loadPayloadPage: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -24,20 +26,30 @@ describe('PayloadPageSource', () => {
     getCachedSite.mockClear();
     getCachedRedirects.mockClear();
     getCachedRedirects.mockResolvedValue({});
-    getCachedSite.mockResolvedValue({ name: 'Foundation', locales: [], defaultLocale: 'pt-PT' });
+    getCachedSite.mockResolvedValue({
+      name: 'Foundation',
+      locales: ['pt-PT', 'en-GB'],
+      defaultLocale: 'pt-PT',
+    });
   });
 
   it('reads a public page through the cache', async () => {
     await source.getPage('sobre-nos', 'pt-PT');
 
-    expect(getCachedPage).toHaveBeenCalledWith('sobre-nos', 'pt-PT');
+    expect(getCachedPage).toHaveBeenCalledWith('sobre-nos', 'pt-PT', ['pt-PT', 'en-GB'], 'pt-PT');
     expect(loadPayloadPage).not.toHaveBeenCalled();
   });
 
   it('keeps a draft out of the cache', async () => {
     await source.getPage('sobre-nos', 'pt-PT', { draft: true });
 
-    expect(loadPayloadPage).toHaveBeenCalledWith('sobre-nos', 'pt-PT', true);
+    expect(loadPayloadPage).toHaveBeenCalledWith(
+      'sobre-nos',
+      'pt-PT',
+      true,
+      ['pt-PT', 'en-GB'],
+      'pt-PT',
+    );
     expect(getCachedPage).not.toHaveBeenCalled();
   });
 
@@ -45,7 +57,7 @@ describe('PayloadPageSource', () => {
     await source.getPage('sobre-nos');
 
     expect(getCachedSite).toHaveBeenCalled();
-    expect(getCachedPage).toHaveBeenCalledWith('sobre-nos', 'pt-PT');
+    expect(getCachedPage).toHaveBeenCalledWith('sobre-nos', 'pt-PT', ['pt-PT', 'en-GB'], 'pt-PT');
   });
 
   it('gives up on a locale this provider does not know', async () => {
@@ -79,7 +91,13 @@ describe('PayloadPageSource', () => {
 
     await source.getPage('pagina-antiga', 'pt-PT', { draft: true });
 
-    expect(loadPayloadPage).toHaveBeenCalledWith('pagina-antiga', 'pt-PT', true);
+    expect(loadPayloadPage).toHaveBeenCalledWith(
+      'pagina-antiga',
+      'pt-PT',
+      true,
+      ['pt-PT', 'en-GB'],
+      'pt-PT',
+    );
     expect(getCachedRedirects).not.toHaveBeenCalled();
   });
 
