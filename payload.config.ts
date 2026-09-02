@@ -6,7 +6,7 @@ import { postgresAdapter } from '@payloadcms/db-postgres';
 
 import { requireEnv } from '@/providers/requireEnv';
 
-import { nestedDocs, seo } from '@/providers/payload/plugins';
+import { nestedDocs, seo, storage } from '@/providers/payload/plugins';
 
 import { payloadDefaultLocale, payloadLocales } from '@/providers/payload/locales';
 
@@ -78,5 +78,5 @@ export default buildConfig({
     },
   }),
 
-  plugins: [nestedDocs, seo],
+  plugins: [nestedDocs, seo, storage],
 });

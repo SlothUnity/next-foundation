@@ -155,7 +155,11 @@ describe('planRemoval', () => {
 
     expect(contentsFor('payload')).toContain('DATABASE_URL');
     expect(contentsFor('payload')).toContain('PREVIEW_SECRET');
+    expect(contentsFor('payload')).toContain('BLOB_READ_WRITE_TOKEN');
     expect(contentsFor('payload')).not.toContain('API_URL');
+
+    expect(contentsFor('api')).not.toContain('BLOB_READ_WRITE_TOKEN');
+    expect(contentsFor('mock')).not.toContain('BLOB_READ_WRITE_TOKEN');
 
     expect(contentsFor('api')).toContain('API_URL');
     expect(contentsFor('api')).not.toContain('DATABASE_URL');

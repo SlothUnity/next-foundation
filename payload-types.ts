@@ -228,6 +228,7 @@ export interface Media {
    * What the image shows, for someone who cannot see it. Leave a decorative image described as decorative.
    */
   alt: string;
+  prefix?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -442,6 +443,7 @@ export interface RedirectsSelect<T extends boolean = true> {
  */
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
+  prefix?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
