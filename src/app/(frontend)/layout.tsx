@@ -5,6 +5,7 @@ import { provider } from '@/providers/provider';
 
 import { PATHNAME_HEADER } from '@/proxy';
 
+import { SkipToContent } from './_components/SkipToContent';
 import { resolveSite } from './_lib/resolveSite';
 
 interface LayoutProps {
@@ -29,6 +30,8 @@ export default async function RootLayout({ children }: LayoutProps) {
   return (
     <html lang={locale}>
       <body>
+        <SkipToContent />
+
         {children}
 
         {isDraft && Preview ? <Preview /> : null}

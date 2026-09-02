@@ -45,7 +45,13 @@ O `Fragment` evita um wrapper no DOM. A chave é o `module.id`, que pertence à 
 
 Isto é o que a foundation garante e o projecto não pode desfazer: o conteúdo das três regiões é livre, a estrutura não.
 
+O `<main>` leva um `id`, e ele vem de [landmarks.ts](../src/core/renderer/landmarks.ts) e não de uma string escrita aqui. A razão é o skip link: ele vive na camada `app` ([SkipToContent](<../src/app/(frontend)/_components/SkipToContent.tsx>)) e tem de apontar para um id que o `core` emite. Duas cópias da mesma string e o atalho deixa de funcionar sem que nada falhe — é a mesma lição do `PATHNAME_HEADER` no [proxy](routing.md#o-proxy). Há um teste em cada lado a fixar o par.
+
+O skip link aceita um `label`, com um default em português, para um projecto o traduzir sem editar o componente. O CSS dele usa as cores de sistema (`Canvas`, `CanvasText`) em vez de valores próprios: assim adapta-se ao modo claro ou escuro do visitante e **não impõe paleta nenhuma** a um projecto que ainda não escolheu a sua.
+
 **Hoje nenhum provider preenche o `navigation` nem o `footer`**, e isso é deliberado. Onde esse conteúdo vive no CMS — provavelmente globals, no Payload — é uma decisão de quem monta o site, não da foundation. Ela garante os landmarks e o sítio onde os módulos entram; o resto é do projecto.
+
+O mesmo vale para o **nível dos títulos**: o gerador emite `<h2>`, que é o que costuma estar certo, e garantir um `<h1>` por página exige dar ao módulo a sua posição na página — o que altera o contrato dos módulos. É responsabilidade de quem constrói o frontend do projecto, não da foundation.
 
 ## ModuleRenderer
 
