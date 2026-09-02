@@ -30,7 +30,10 @@ export default buildConfig({
     },
   },
 
-  serverURL: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
+  serverURL: requireEnv(
+    'NEXT_PUBLIC_SERVER_URL',
+    'Payload to check request origins, sign admin cookies and target the Live Preview',
+  ),
 
   localization: {
     locales: payloadLocales,

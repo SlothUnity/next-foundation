@@ -111,7 +111,7 @@ API_TOKEN=…                                 # opcional
 API_REVALIDATE=60                           # opcional, segundos, 60 por omissão
 ```
 
-O `NEXT_PUBLIC_SERVER_URL` **não pode ter barra final** — é usado como `targetOrigin` de `postMessage` no Live Preview, e a comparação é de string exacta. É opcional no arranque, mas o componente de Live Preview atira se ele faltar: quem usa o preview tem de o definir.
+O `NEXT_PUBLIC_SERVER_URL` **não pode ter barra final** — é usado como `targetOrigin` de `postMessage` no Live Preview, e a comparação é de string exacta. Com `PROVIDER=payload` é **obrigatório**: o Payload valida com ele a origem dos pedidos ao admin, e o default anterior (`http://localhost:3000`) fazia um deploy sem a variável rejeitar o host verdadeiro em vez de o aceitar.
 
 ## O mapa do `src/`
 
