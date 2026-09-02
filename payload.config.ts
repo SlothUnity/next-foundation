@@ -13,6 +13,7 @@ import { payloadDefaultLocale, payloadLocales } from '@/providers/payload/locale
 import { Site } from '@/providers/payload/globals/Site';
 import { Users } from '@/providers/payload/collections/Users';
 import { Pages } from '@/providers/payload/collections/Pages';
+import { Redirects } from '@/providers/payload/collections/Redirects';
 import { Media } from '@/providers/payload/collections/Media';
 
 const filename = fileURLToPath(import.meta.url);
@@ -60,7 +61,7 @@ export default buildConfig({
     },
   },
 
-  collections: [Users, Pages, Media],
+  collections: [Users, Pages, Redirects, Media],
   globals: [Site],
 
   db: postgresAdapter({

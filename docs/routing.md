@@ -209,8 +209,8 @@ erro editável no CMS, e um só caminho de render. O `noIndex` é forçado pelo
 `generateMetadata` quando o status é `notFound`, o que substitui a `<meta robots>` que
 o Next injectava sozinho.
 
-Se a origem disser `notFound` sem página — é o caso do provider payload enquanto
-ninguém marcar uma página como sendo a de erro — a aplicação desenha o
+Se a origem disser `notFound` sem página — no Payload, enquanto ninguém marcar uma
+página com `is404` — a aplicação desenha o
 [MissingNotFoundPage](<../src/app/(frontend)/_components/MissingNotFoundPage.tsx>), que avisa
 no log em vez de fingir que está tudo bem.
 
@@ -233,7 +233,9 @@ São 12×, **em todos os pedidos**, incluindo os das páginas que existem. O mot
 ao Postgres. Trocar isso por um código de estado que só o analytics lê não se justifica.
 
 **Tirar o admin do Payload deste `app/`** resolveria a causa na raiz, e é a única solução
-limpa. É uma mudança estrutural grande, e está registada no [TODO.md](TODO.md).
+limpa — mas é uma reestruturação grande, e esta foundation não a faz. Quem não precisar do
+Payload de todo tem a receita em
+[providers.md](providers.md#remover-o-payload); quem precisar dele fica com o 200.
 
 ## Redirects
 
@@ -249,8 +251,21 @@ São 307 e 308, e não 301/302: esses
 exigiriam produzir a resposta no [proxy](../src/proxy.ts), onde o `NextResponse.redirect`
 aceita a lista toda.
 
-Nenhum provider preenche redirects a não ser o `mocks`, que traz um exemplo em cada
-idioma. De onde vêm num CMS — uma collection própria, um plugin — é decisão de projecto.
+O `mocks` traz um exemplo em cada idioma, numa lista à mão. O `payload` lê-os de uma
+collection `Redirects`, onde o destino é uma **referência a uma página** e não um caminho
+escrito — o URL sai dos breadcrumbs dela no idioma pedido, e por isso não apodrece quando
+um slug muda ([payload.md](payload.md#redirects)). O `api` não os preenche: como uma API
+diz «isto mudou de sítio» é decisão de quem a desenhou.
+
+**O redirect ganha à página.** Se um caminho tiver as duas coisas, responde o redirect —
+é o que permite substituir um URL sem apagar o conteúdo que estava nele. E é resolvido
+**antes** de se procurar página nenhuma, o que no Payload custa uma leitura de cache e
+não uma consulta: a tabela vem inteira numa entrada por idioma, partilhada por todas as
+rotas.
+
+A excepção é a pré-visualização: em modo rascunho não se olha para os redirects, senão um
+redirect a apanhar o caminho de uma página partia o preview da própria página que o
+editor está a escrever.
 
 ## O frontend é SSR
 

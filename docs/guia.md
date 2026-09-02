@@ -97,9 +97,10 @@ Isto **esteve** errado e já não está. Fica registado por duas razões: a expl
 - [Cap. 9 — Provider Payload, lado do CMS](#cap-9--provider-payload-lado-do-cms)
   - [9.1 `payload.config.ts`, opção a opção](#91-payloadconfigts-opção-a-opção)
   - [9.2 A collection `Pages`](#92-a-collection-pages)
-  - [9.3 `Media`, `Users` e o global `Site`](#93-media-users-e-o-global-site)
-  - [9.4 Os plugins: `nestedDocs` e `seo`](#94-os-plugins-nesteddocs-e-seo)
-  - [9.5 O circuito do Live Preview](#95-o-circuito-do-live-preview)
+  - [9.3 A collection `Redirects`](#93-a-collection-redirects)
+  - [9.4 `Media`, `Users` e o global `Site`](#94-media-users-e-o-global-site)
+  - [9.5 Os plugins: `nestedDocs` e `seo`](#95-os-plugins-nesteddocs-e-seo)
+  - [9.6 O circuito do Live Preview](#96-o-circuito-do-live-preview)
 
 - [Cap. 10 — De volta ao render](#cap-10--de-volta-ao-render)
   - [10.1 `PageRenderer`: as três regiões](#101-pagerenderer-as-três-regiões)
@@ -793,8 +794,8 @@ caminho — uma página de erro é conteúdo como outro qualquer, e renderiza pe
   esses exigiriam produzir a resposta no proxy.
 - **`MissingNotFoundPage`** só aparece quando a origem diz `notFound` e **não** traz
   conteúdo. Não é a página de erro do site — é o aviso de que ela não existe, com um
-  `console.warn` a dizê-lo. É o caso do provider payload enquanto ninguém marcar uma
-  página como sendo a de erro.
+  `console.warn` a dizê-lo. É o que se vê enquanto ninguém marcar uma página como
+  sendo a de erro — no Payload, o campo `is404` ([9.2](#92-a-collection-pages)).
 - **`foundation`** é importado do caminho completo (`@/core/foundation/foundation`), não do barrel — é aqui que a aplicação real é tocada, exatamente como explicado em [0.9](#09-barrels-indexts-e-a-regra-dos-efeitos-secundários).
 - E é aqui que se vê a [injeção de dependências](#010-injeção-de-dependências) em ação: o `page.tsx` é a fronteira que conhece o singleton e o entrega ao `PageRenderer`, que a partir daí não sabe de onde veio.
 
@@ -1758,9 +1759,15 @@ export class PayloadPageSource extends PageSource {
 
     const payloadLocale: SupportedLocale = requested;
 
-    // O rascunho nunca passa pela cache.
+    // O rascunho nunca passa pela cache — nem pelos redirects.
     if (options?.draft) {
       return loadPayloadPage(path, payloadLocale, true);
+    }
+
+    const redirect = await this.resolveRedirect(path, payloadLocale);
+
+    if (redirect) {
+      return redirect;
     }
 
     return getCachedPage(path, payloadLocale);
@@ -1780,13 +1787,21 @@ A assinatura é **exatamente** a da classe abstrata — não podia ser outra ([0
 
 **A guarda de locale** é o sítio onde o type predicate de [8.1](#81-localests-uma-lista-três-formas) se paga. O `core` fala em `locale?: string` (qualquer string); o Payload só aceita os locales que conhece. Depois do `if`, o TypeScript já sabe que `requested` é um `SupportedLocale`, e a linha seguinte compila sem cast nenhum. Sem o predicate, era preciso escrever `requested as SupportedLocale`, uma afirmação por verificar.
 
-**E um locale desconhecido avisa antes de desistir.** Continua a devolver `undefined`, que acaba em 404 — mas com um `console.warn` que nomeia o locale.
+**E um locale desconhecido avisa antes de desistir.** Continua a responder `{ status: 'notFound' }`, que acaba em 404 — mas com um `console.warn` que nomeia o locale.
 
 Vale a pena perceber porque é que o aviso não faz barulho à toa. Um visitante que escreva `/xx/sobre-nos` **não chega aqui**: o `resolveRoute` só reconhece como locale um segmento que esteja em `site.locales`, e `xx` não está, portanto `xx/sobre-nos` vira caminho e dá 404 normal, sem passar por esta guarda. O único caminho até aqui é o CMS ter um locale seleccionado que o `availableLocales` do `locales.ts` já não tem — alguém apagou um idioma do código com ele ainda escolhido no admin.
 
 Isso não é uma página que falta, é configuração partida, e o efeito é todas as páginas desse idioma responderem 404. Sem o aviso, as duas coisas eram indistinguíveis nos logs.
 
 **A bifurcação do rascunho** é a linha com mais consequência do ficheiro, e está explicada em [8.6](#86-a-cache-o-que-sobrevive-ao-pedido). Em duas palavras: o que o editor vê no Live Preview é a versão dele, e guardá-la arriscava servi-la a um visitante anónimo.
+
+Repara que ela sai **antes** dos redirects, e isso também é deliberado: o editor pediu aquele documento, e um redirect a apanhar o caminho dele partia a pré-visualização da própria página que ele está a escrever.
+
+**O redirect ganha à página**, como em qualquer CMS — é o que permite substituir um URL sem apagar o conteúdo que estava nele. O `resolveRedirect` lê a tabela do idioma pelo `getCachedRedirects`, que devolve um **mapa** de caminho antigo para destino: uma entrada de cache por idioma, partilhada por todas as rotas. Por isso consultar redirects antes de cada página custa uma leitura de cache, e não uma consulta.
+
+O `defaultLocale` do global vai como segundo argumento, e por isso entra na chave da cache. Os destinos levam prefixo de idioma, e lido de dentro do loader mudar o idioma por omissão do site deixava entradas com prefixos errados sem nada que as invalidasse — a mesma armadilha da chave do `getCachedPage` ([8.6](#86-a-cache-o-que-sobrevive-ao-pedido)), noutra roupagem.
+
+E repara **onde** ele não está: fora do `getCachedPage`. Se vivesse lá dentro, a decisão de redireccionar ficava guardada dentro da entrada da página, com a tag das páginas — e mudar um redirect não a invalidava. Assim são duas caches com duas tags, cada uma a expirar pelo seu motivo ([8.6](#86-a-cache-o-que-sobrevive-ao-pedido)).
 
 ## 8.4 `resolvePayloadPage`, opção a opção
 
@@ -1801,7 +1816,7 @@ const byPath: Where = !path
 Duas maneiras de encontrar uma página:
 
 - **Caminho vazio** (a raiz) → procura a página marcada como homepage. Não se procura por URL, porque a homepage não tem URL própria.
-- **Caminho com conteúdo** → procura pelo `breadcrumbs.url`. O `breadcrumbs` é um campo mantido pelo plugin `nestedDocs` ([9.4](#94-os-plugins-nesteddocs-e-seo)) com o caminho completo da página na hierarquia. A crase constrói `/sobre-nos` a partir de `sobre-nos` — o `path` que vem do `resolveRoute` não tem barra inicial, e o guardado tem.
+- **Caminho com conteúdo** → procura pelo `breadcrumbs.url`. O `breadcrumbs` é um campo mantido pelo plugin `nestedDocs` ([9.5](#95-os-plugins-nesteddocs-e-seo)) com o caminho completo da página na hierarquia. A crase constrói `/sobre-nos` a partir de `sobre-nos` — o `path` que vem do `resolveRoute` não tem barra inicial, e o guardado tem.
 
 O tipo `Where` é o do Payload para consultas. A forma é `{ campo: { operador: valor } }` — aqui `equals`, mas há `not_equals`, `in`, `greater_than`, `contains`, etc.
 
@@ -1845,15 +1860,45 @@ Opção a opção:
 | `depth: 2`              | **quantos níveis de relações preencher**          | ver abaixo                                                         |
 | `result.docs[0]`        | o primeiro (e único) resultado                    | `undefined` se não houver nenhum, que é o que a assinatura promete |
 
-**`overrideAccess: true` merece parar.** O Payload, por omissão, aplica as regras de acesso de cada collection a todas as consultas. E as regras deste projeto exigem utilizador autenticado ([9.3](#93-media-users-e-o-global-site)). Como o site público não tem utilizador nenhum, sem esta opção **nenhuma página apareceria a um visitante anónimo**.
+**`overrideAccess: true` merece parar.** O Payload, por omissão, aplica as regras de acesso de cada collection a todas as consultas. E as regras deste projeto exigem utilizador autenticado ([9.4](#94-media-users-e-o-global-site)). Como o site público não tem utilizador nenhum, sem esta opção **nenhuma página apareceria a um visitante anónimo**.
 
 A consequência é a que tens de interiorizar:
 
 > 🎯 **Decisão, com uma responsabilidade anexa**
 >
-> Com `overrideAccess: true`, o Payload deixa de filtrar seja o que for. **A única coisa que impede o site público de mostrar rascunhos é o `{ _status: { equals: 'published' } }` da linha 16.** Se alguém apagar essa condição num refactor, o site passa a servir conteúdo por publicar e não há teste nenhum a apanhar isso — não existem testes para este ficheiro. É o primeiro sítio onde eu escreveria um.
+> Com `overrideAccess: true`, o Payload deixa de filtrar seja o que for. **A única coisa que impede o site público de mostrar rascunhos é o `{ _status: { equals: 'published' } }`.** Se alguém apagar essa condição num refactor, o site passa a servir conteúdo por publicar. Há hoje um teste a fixá-la — `keeps unpublished pages off the public site` — precisamente porque é uma condição que nada mais no sistema replica.
 
 **`depth: 2`** controla até que ponto o Payload segue relações. Com `depth: 0`, um campo de relação vem só com o `id` (`{ image: 42 }`). Com `depth: 1`, vem o documento inteiro (`{ image: { id: 42, url: '...', alt: '...' } }`). Com `depth: 2`, também as relações **dentro** desse documento são preenchidas. É o suficiente para um bloco com uma imagem, ou com uma ligação para outra página. Cada nível a mais é mais consultas — por isso não se põe um número grande «por precaução».
+
+### A página de erro é a mesma consulta com outro filtro
+
+O ficheiro exporta uma segunda função, e é o par natural da primeira:
+
+```ts
+export async function resolvePayloadNotFoundPage(payload, locale, draft = false) {
+  return findPage(payload, { is404: { equals: true } }, locale, draft);
+}
+```
+
+Todo o resto — o `fallbackLocale: false`, o `overrideAccess: true`, o `_status`, o `depth: 2` — é partilhado num `findPage` privado. **É por isso que a página de erro herda de graça a linha mais sensível do ficheiro:** um 404 por publicar não aparece, exactamente como uma página normal. Se as duas consultas fossem escritas em separado, essa garantia teria de ser lembrada duas vezes.
+
+Quem a chama é o `loadPayloadPage`, e só quando a primeira falha:
+
+```ts
+const page = await resolvePayloadPage(payload, path, locale, draft);
+
+if (page) {
+  return { status: 'ok', page: mapPayloadPage(page, locale) };
+}
+
+const notFound = await resolvePayloadNotFoundPage(payload, locale, draft);
+
+return { status: 'notFound', page: notFound ? mapPayloadPage(notFound, locale) : undefined };
+```
+
+Uma página que existe continua a custar **uma** consulta. O caminho de falha custa duas — uma vez, porque o resultado fica em cache como qualquer outro ([8.6](#86-a-cache-o-que-sobrevive-ao-pedido)).
+
+E o `notFound` sem `page` é um estado legítimo, não um erro: um site acabado de instalar ainda não tem página de erro marcada, e aí a aplicação desenha o `MissingNotFoundPage` com um aviso no log ([1.5](#15-pagetsx-linha-a-linha)). A marca `is404` garante que não há **mais do que uma**, nunca que há uma — e quem lê tem de contar com isso.
 
 ## 8.5 `mapPayloadPage`: onde os dados mudam de forma
 
@@ -1971,28 +2016,50 @@ Porquê tanto cuidado? Porque o que o editor vê no Live Preview é a versão de
 
 ### O que se guarda é o mapeamento
 
-Guarda-se o `PageDefinition`, não o documento cru do Payload. Três razões: o documento vem com `depth: 2` e arrasta media e relações inteiras; o `PageDefinition` é exactamente o que o renderer precisa; e é JSON puro, que é o que o `unstable_cache` sabe serializar — por dentro faz `JSON.stringify` e `JSON.parse`.
+Guarda-se o `PageResponse`, não o documento cru do Payload. Três razões: o documento vem com `depth: 2` e arrasta media e relações inteiras; o `PageDefinition` lá dentro é exactamente o que o renderer precisa; e o envelope é JSON puro, que é o que o `unstable_cache` sabe serializar — por dentro faz `JSON.stringify` e `JSON.parse`.
 
-O `path` e o `locale` entram na chave por serem **argumentos** — o `unstable_cache` inclui os argumentos por si, e o array que se lhe passa (`['payload:page']`) é só um prefixo. Cada idioma tem a sua entrada; o global `Site` tem uma só, partilhada por todas as rotas.
+O `path` e o `locale` entram na chave por serem **argumentos** — o `unstable_cache` inclui os argumentos por si, e o array que se lhe passa (`['payload:page:response']`) é só um prefixo. Cada idioma tem a sua entrada; o global `Site` tem uma só, partilhada por todas as rotas.
+
+> ⚠️ **O prefixo nomeia o formato, não só a entidade**
+>
+> O `unstable_cache` constrói a chave a partir dos argumentos e do texto da função que envolve — **não** do que essa função chama por dentro. Quando o `loadPayloadPage` passou a devolver um `PageResponse` em vez de um `PageDefinition`, a chave ficou igual, e as entradas antigas continuaram a ser servidas com a forma errada: a homepage caiu no fallback de 404 e um caminho inexistente respondeu 500. Sem `revalidate`, isso não se corrige sozinho — foi preciso mudar o sufixo para as entradas velhas deixarem de ser encontradas.
 
 Inspeccionado em produção, o `.next/cache/fetch-cache` fica assim:
 
 ```
-["payload:site"]   {"name":"Teste","locales":["pt-PT","en-GB"],"defaultLocale":"pt-PT"}
-["payload:pages"]  {"meta":{"locale":"pt-PT",…},"main":[…]}
-["payload:pages"]  {"meta":{"locale":"en-GB",…},"main":[…]}
-["payload:pages"]  undefined
+["payload:site"]       {"name":"Teste","locales":["pt-PT","en-GB"],"defaultLocale":"pt-PT"}
+["payload:pages"]      {"status":"ok","page":{"meta":{"locale":"pt-PT",…},"main":[…]}}
+["payload:pages"]      {"status":"ok","page":{"meta":{"locale":"en-GB",…},"main":[…]}}
+["payload:pages"]      {"status":"notFound"}
+["payload:redirects"]  {"pagina-antiga":{"to":"/sobre-nos","permanent":true}}
 ```
 
-A última entrada é uma página que não existe. **O 404 também se guarda**, e é de propósito: um caminho inexistente pedido em ciclo não deve custar uma consulta por pedido, e publicar a página nova invalida a mesma tag.
+A quarta entrada é um caminho que não existe. **O 404 também se guarda**, e é de propósito: um caminho inexistente pedido em ciclo não deve custar duas consultas por pedido, e publicar a página nova invalida a mesma tag. Se houver uma página marcada com `is404`, é o conteúdo dela que vai ali dentro.
+
+A quinta é a tabela de redirects inteira, de um idioma. Repara que não tem caminho na chave: é **uma** entrada partilhada por todas as rotas, e é isso que torna barato consultar redirects antes de cada página.
 
 ### As tags são grosseiras de propósito
 
-Duas tags: `payload:pages` para todas as páginas, `payload:site` para o global.
+Três tags: `payload:pages` para todas as páginas, `payload:redirects` para a tabela de redirects, `payload:site` para o global.
 
 Uma tag por página seria mais eficiente, e a tentação é grande. Não é de confiança aqui: o `nestedDocs` reescreve os breadcrumbs dos filhos quando um pai muda de slug, e nesse caminho não há garantia de que o `afterChange` de cada filho dispare. Uma tag por página deixaria os filhos com o URL antigo em cache, sem nada que os invalidasse.
 
 Invalidar a mais custa uma consulta. Invalidar a menos serve um URL errado durante horas. A escolha faz-se sozinha.
+
+**Grosseiras entre si, não** — mas com uma seta a apontar num sentido.
+
+Os redirects têm tag própria porque apagar um redirect não tem que deitar fora a cache das páginas. Só que **o destino de um redirect por referência é o URL de uma página** ([9.3](#93-a-collection-redirects)), e mudar o slug dessa página deixaria o mapa a apontar para um URL que já não existe. A tag dos redirects sozinha nunca o saberia — nada foi gravado na collection dela.
+
+Por isso o hook das páginas invalida **as duas**:
+
+```ts
+function revalidatePages(): void {
+  revalidatePayloadTag(PAGES_TAG);
+  revalidatePayloadTag(REDIRECTS_TAG);
+}
+```
+
+O contrário não é verdade: gravar um redirect não toca em página nenhuma. É o exemplo mais nítido do projeto de uma dependência entre caches que **não se vê no código de nenhuma das duas** — vê-se em quem escreve o valor guardado. Se um dia o destino deixar de ser derivado, esta linha deve sair com ele.
 
 ### Quem invalida
 
@@ -2025,7 +2092,7 @@ O `revalidatePayloadTag` embrulha o `revalidateTag` do Next por duas razões, e 
 
 > ⚠️ **Dívida assumida**
 >
-> O `unstable_cache` está declarado em Next 16 como **substituído** pela directiva `use cache`. Não se migrou, e a razão está registada em [TODO.md](TODO.md): o `use cache` exige `cacheComponents: true`, que não é uma troca de API — liga o PPR por omissão, muda a navegação para `<Activity>`, e obriga todo o acesso a APIs de runtime a viver dentro de um `<Suspense>`. Isso inclui o `headers()` do layout de raiz, de onde sai o `<html lang>`, e inclui o admin do Payload, que partilha o mesmo `app/`. É uma ronda própria.
+> O `unstable_cache` está declarado em Next 16 como **substituído** pela directiva `use cache`. Não se migrou, e a razão está em [payload.md](payload.md#unstable_cache-está-depreciado): o `use cache` exige `cacheComponents: true`, que não é uma troca de API — liga o PPR por omissão, muda a navegação para `<Activity>`, e obriga todo o acesso a APIs de runtime a viver dentro de um `<Suspense>`. Isso inclui o `headers()` do layout de raiz, de onde sai o `<html lang>`, e inclui o admin do Payload, que partilha o mesmo `app/`. É uma ronda própria.
 
 ---
 
@@ -2107,7 +2174,7 @@ export default buildConfig({
 - **`importMap.baseDir`** — o Payload permite substituir componentes do admin, mas as referências são **strings** (ver [9.2](#92-a-collection-pages)). Este `baseDir` diz a partir de onde essas strings se resolvem. O `dirname` das linhas 16-17 é reconstruído a partir de `import.meta.url`, porque num projeto ESM (`"type": "module"`) não existe `__dirname`.
 
 ```ts
-  collections: [Users, Pages, Media],
+  collections: [Users, Pages, Redirects, Media],
   globals: [Site],
 
   db: postgresAdapter({
@@ -2193,47 +2260,66 @@ export const Pages: CollectionConfig = {
 >
 > Reparar uma falha silenciosa tem duas saídas, e a ordem importa. A primeira é **fazer o caso desaparecer** — foi o que aconteceu ao locale, deduplicando a regra. Só quando o caso é mesmo irredutível (falta configuração obrigatória, não há nada a servir) é que se passa à segunda: **degradar com voz**, nomeando a variável ou o campo que falta.
 
-Os campos, dentro de duas `tabs`:
+Os campos, dentro de duas `tabs`. Os dois primeiros são checkboxes com a mesma regra — «um só documento pode ter esta marca» —, e por isso saem da mesma fábrica:
 
 ```ts
-{
+uniqueFlagField({
   name: 'isHome',
-  type: 'checkbox',
   label: 'Root Page',
-  defaultValue: false,
+  description: 'Use this page as the homepage of the website.',
+  taken: 'A homepage already exists.',
+  collection: 'pages',
+}),
 
-  admin: { description: 'Use this page as the homepage of the website.' },
-
-  validate: async (value, { id, req }) => {
-    if (!value) return true;
-
-    const existingHomepages = await req.payload.find({
-      collection: 'pages',
-      where: {
-        and: [
-          { isHome: { equals: true } },
-          ...(id ? [{ id: { not_equals: id } }] : []),
-        ],
-      },
-      limit: 1,
-    });
-
-    if (existingHomepages.docs.length > 0) {
-      return 'A homepage already exists.';
-    }
-
-    return true;
-  },
-}
+uniqueFlagField({
+  name: 'is404',
+  label: 'Not Found Page',
+  description: 'Serve this page when no other page matches the URL. It is never indexed.',
+  taken: 'A not found page already exists.',
+  collection: 'pages',
+}),
 ```
 
-Uma **validação assíncrona que consulta a base de dados**: só pode haver uma homepage. A convenção do Payload é devolver `true` se está bem, ou uma **string com a mensagem de erro** se não está.
+Por dentro, `src/providers/payload/fields/uniqueFlagField.ts`:
 
-O detalhe mais interessante é o `...(id ? [{ id: { not_equals: id } }] : [])`. É espalhamento condicional dentro de um array: se houver `id` (documento existente), acrescenta a condição «excluindo eu próprio»; se não houver (documento novo), acrescenta um array vazio, que desaparece. Sem isto, gravar a homepage existente daria erro contra ela mesma.
+```ts
+validate: async (value, { id, req }) => {
+  if (!value) return true;
+
+  const existing = await req.payload.find({
+    collection,
+    where: {
+      and: [{ [name]: { equals: true } }, ...(id ? [{ id: { not_equals: id } }] : [])],
+    },
+    limit: 1,
+    depth: 0,
+  });
+
+  return existing.docs.length > 0 ? taken : true;
+};
+```
+
+Uma **validação assíncrona que consulta a base de dados**. A convenção do Payload é devolver `true` se está bem, ou uma **string com a mensagem de erro** se não está.
+
+Três detalhes valem a paragem.
+
+**`if (!value) return true`** — desligar a marca nunca pode falhar. Se a validação corresse também no `false`, um documento marcado por engano ficava impossível de gravar: para o desmarcar era preciso gravá-lo, e para o gravar era preciso desmarcá-lo.
+
+**`...(id ? [{ id: { not_equals: id } }] : [])`** — espalhamento condicional dentro de um array: se houver `id` (documento existente), acrescenta a condição «excluindo eu próprio»; se não houver (documento novo), acrescenta um array vazio, que desaparece. Sem isto, gravar a homepage existente daria erro contra ela mesma.
+
+**`{ [name]: { equals: true } }`** — nome de propriedade calculado, e é o que permite a mesma função servir os dois campos. É também a razão de a fábrica existir.
+
+> 🎯 **Decisão**
+>
+> Esta fábrica nasceu de uma duplicação que **ainda não tinha acontecido**. O `isHome` estava escrito à mão e funcionava; o `is404` precisava exactamente da mesma regra. Copiar era mais rápido, e teria criado duas cópias de uma validação de integridade que ninguém voltaria a comparar — a forma mais comum de as duas divergirem. Este projecto já pagou essa lição três vezes com o `enabledLocales[0]` ([8.2](#82-payloadsitesource-e-a-local-api)).
 
 > 🎯 **Decisão**
 >
 > A regra vive no CMS, não no frontend. É o sítio certo: a integridade dos dados é responsabilidade de quem os guarda, e assim a garantia vale para qualquer forma de escrita (admin, API REST, import), não só para o site.
+
+**O que o `is404` garante, e o que não garante.** Garante que não há **mais do que uma** página de erro. Não garante que haja uma — um site acabado de instalar não tem nenhuma, e é por isso que quem lê tem de contar com a ausência ([8.4](#84-resolvepayloadpage-opção-a-opção)).
+
+E a página marcada continua a ter URL próprio e a responder nele. O que a marca acrescenta é ser servida quando nenhum outro caminho encaixa — e aí o `generateMetadata` força-lhe o `noIndex`, independentemente do que o editor tenha escolhido no separador de SEO ([1.5](#15-pagetsx-linha-a-linha)).
 
 Os restantes campos:
 
@@ -2280,7 +2366,96 @@ O nome do campo — **`main`** — é o mesmo do `PageDefinition.main`. Não é 
 >
 > O comentário dizia `// Tabls`. Trivial, mas estava lá.
 
-## 9.3 `Media`, `Users` e o global `Site`
+## 9.3 A collection `Redirects`
+
+`src/providers/payload/collections/Redirects.ts` — uma linha por caminho antigo, e o exemplo mais pequeno de uma collection completa do projecto.
+
+```ts
+{ name: 'from', type: 'text', required: true, localized: true, index: true, validate: validateFrom },
+{ name: 'type', type: 'radio', defaultValue: 'reference',
+  options: [{ label: 'A page', value: 'reference' }, { label: 'A custom path', value: 'custom' }] },
+{ name: 'reference', type: 'relationship', relationTo: 'pages', validate: validateReference },
+{ name: 'custom', type: 'text', localized: true, validate: validateCustom },
+{ name: 'permanent', type: 'checkbox', defaultValue: false },
+```
+
+**Sem `versions`.** Não há rascunho de um redirect: ou está lá, ou não está. É uma ausência com consequência — os hooks desta collection invalidam sempre, sem a guarda de `touchesPublished` que a `Pages` precisa por causa do autosave ([8.6](#86-a-cache-o-que-sobrevive-ao-pedido)).
+
+### O destino é uma referência, e o `from` é texto
+
+Esta é a decisão que vale a pena perceber, porque a primeira versão desta collection tinha um `to` de texto e estava errada de duas maneiras.
+
+**Primeira: um caminho escrito à mão apodrece.** O `nestedDocs` reescreve os breadcrumbs de uma página — e dos filhos dela — sempre que um pai muda de slug ([9.5](#95-os-plugins-nesteddocs-e-seo)). Um `to` de texto não sabe disso e fica a apontar para o vazio. E um redirect para um 404 **é pior do que não haver redirect**: sendo 308, o browser guarda o caminho e continua a ir lá depois de o problema estar resolvido. Uma referência a documento não apodrece — o URL é derivado na leitura.
+
+**Segunda: um destino localizado é uma pergunta feita duas vezes.** O `from` tem mesmo de ser localizado, porque um slug traduz-se: `/pagina-antiga` não é `/old-page`. Mas a página de destino é **um documento**, o mesmo nos dois idiomas — o que muda é o URL dela em cada um. Com um `to` localizado, o editor escrevia o destino duas vezes e tinha duas hipóteses de apontar o redirect português para o URL inglês. Com uma referência não localizada, escolhe a página uma vez e cada idioma recebe o seu URL.
+
+> 🎯 **Decisão**
+>
+> Localiza-se o que **é** diferente por idioma, não o que _parece_. O caminho antigo é diferente. A página de destino não é — só o URL dela é, e esse é derivado, não escrito.
+
+O `custom` fica para o que não é uma página do CMS: um ficheiro, uma rota da aplicação. Esse é localizado, porque aí o URL é mesmo escrito à mão.
+
+### As validações decidem pelo `type`, não pela UI
+
+O `admin.condition` esconde o campo que não interessa no modo actual. **Esconder não é dispensar** — a regra de «é obrigatório» tem de saber em que modo está, senão um campo escondido continua a bloquear a gravação:
+
+```ts
+const validateReference: RelationshipFieldSingleValidation = (value, options) => {
+  const { type } = options.siblingData as { type?: string };
+
+  if (type === 'custom') return true;
+
+  return value ? true : 'Choose the page to redirect to.';
+};
+```
+
+O `siblingData` são os outros campos do mesmo nível do formulário. É a única forma de uma validação de campo ver o contexto em que corre.
+
+**Os dois caminhos passam pelo `isSafeRedirectPath`** — a mesma função que fecha o open redirect da rota de pré-visualização ([9.6](#96-o-circuito-do-live-preview)). Repara no que isso significa: uma função escrita para um problema de segurança de uma rota de preview acabou a validar um campo de texto do CMS, sem alteração nenhuma. É o que se ganha em ter a regra no `core/routing` e não dentro da rota que a motivou.
+
+E o `custom` leva uma guarda de ciclo — um redirect que aponta para si próprio é cortado pelo browser com um erro que não nomeia o culpado. Recusá-lo aqui é recusá-lo enquanto ainda tem nome.
+
+### Como se lê: duas consultas para o site inteiro
+
+Isto corre **antes de cada página**, e é por isso que o custo importa mais aqui do que em qualquer outro sítio do provider.
+
+Não há uma consulta por caminho. O `loadPayloadRedirects` traz a tabela do idioma inteira e monta um **mapa** de caminho antigo para destino — guardado, é uma entrada de cache por idioma para o site todo; consultado por caminho, seria uma entrada por URL visitado e uma consulta a frio em cada um deles.
+
+A primeira consulta traz a tabela com **`depth: 0`**, e essa opção é a diferença entre duas consultas e um desastre. Com `depth: 1`, o Payload populava o documento inteiro de cada página apontada — blocos, media, relações — só para se lhe ler um campo. Assim vêm os ids.
+
+A segunda resolve **todas** as páginas apontadas de uma vez:
+
+```ts
+await payload.find({
+  collection: 'pages',
+  where: { and: [{ id: { in: [...ids] } }, { _status: { equals: 'published' } }] },
+  locale,
+  fallbackLocale: false,
+  limit: ids.size,
+  depth: 0,
+  select: { breadcrumbs: true },
+});
+```
+
+O `select` pede só o campo que interessa. O `id: { in: [...] }` é o que transforma N consultas em uma. E o `_status: 'published'` é a mesma linha sensível de [8.4](#84-resolvepayloadpage-opção-a-opção), pela razão já dita: um 308 para uma página por publicar é um 404 que o browser memoriza.
+
+Se nenhum redirect apontar para uma página, a segunda consulta não acontece.
+
+O URL final sai do último breadcrumb, passado pelo `createPagePath`, que é quem sabe pôr o prefixo de idioma ([3](#cap-3--resolveroute-da-url-para-locale-path)). A homepage tem `/` como breadcrumb e vira `/` ou `/en` conforme o idioma, sem um `if` a mais.
+
+O `normalizeRedirectPath` tira as barras das duas pontas, e é o que faz o `/pagina-antiga` que o editor escreve encontrar-se com o `pagina-antiga` que o router entrega.
+
+Três saídas em falso, e **todas avisam nomeando o `from`**: a tabela maior do que o limite de mil linhas, um destino que aponta para fora do site (a validação do campo já o recusa, mas uma migração ou a REST API não passam por ela), e uma referência que não resolve. É o padrão do capítulo [11](#cap-11--o-que-sustenta-tudo): degradar, mas com voz. Um redirect que não redirecciona é invisível de outra forma — o caminho antigo responde 404, e nada distingue isso de nunca ter havido redirect nenhum.
+
+### Porque não o plugin oficial
+
+O [`@payloadcms/plugin-redirects`](https://payloadcms.com/docs/plugins/redirects) existe e foi considerado. Três razões para não entrar, e a primeira é a que decide:
+
+- **não resolve nada em runtime.** A documentação dele di-lo: _«this plugin only manages the redirects within the Payload Admin Panel and database. It does not handle the redirect itself.»_ Tudo o que esta secção descreve — o loader, as duas consultas, o mapa, a cache, a tag, os hooks, a ligação à source — existia na mesma. O plugin poupava a collection, que é um ficheiro dos seis;
+- **os `redirectTypes` dele são 301/302**, e este projecto serve **307/308** ([1.5](#15-pagetsx-linha-a-linha)). O campo do plugin oferecia ao editor uma escolha que a aplicação não sabe honrar, que é a pior espécie de campo;
+- **o `from` teria de ser localizado por `overrides`** — e a essa altura os campos estão reescritos, que é exactamente o que está aqui, sem a dependência.
+
+## 9.4 `Media`, `Users` e o global `Site`
 
 **`Media`** — a collection de ficheiros:
 
@@ -2342,7 +2517,7 @@ hooks: {
 
 Sem guarda nenhuma, ao contrário do das páginas: um global não tem versões nem rascunhos, portanto qualquer gravação é uma publicação. E é uma gravação que tem de invalidar mesmo — mudar a ordem dos idiomas muda o locale por omissão, e o `<html lang>` de todas as páginas com ele.
 
-## 9.4 Os plugins: `nestedDocs` e `seo`
+## 9.5 Os plugins: `nestedDocs` e `seo`
 
 **`nestedDocs`** dá hierarquia às páginas: uma página pode ter uma página-mãe, e daí sai o caminho completo.
 
@@ -2402,7 +2577,7 @@ fields: ({ defaultFields }) => [
 
 A função recebe os campos que o plugin traz e devolve a lista final. Aqui, os campos por omissão são **tornados opcionais** (o `'name' in field` é preciso porque nem todos os campos do Payload têm `name` — os de layout não têm), e acrescentam-se quatro campos próprios: os dois de Open Graph e os dois de robots. São exatamente os campos que o `Meta` do projeto declara e que o `createMetadata` traduz ([1.5](#15-pagetsx-linha-a-linha)).
 
-## 9.5 O circuito do Live Preview
+## 9.6 O circuito do Live Preview
 
 O live preview é a funcionalidade que atravessa mais camadas do projeto. Vale a pena vê-lo como um circuito completo:
 
@@ -2477,7 +2652,7 @@ A expiração faz parte do que é assinado. Empurrá-la para o futuro não esten
 
 > ✅ **Corrigido**
 >
-> A função recebia ainda um parâmetro `isHome` que era redundante: como o `generateURL` já exclui a homepage ([9.4](#94-os-plugins-nesteddocs-e-seo)), o `breadcrumbs.url` dela já é `/`. Não fazia mal, mas sugeria uma regra que não existe.
+> A função recebia ainda um parâmetro `isHome` que era redundante: como o `generateURL` já exclui a homepage ([9.5](#95-os-plugins-nesteddocs-e-seo)), o `breadcrumbs.url` dela já é `/`. Não fazia mal, mas sugeria uma regra que não existe.
 
 **A rota `/next/preview`** (passo 5) — `src/app/(frontend)/next/preview/route.ts`. Um `route.ts` exporta funções com o nome do método HTTP; aqui, `GET`. As validações estão pela ordem certa (barato primeiro, caro depois):
 
@@ -2771,7 +2946,7 @@ Houve aqui um terceiro, o `not-found.tsx`, e ele foi apagado.
 >
 > A causa são as **duas raízes de route group**: sem layout na camada de raiz, o Next não tem de onde compor o 404 e usa o shell dele. Subir o layout para o topo do grupo — que foi a primeira tentativa — não chegou, e o streaming, que era a segunda suspeita, foi descartado por medição ([1.5](#15-pagetsx-linha-a-linha)).
 >
-> A solução foi outra: **deixar de chamar `notFound()`**. O 404 passou a ser conteúdo que a origem devolve, renderizado pela árvore normal ([1.5](#15-pagetsx-linha-a-linha)), e o boundary deixou de ter razão de existir. O que se perde é o status 404, que passa a 200, e está registado no [`TODO.md`](TODO.md).
+> A solução foi outra: **deixar de chamar `notFound()`**. O 404 passou a ser conteúdo que a origem devolve, renderizado pela árvore normal ([1.5](#15-pagetsx-linha-a-linha)), e o boundary deixou de ter razão de existir. O que se perde é o status 404, que passa a 200 — a medição que sustenta a troca está em [routing.md](routing.md#porque-é-que-não-se-recupera-o-status).
 
 Continua a não haver uso de `<Suspense>` nem `loading.tsx`: cada pedido bloqueia na consulta completa antes de emitir HTML. Como o `PageRenderer` já isola os módulos, Suspense por região encaixa naturalmente quando isso passar a doer.
 
@@ -2949,7 +3124,7 @@ Assim nada chega a produção sem passar eslint, TypeScript e a suite de testes 
 | `DATABASE_URL`           | `payload.config.ts`                                 | **sim**               | ligação ao Postgres. Via `requireEnv` — sem ela a aplicação não arranca.     |
 | `PAYLOAD_SECRET`         | `payload.config.ts`                                 | **sim**               | assina as sessões. Também via `requireEnv`.                                  |
 | `NEXT_PUBLIC_SERVER_URL` | `payload.config.ts:24`, `PayloadLivePreview.tsx:13` | não                   | o URL público. Sem ela, `http://localhost:3000`.                             |
-| `PREVIEW_SECRET`         | `Pages.ts`, `next/preview/route.ts`                 | para live preview     | assina os links; não viaja no URL — ver [9.5](#o-segredo-assina-não-viaja).  |
+| `PREVIEW_SECRET`         | `Pages.ts`, `next/preview/route.ts`                 | para live preview     | assina os links; não viaja no URL — ver [9.6](#o-segredo-assina-não-viaja).  |
 | `API_URL`                | `createApiClient.ts`                                | só com `PROVIDER=api` | também via `requireEnv`.                                                     |
 | `API_TOKEN`              | `createApiClient.ts`                                | não                   | vira `Authorization: Bearer ...`.                                            |
 | `API_REVALIDATE`         | `createApiClient.ts:6`                              | não                   | segundos de cache; 60 por omissão. Atira se não for um inteiro não-negativo. |
@@ -2961,7 +3136,7 @@ As três obrigatórias passam pelo mesmo `requireEnv` de `src/providers/requireE
 - Sem prefixo → a variável **só existe no servidor**. O valor é substituído no código de servidor e nunca chega ao browser.
 - Com `NEXT_PUBLIC_` → o valor é **embebido no JavaScript enviado ao browser**, em texto simples, visível a qualquer pessoa que abra as ferramentas de programador.
 
-Por isso `PAYLOAD_SECRET` e `DATABASE_URL` **nunca** podem levar o prefixo, e `NEXT_PUBLIC_SERVER_URL` leva-o porque o `PayloadLivePreview` corre no browser ([9.5](#95-o-circuito-do-live-preview)) e precisa dele.
+Por isso `PAYLOAD_SECRET` e `DATABASE_URL` **nunca** podem levar o prefixo, e `NEXT_PUBLIC_SERVER_URL` leva-o porque o `PayloadLivePreview` corre no browser ([9.6](#96-o-circuito-do-live-preview)) e precisa dele.
 
 > ⚠ **Nota de segurança**
 >
@@ -3136,6 +3311,8 @@ GET /en/sobre-nos
 │     └─ foundation.page.getPage('sobre-nos', 'en-GB', { draft })
 │           └─ PayloadPageSource
 │                 ├─ isSupportedLocale('en-GB')            ✓
+│                 ├─ getCachedRedirects('en-GB', 'pt-PT')   uma entrada por idioma
+│                 │     'sobre-nos' está no mapa?  não  →  segue para a página
 │                 ├─ getPayload({ config })                 (Local API)
 │                 ├─ resolvePayloadPage(...)
 │                 │     payload.find({
@@ -3147,9 +3324,11 @@ GET /en/sobre-nos
 │                 │       locale, fallbackLocale: false, draft,
 │                 │       overrideAccess: true, limit: 1, depth: 2,
 │                 │     })
+│                 ├─ sem página?  resolvePayloadNotFoundPage(...)   ← só neste caso
+│                 │                   { is404: { equals: true } }
 │                 └─ mapPayloadPage(page, locale)
 │                       null → undefined,  blockType → alias
-│                       → PageDefinition { meta, main: [ModuleInstance] }
+│                       → PageResponse { status: 'ok', page: { meta, main } }
 │
 └─ <PageRenderer page foundation />
       └─ <main> … <ModuleRenderer module foundation /> …
@@ -3160,13 +3339,14 @@ GET /en/sobre-nos
 
 Onde as coisas costumam partir, por ordem de probabilidade:
 
-| Sintoma                                | Suspeito                                                                                             |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| O módulo não aparece                   | `alias` ≠ `slug` do bloco ([6.6](#66-o-alias-é-a-cola)) ou falta o export em `src/modules/index.ts`  |
-| 404 numa página que existe             | `breadcrumbs.url` diferente do esperado, ou `_status` ainda em rascunho                              |
-| O site inteiro dá 404                  | `enabledLocales` vazio no global `Site` ([3.3](#33-o-locale-por-omissão-é-declarado-não-adivinhado)) |
-| Erro de validação num módulo           | schema e bloco do Payload divergem; ver a mensagem do zod no `cause`                                 |
-| O TypeScript não conhece um campo novo | falta correr `pnpm generate:payload`                                                                 |
+| Sintoma                                | Suspeito                                                                                                                                     |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| O módulo não aparece                   | `alias` ≠ `slug` do bloco ([6.6](#66-o-alias-é-a-cola)) ou falta o export em `src/modules/index.ts`                                          |
+| 404 numa página que existe             | `breadcrumbs.url` diferente do esperado, `_status` ainda em rascunho, ou um redirect a apanhar o caminho ([9.3](#93-a-collection-redirects)) |
+| O 404 aparece sem conteúdo, com aviso  | nenhuma página marcada com `is404` ([9.2](#92-a-collection-pages))                                                                           |
+| O site inteiro dá 404                  | `enabledLocales` vazio no global `Site` ([3.3](#33-o-locale-por-omissão-é-declarado-não-adivinhado))                                         |
+| Erro de validação num módulo           | schema e bloco do Payload divergem; ver a mensagem do zod no `cause`                                                                         |
+| O TypeScript não conhece um campo novo | falta correr `pnpm payload:generate`                                                                                                         |
 
 ---
 
@@ -3196,7 +3376,7 @@ export const CtaBlock: Block = {
 export const pageBlocks = [HeroBlock, CtaBlock];
 ```
 
-**3. Regenerar os tipos** — `pnpm generate:payload`. Sem isto o `payload-types.ts` não conhece o bloco e o mapeamento não compila.
+**3. Regenerar os tipos** — `pnpm payload:generate`. Sem isto o `payload-types.ts` não conhece o bloco e o mapeamento não compila.
 
 **4. O módulo** — cinco ficheiros em `src/modules/cta/`:
 

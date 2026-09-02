@@ -13,3 +13,9 @@
 export const PAGES_TAG = 'payload:pages';
 
 export const SITE_TAG = 'payload:site';
+
+/**
+ * Separada da das páginas de propósito: um redirect e uma página mudam por motivos
+ * diferentes, e publicar um artigo não tem que deitar fora a tabela de redirects.
+ */
+export const REDIRECTS_TAG = 'payload:redirects';

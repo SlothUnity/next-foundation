@@ -69,6 +69,7 @@ export interface Config {
   collections: {
     users: User;
     pages: Page;
+    redirects: Redirect;
     media: Media;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -79,6 +80,7 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
+    redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents':
@@ -160,6 +162,10 @@ export interface Page {
    * Use this page as the homepage of the website.
    */
   isHome?: boolean | null;
+  /**
+   * Serve this page when no other page matches the URL. It is never indexed.
+   */
+  is404?: boolean | null;
   title: string;
   breadcrumbs?:
     | {
@@ -229,6 +235,37 @@ export interface Media {
   focalY?: number | null;
 }
 /**
+ * Send an old URL somewhere else. Checked before any page is looked up.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "redirects".
+ */
+export interface Redirect {
+  id: number;
+  /**
+   * The old path, with a leading slash and no language prefix — /pagina-antiga.
+   */
+  from: string;
+  /**
+   * A page keeps working if its slug changes. A custom path does not.
+   */
+  type?: ('reference' | 'custom') | null;
+  /**
+   * The URL is derived per language from this page, so pick it once.
+   */
+  reference?: (number | null) | Page;
+  /**
+   * For what is not a page. Include the language prefix if it needs one.
+   */
+  custom?: string | null;
+  /**
+   * Answer 308 instead of 307. Browsers cache a permanent redirect — be sure.
+   */
+  permanent?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -259,6 +296,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'pages';
         value: number | Page;
+      } | null)
+    | ({
+        relationTo: 'redirects';
+        value: number | Redirect;
       } | null)
     | ({
         relationTo: 'media';
@@ -334,6 +375,7 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface PagesSelect<T extends boolean = true> {
   isHome?: T;
+  is404?: T;
   title?: T;
   breadcrumbs?:
     | T
@@ -373,6 +415,19 @@ export interface HeroBlockSelect<T extends boolean = true> {
   subtitle?: T;
   id?: T;
   blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "redirects_select".
+ */
+export interface RedirectsSelect<T extends boolean = true> {
+  from?: T;
+  type?: T;
+  reference?: T;
+  custom?: T;
+  permanent?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

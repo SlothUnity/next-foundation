@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload';
 
 import { pageBlocks } from '@/providers/payload/blocks';
 import { revalidatePagesOnChange, revalidatePagesOnDelete } from '@/providers/payload/cache';
+import { uniqueFlagField } from '@/providers/payload/fields';
 import { mapPayloadSite } from '@/providers/payload/mappers/mapPayloadSite';
 import { breadcrumbsField } from '@/providers/payload/plugins';
 import { getLivePreviewUrl } from '@/providers/payload/utils/getLivePreviewUrl';
@@ -73,51 +74,30 @@ export const Pages: CollectionConfig = {
           label: 'Configuration',
           fields: [
             // Root Page (isHome) field
-            {
+            uniqueFlagField({
               name: 'isHome',
-              type: 'checkbox',
               label: 'Root Page',
-              defaultValue: false,
+              description: 'Use this page as the homepage of the website.',
+              taken: 'A homepage already exists.',
+              collection: 'pages',
+            }),
 
-              admin: {
-                description: 'Use this page as the homepage of the website.',
-              },
-
-              validate: async (value, { id, req }) => {
-                if (!value) {
-                  return true;
-                }
-
-                const existingHomepages = await req.payload.find({
-                  collection: 'pages',
-                  where: {
-                    and: [
-                      {
-                        isHome: {
-                          equals: true,
-                        },
-                      },
-                      ...(id
-                        ? [
-                            {
-                              id: {
-                                not_equals: id,
-                              },
-                            },
-                          ]
-                        : []),
-                    ],
-                  },
-                  limit: 1,
-                });
-
-                if (existingHomepages.docs.length > 0) {
-                  return 'A homepage already exists.';
-                }
-
-                return true;
-              },
-            },
+            // Not Found Page (is404) field
+            //
+            // O gémeo do isHome, e por isso escrito com a mesma fábrica: as duas
+            // regras de unicidade são a mesma, e mantê-las em duplicado era ficar
+            // à espera de corrigir uma e esquecer a outra.
+            //
+            // A página continua a ter URL próprio e a responder nele — o que esta
+            // marca acrescenta é ser servida quando nenhum outro caminho encaixa.
+            uniqueFlagField({
+              name: 'is404',
+              label: 'Not Found Page',
+              description:
+                'Serve this page when no other page matches the URL. It is never indexed.',
+              taken: 'A not found page already exists.',
+              collection: 'pages',
+            }),
 
             // Title field
             {

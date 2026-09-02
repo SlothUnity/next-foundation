@@ -68,7 +68,7 @@ Duas coisas mudam para quem escreve um provider:
 - **a página de erro é conteúdo.** Se a origem tiver uma, devolve-a no `page` do `notFound` e ela renderiza como qualquer outra — ver [routing.md](routing.md#o-404-é-conteúdo). Se não tiver, omite-o e a aplicação desenha um fallback com aviso no log.
 - **os redirects passam a caber no contrato.** É a segunda coisa que um CMS precisa de dizer sobre um URL, e até agora não havia como.
 
-Só o `mocks` preenche os dois hoje, de propósito: é o provider que serve de exemplo. No `payload` e no `api` ficam marcados como costura, como o `mapApiPage`.
+O `mocks` e o `payload` preenchem os dois — o primeiro com listas à mão, o segundo com o CMS (a marca `is404` e a collection `Redirects`, ver [payload.md](payload.md)). No `api` ficam marcados como costura, como o `mapApiPage`, porque quem desenhou a API é que sabe como ela diz «isto mudou de sítio».
 
 A consequência prática está no [routing.md](routing.md): como o default vive no provider e o provider corre no servidor, o `proxy` não precisa de o saber e portanto não reescreve URLs.
 
@@ -179,6 +179,38 @@ Cada bloco tem de produzir uma `ModuleInstance` com `alias` igual ao `alias` de 
 **4. Exportar o bundle** em `<nome>/provider.ts` e acrescentar o `case` ao `createProvider`.
 
 O core não muda. O renderer não muda. Os módulos não mudam.
+
+## Remover o Payload
+
+Esta foundation traz o Payload montado, mas ele é **um** provider e não a fundação. Se o
+conteúdo vier de outro lado, o Payload sai — e sair inteiro é preciso, porque enquanto o
+`src/app/(payload)/` existir o build exige `PAYLOAD_SECRET` e `DATABASE_URL` **mesmo com
+`PROVIDER=api`**: a rota `/api/[...slug]` importa o `payload.config.ts` estaticamente, e
+ele valida o ambiente ao carregar.
+
+O que apagar:
+
+|                                                           |                                                                                                                                      |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/app/(payload)/`                                      | o admin e a API REST                                                                                                                 |
+| [src/app/(frontend)/next/](<../src/app/(frontend)/next/>) | `preview` e `exit-preview`, que autenticam com `payload.auth()`                                                                      |
+| `src/providers/payload/`                                  | as sources, o mapper, as collections, a cache                                                                                        |
+| `payload.config.ts`                                       | e os caminhos `@payload-config` e `@payload-types` no [tsconfig.json](../tsconfig.json) e no [vitest.config.ts](../vitest.config.ts) |
+
+E depois duas edições:
+
+- o `case 'payload'` do [createProvider.ts](../src/providers/createProvider.ts) e o import
+  no topo — os três providers são importados estaticamente, portanto um que deixe de
+  existir parte a compilação;
+- os scripts `payload:*` e `dev:payload` do `package.json`, o `withPayload` do
+  [next.config.ts](../next.config.ts), e as dependências `payload`, `@payloadcms/*`.
+
+Fica o `core`, os `modules`, o `app/(frontend)` e os providers `api` e `mocks`. O
+[gerador](modules.md) já conta com isto: sem `src/providers/payload/blocks/index.ts` não
+escreve bloco nenhum, escreve só o módulo.
+
+Com o Payload fora, o `PageResponse` continua a exprimir 404 e redirects — quem os
+preenche passa a ser o `mapApiPage`.
 
 ## O provider api
 

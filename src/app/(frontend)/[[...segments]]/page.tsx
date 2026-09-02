@@ -41,7 +41,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
  * route group — o shell que sai é o do Next, vazio. Um 404 renderizado como
  * qualquer outra página chega inteiro ao HTML servido, dentro do nosso layout.
  *
- * O preço é o status HTTP passar a 200. Ver [TODO.md](../../../../docs/TODO.md).
+ * O preço é o status HTTP passar a 200, e a medição que sustenta a troca está em
+ * [routing.md](../../../../docs/routing.md).
  */
 export default async function Page({ params }: PageProps) {
   const { segments = [] } = await params;

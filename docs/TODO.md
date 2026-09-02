@@ -1,6 +1,9 @@
 # Estado e próximos passos
 
-Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este documento é só o que falta fazer.
+Duas listas: o que a foundation já resolve, e o que falta. O **porquê** de cada decisão
+vive nos documentos de referência — aqui ficam as linhas e as ligações.
+
+Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md).
 
 ## Feito
 
@@ -32,7 +35,7 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 - contrato `Provider` com `preview` opcional
 - **o provider responde o status, não só o conteúdo** — `PageResponse` com `ok`, `notFound` e `redirect` em vez de `PageDefinition | undefined`, que dizia três coisas ao mesmo tempo; a página de erro é conteúdo da origem e renderiza pela árvore normal, e os redirects passam a caber no contrato
 - **a chave da cache nomeia o formato do valor** — mudar a forma do que se guarda sem mudar a chave servia entradas velhas com a forma errada, e sem `revalidate` não se corrigia sozinho
-- `createProvider` por variável `PROVIDER`, singleton em `provider.ts`
+- `createProvider` por variável `PROVIDER`, singleton em `provider.ts` — os três bundles são instanciados no import, e [providers.md](providers.md) explica porque é que isso hoje não custa nada
 - **o locale por omissão é uma resposta do provider** — `SiteDefinition.defaultLocale` declarado em vez de inferido de `locales[0]`, e omitir o `locale` no `getPage` significa «usa o teu default» em vez de «desiste»
 - provider `mocks` — site completo sem base de dados, e sem sequer avaliar o `payload.config.ts` (import dinâmico no `getPayloadClient`)
 - **camada de autoria dos mocks** — `definePage` com as traduções por chave de locale, `block()` a verificar o `data` contra o tipo do módulo, ids derivados do alias e da posição; estrutura em `pages/` e `sources/`
@@ -43,12 +46,19 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 
 ### Payload
 
-- collections `Pages`, `Media`, `Users`; global `Site`
+- collections `Pages`, `Redirects`, `Media`, `Users`; global `Site`
 - localização com `filterAvailableLocales` a partir do global `Site`
 - `payloadDefaultLocale` como constante única, partilhada pelo `payload.config.ts` e pelo `mapPayloadSite`
 - hierarquia e breadcrumbs (`nestedDocs`), slugs por `createSlug`
 - SEO com `ogTitle`, `ogDescription`, `noIndex`, `noFollow`
-- validação de homepage única (`isHome`)
+- **`isHome` e `is404` pela mesma fábrica** (`uniqueFlagField`) — a regra «um só documento com esta marca» existia uma vez e ia passar a existir duas; a segunda cópia é como as divergências entram
+- **a página de erro é conteúdo do CMS** — o `is404` marca-a, o `resolvePayloadNotFoundPage` procura-a só quando o caminho falha, e sem ela o site cai no fallback com aviso em vez de partir; um 404 por publicar não aparece, porque o filtro de `_status` vale para ela como para as outras
+- **redirects numa collection própria, com o destino por referência** — o `from` é localizado (um slug traduz-se) e a página apontada não é, porque é o mesmo documento nos dois idiomas: o editor escolhe uma vez e o URL de cada idioma sai dos breadcrumbs. Um caminho escrito à mão apodrecia quando o `nestedDocs` reescrevesse o slug, e um 308 para um 404 fica em cache no browser
+- **sem o `@payloadcms/plugin-redirects`** — ele não resolve nada em runtime («does not handle the redirect itself»), os `redirectTypes` dele são 301/302 e este projecto serve 307/308, e o `from` teria de ser localizado por `overrides`; a collection é um ficheiro dos seis que isto precisa
+- **a tabela de redirects vem inteira, como mapa, numa entrada de cache por idioma** — é o que torna barato consultá-la antes de cada página; por caminho seria uma entrada por URL do site. Duas consultas a frio para o site todo: `depth: 0` na tabela, e um `find` com `id: { in: [...] }` e `select: { breadcrumbs: true }` para todas as páginas apontadas de uma vez
+- **os redirects resolvem-se fora do `getCachedPage`, com tag própria** — lá dentro, a decisão ficava guardada com a tag das páginas e mudar um redirect não a invalidava. No sentido contrário a dependência existe e está ligada: gravar uma página invalida também a tag dos redirects, porque os destinos são URLs de páginas
+- um redirect para uma página por publicar é ignorado com aviso, em vez de mandar o visitante a um 404 que o browser memoriza
+- o rascunho não olha para os redirects: o editor pediu **aquele** documento, e um redirect a apanhar o caminho dele partia a pré-visualização da página que ele está a escrever
 - **campo de admin `pageUrl` só de servidor** — os breadcrumbs vêm do `data`, o idioma do `req.locale`, a origem do `req.origin` e o global da Local API, portanto não faz pedido nenhum nem envia JavaScript ao browser; desapareceram com os dois `fetch` os `return` mudos, o `AbortController` em falta, a promise descartada e a terceira cópia do `enabledLocales[0]`
 - CMS fechado atrás de login, com leitura de `Media` aberta; o frontend lê pela Local API e a query filtra por `_status`
 - rascunhos com autosave a 375ms
@@ -66,6 +76,8 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 - **`src/proxy.ts`** (a convenção `middleware` está depreciada em Next 16) a expor o pathname no header `x-pathname`, sem reescrever nem redireccionar
 - `<html lang>` por página, vindo do locale da rota
 - `resolvePage` e `resolveSite` partilhados por `generateMetadata` e página, com `cache` do React
+- **o 404 é conteúdo e renderiza pela árvore normal** — sem `notFound()`, portanto com HTML servido e `noindex` forçado; a troca (status 200) foi escolhida com medições, e a razão de não se recuperar o status está em [routing.md](routing.md#porque-é-que-não-se-recupera-o-status)
+- **redirects com código real** — `307`/`308` nos headers, medidos
 - **`app/` só com ficheiros de rota** — o resto numa pasta com `_` (`_lib/` para funções, `_components/` para componentes), e o que é puro saiu de vez (`isSafeRedirectPath` → `core/routing`)
 - `isSafeRedirectPath` a fechar o open redirect do preview; `exit-preview` só por `POST`
 
@@ -79,94 +91,62 @@ Para perceber o projeto peça a peça, começa pelo [guia.md](guia.md). Este doc
 
 ### Qualidade
 
-- `typecheck`, `lint` e 185 testes verdes (186 assim que existir um módulo gerado)
+- `typecheck`, `lint` e 236 testes verdes (237 assim que existir um módulo gerado)
 - testes sem carregar o `payload.config.ts`
 - `pnpm build` corre `lint`, `typecheck` e testes antes do `next build` — sem CI, é este o portão antes de produção
 - `.env.example` na raiz
 
 ## Próximos passos
 
-### 1. O 404 responde 200 — decidido, e porquê
+Por ordem do que faz sentido fazer a seguir, não de importância.
 
-Não é uma pendência à espera de solução: é uma troca escolhida com medições. Está aqui
-para não se voltar a investigar do zero.
+Isto é um **ponto de partida**, não um produto: cobertura de testes, framework de E2E,
+sistema de tema e a estrutura do `app/` são decisões de quem monta o site, e por isso não
+estão aqui. O que está é o que a foundation ainda deve a si própria.
 
-O `notFound()` saiu. Um caminho que não existe é um `PageResponse` com
-`status: 'notFound'`, e a página de erro — quando a origem tem uma — renderiza pela
-árvore normal.
+### 1. Verificar o ciclo editorial contra o admin
 
-**A causa do shell vazio não era o streaming.** Isolada por eliminação, num build de
-produção:
+Quatro coisas construídas e nunca vistas a funcionar ponta a ponta, porque todas exigem
+uma escrita na base de dados e uma sessão de editor:
 
-| o que se variou                                      | shell servido                 |
-| ---------------------------------------------------- | ----------------------------- |
-| `notFound()` com o layout normal (assíncrono)        | `__next_error__`, corpo vazio |
-| o mesmo, com um layout **totalmente síncrono**       | `__next_error__`, corpo vazio |
-| uma página **sem um único `await`**, só `notFound()` | `__next_error__`, corpo vazio |
+- **a invalidação da cache** — publicar uma página e confirmar que o público muda à
+  primeira. Os hooks estão testados unitariamente e as entradas de cache foram
+  inspeccionadas em produção, mas o ciclo completo não;
+- **o Live Preview** — abrir o preview no admin com o token assinado. A lógica do token
+  está testada contra a rota real; o que falta é o iframe autenticado;
+- **o `is404`** — marcar uma página, visitar um caminho que não existe, e ver essa página
+  em vez do `MissingNotFoundPage`;
+- **os redirects** — criar uma linha e confirmar o `308` nos headers, que apagá-la devolve
+  o URL antigo ao 404 à primeira, e que **mudar o slug da página apontada** actualiza o
+  destino sem tocar no redirect.
 
-São as **duas raízes de route group**: sem layout na camada de raiz não há de onde compor
-o 404. E não pode haver — o `(payload)/layout.tsx` traz o `<html>` do Payload.
+O cenário que interessa para os dois primeiros é: publicado A, preview mostra B, público
+continua A, publicar, público passa a B.
 
-**A saída pelo proxy foi implementada e medida, e é por isso que não ficou.** Funciona —
-dá 404 e HTML completo — mas o `unstable_cache` não corre no proxy (não há work store),
-portanto cada pedido volta ao Postgres:
+**Antes de tudo isto:** o `redirects` é uma tabela nova e o `is404` uma coluna nova. O
+adaptador de Postgres empurra as duas no primeiro `pnpm dev`; em produção é preciso uma
+migração.
 
-|                         | tempo de resposta, mesma página |
-| ----------------------- | ------------------------------- |
-| como está               | **14 ms**                       |
-| com a consulta no proxy | **177 ms**                      |
+### 2. Finais de linha
 
-12×, em **todos** os pedidos, para recuperar um código que só o analytics lê — quando o
-`noindex` já resolve a indexação. Não compensa.
+`pnpm format:check` reprova **oito ficheiros que ninguém edita à mão**, e nenhum deles por
+causa de estilo:
 
-Fica uma via por explorar, e é estrutural: **tirar o admin do Payload deste `app/`**, para
-o frontend passar a ser a camada de raiz. Resolve a causa em vez do sintoma, e é uma
-mudança grande.
+- seis são CRLF vindo do `core.autocrlf=true` do git;
+- o `payload-types.ts` e o `importMap.js` são **regenerados a cada `next build`** sem o
+  Prettier do projecto, portanto voltam a divergir sozinhos.
 
-E fica registado o que se ganha se um dia o status for mesmo obrigatório sem essa
-mudança: trocar o ramo `notFound` por um `notFound()` devolve o status 404 imediatamente,
-ao preço do corpo servido. O conteúdo do provider pode ir para um `not-found.tsx` async,
-que lê o locale do header `x-pathname` como o layout faz.
+Um `.gitattributes` com `* text=auto eol=lf` e um renormalize fecham os primeiros. Os dois
+gerados ou entram no `.prettierignore`, ou o `payload:generate` passa a correr o Prettier
+a seguir. É meia hora e devolve um comando que hoje mente.
 
-### 2. Migrar a cache para `use cache`
+### 3. TypeScript mais apertado
 
-A cache do provider payload **está feita** — ver [payload.md](payload.md#cache). Fica a dívida da API escolhida.
+**`noUncheckedIndexedAccess`** não está ligado no `tsconfig.json`. Apanha a classe de bugs
+que este projeto mais teve — `locales[0]`, `docs[0]`, `split('-')[0]` compilam hoje sem
+guarda. É mecânico, e vale a pena **antes** das rondas grandes, senão escrevem-se as
+guardas duas vezes.
 
-O `unstable_cache` está declarado em Next 16 como substituído pela directiva `use cache`, que exige `cacheComponents: true`. Esse flag não é uma troca de API: liga o PPR por omissão, muda a navegação para `<Activity>`, e obriga todo o acesso a APIs de runtime a viver dentro de um `<Suspense>` — incluindo o `headers()` do layout de raiz, de onde sai o `<html lang>`, e incluindo o admin do Payload, que partilha o mesmo `app/`. É uma ronda própria, e vale a pena esperar que o Payload 3 declare suporte.
-
-Falta ainda **verificar a invalidação contra o admin**: publicar uma página e confirmar que o público muda à primeira. Os hooks estão testados unitariamente e as entradas de cache foram inspeccionadas em produção contra a base de dados real, mas o ciclo completo exige uma escrita.
-
-### 3. TypeScript
-
-**`noUncheckedIndexedAccess`** não está ligado no `tsconfig.json`. Ligá-lo apanha a classe de bugs que este projeto mais tem — `locales[0]`, `docs[0]`, `split('-')[0]` compilam hoje sem guarda. É mecânico, e vale a pena fazê-lo **antes** das rondas grandes, senão escrevem-se as guardas duas vezes.
-
-**`Meta.locale` obrigatório.** Hoje é opcional e nenhum consumidor depende dele — o `<html lang>` passou a sair do locale da rota — mas todos os mappers o preenchem. Torná-lo obrigatório fecha a divergência entre o que o tipo permite e o que a realidade faz.
-
-### 4. Cobertura e E2E
-
-Não há cobertura configurada nem framework de E2E — 185 testes, todos unitários. Os componentes de admin já têm testes (o `PageUrl` e o `livePreview.url` da collection), mas nunca foram abertos num browser autenticado: o que está verificado é a lógica, não o render dentro do admin.
-
-O cenário que interessa é o editorial: publicado A, preview mostra B, público continua A, publicar, público passa a B. Vale a pena corrê-lo à mão assim que o Live Preview estiver verificado contra a base de dados, e automatizá-lo depois como ronda própria — instalar e configurar Playwright com uma base de dados com estado é trabalho a sério.
-
-### 5. Tirar o admin do Payload da camada de raiz
-
-A `src/app/(payload)/` é compilada sempre, seja qual for o `PROVIDER`, e traz consigo
-duas consequências que já se pagam:
-
-- **o build exige `PAYLOAD_SECRET` e `DATABASE_URL` mesmo com `PROVIDER=api`**, porque a
-  rota `/api/[...slug]` importa o `payload.config.ts` estaticamente e ele valida o
-  ambiente ao carregar;
-- **o `notFound()` não tem shell**, porque duas raízes de route group não deixam existir
-  um layout na camada de raiz — ver o ponto 1.
-
-As duas têm a mesma causa. Resolver implica separar o admin: um `basePath` próprio, uma
-segunda aplicação, ou outra estrutura de `app/`. É a mudança que fecharia o ponto 1 de
-raiz, e é a maior deste documento.
-
-### 6. Providers realmente permutáveis
-
-Resolvido para as **sources**: o `payload.config.ts` já não é avaliado com `PROVIDER=mock`, porque o [getPayloadClient.ts](../src/providers/payload/getPayloadClient.ts) o importa dinamicamente. Há teste de regressão em `createProvider.test.ts`.
-
-**Não é verdade para as rotas**, e convém não confundir as duas coisas: a `src/app/(payload)/` importa a config estaticamente e por isso um build falha sem `PAYLOAD_SECRET`, mesmo com `PROVIDER=api`. Isso é o ponto 5, não este.
-
-O que resta é cosmético: o [createProvider.ts](../src/providers/createProvider.ts) continua a importar os três providers estaticamente. Os construtores não tocam em ambiente nem em IO, portanto hoje não custa nada além de um pouco de grafo de módulos. Um `await import()` dentro de cada `case` fechava a questão, mas obrigava o `createProvider` a ser assíncrono e isso propaga-se ao singleton `foundation` — não compensa sem outra razão.
+**`Meta.locale` obrigatório.** Hoje é opcional e nenhum consumidor depende dele — o
+`<html lang>` sai do locale da rota — mas todos os mappers o preenchem. Torná-lo
+obrigatório fecha a divergência entre o que o tipo permite e o que a realidade faz.

@@ -35,7 +35,7 @@ import { PAGES_TAG } from './tags';
  *
  * Nota de migração: em Next 16 o `unstable_cache` está declarado como substituído
  * pela directiva `use cache`, que exige `cacheComponents: true` — ver
- * [docs/TODO.md](../../../../docs/TODO.md).
+ * [docs/payload.md](../../../../docs/payload.md).
  */
 export const getCachedPage = unstable_cache(
   (path: string, locale: SupportedLocale) => loadPayloadPage(path, locale, false),

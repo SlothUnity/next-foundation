@@ -3,7 +3,10 @@ import type { PageResponse } from '@/core/pages';
 import { getPayloadClient } from '@/providers/payload/getPayloadClient';
 import type { SupportedLocale } from '@/providers/payload/locales';
 import { mapPayloadPage } from '@/providers/payload/mappers/mapPayloadPage';
-import { resolvePayloadPage } from '@/providers/payload/sources/resolvePayloadPage';
+import {
+  resolvePayloadNotFoundPage,
+  resolvePayloadPage,
+} from '@/providers/payload/sources/resolvePayloadPage';
 
 /**
  * A leitura de uma página sem cache nenhuma: consulta e mapeamento.
@@ -13,15 +16,16 @@ import { resolvePayloadPage } from '@/providers/payload/sources/resolvePayloadPa
  * `PageDefinition` é o que o renderer precisa e nada mais, e é JSON puro, que é o
  * que o `unstable_cache` sabe serializar. O `PageResponse` inteiro também o é.
  *
- * ⚠️ **Duas costuras por ligar, e são de projecto e não da foundation:**
+ * Quando o caminho não encaixa, procura-se a página marcada com `is404` no CMS. É a
+ * segunda consulta, e só acontece no caminho de falha — que fica em cache como
+ * qualquer outro, portanto um 404 repetido não a repete.
  *
- * - **a página de erro.** O `notFound` sai daqui sem `page`, e por isso a aplicação
- *   desenha um fallback mínimo. Para o 404 ser editável, acrescenta um campo à
- *   collection `Pages` — um `is404` a espelhar o `isHome`, que já lá tem a validação
- *   de unicidade feita — e devolve-a aqui.
- * - **os redirects.** Nunca se devolve `{ status: 'redirect' }`. De onde vêm é
- *   decisão de quem monta o site: uma collection própria, o plugin de redirects do
- *   Payload, ou nada.
+ * Um site acabado de instalar não tem nenhuma página marcada, e aí o `notFound` sai
+ * daqui sem `page` e a aplicação desenha o fallback mínimo com um aviso. Degrada,
+ * mas com voz.
+ *
+ * Os redirects não passam por aqui: vivem noutra collection, resolvem-se antes de se
+ * procurar página nenhuma, e a decisão está na `PayloadPageSource`.
  */
 export async function loadPayloadPage(
   path: string,
@@ -32,9 +36,14 @@ export async function loadPayloadPage(
 
   const page = await resolvePayloadPage(payload, path, locale, draft);
 
-  if (!page) {
-    return { status: 'notFound' };
+  if (page) {
+    return { status: 'ok', page: mapPayloadPage(page, locale) };
   }
 
-  return { status: 'ok', page: mapPayloadPage(page, locale) };
+  const notFound = await resolvePayloadNotFoundPage(payload, locale, draft);
+
+  return {
+    status: 'notFound',
+    page: notFound ? mapPayloadPage(notFound, locale) : undefined,
+  };
 }

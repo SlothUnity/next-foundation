@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { Payload } from 'payload';
 
-import { resolvePayloadPage } from './resolvePayloadPage';
+import { resolvePayloadNotFoundPage, resolvePayloadPage } from './resolvePayloadPage';
 
 const PAGE = { id: 1, title: 'Sobre nós' };
 
@@ -97,5 +97,57 @@ describe('resolvePayloadPage', () => {
     const { payload } = createPayload([]);
 
     await expect(resolvePayloadPage(payload, 'nao-existe', 'pt-PT')).resolves.toBeUndefined();
+  });
+});
+
+describe('resolvePayloadNotFoundPage', () => {
+  it('looks the error page up by the is404 flag', async () => {
+    const { payload, find } = createPayload();
+
+    await resolvePayloadNotFoundPage(payload, 'pt-PT');
+
+    expect(argsOf(find).where).toMatchObject({
+      and: [{ is404: { equals: true } }, { _status: { equals: 'published' } }],
+    });
+  });
+
+  it('keeps an unpublished error page off the public site', async () => {
+    const { payload, find } = createPayload();
+
+    await resolvePayloadNotFoundPage(payload, 'pt-PT');
+
+    // Um 404 em rascunho é pior do que nenhum: aparecia a toda a gente sem ninguém
+    // o ter publicado.
+    expect(JSON.stringify(argsOf(find).where)).toContain('published');
+  });
+
+  it('shows the draft error page in preview', async () => {
+    const { payload, find } = createPayload();
+
+    await resolvePayloadNotFoundPage(payload, 'pt-PT', true);
+
+    expect(argsOf(find).where).toEqual({ is404: { equals: true } });
+    expect(argsOf(find).draft).toBe(true);
+  });
+
+  it('reads it in the requested locale, without falling back', async () => {
+    const { payload, find } = createPayload();
+
+    await resolvePayloadNotFoundPage(payload, 'en-GB');
+
+    expect(argsOf(find)).toMatchObject({
+      collection: 'pages',
+      locale: 'en-GB',
+      fallbackLocale: false,
+      limit: 1,
+    });
+  });
+
+  it('returns undefined when nobody marked a page as the error page', async () => {
+    const { payload } = createPayload([]);
+
+    // Estado legítimo, não erro: um site acabado de instalar ainda não a tem, e a
+    // aplicação desenha o fallback mínimo.
+    await expect(resolvePayloadNotFoundPage(payload, 'pt-PT')).resolves.toBeUndefined();
   });
 });
