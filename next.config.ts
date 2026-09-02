@@ -1,9 +1,9 @@
 import type { NextConfig } from 'next';
 import { withPayload } from '@payloadcms/next/withPayload';
 
+import { remoteImageHosts } from '@/app/_lib/imageHosts';
 import {
   baselineSecurityHeaders,
-  BLOB_IMAGE_HOSTNAME,
   contentSecurityPolicy,
   PUBLIC_PATHS,
 } from '@/app/_lib/securityHeaders';
@@ -14,12 +14,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: BLOB_IMAGE_HOSTNAME,
-      },
-    ],
+    remotePatterns: remoteImageHosts.map((hostname) => ({
+      protocol: 'https' as const,
+      hostname,
+    })),
   },
 
   async headers() {

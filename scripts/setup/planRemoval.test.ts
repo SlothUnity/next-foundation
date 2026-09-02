@@ -173,6 +173,36 @@ describe('planRemoval', () => {
     }
   });
 
+  it('declares the image hosts that provider actually serves images from', () => {
+    const written = (provider: SetupProvider) => {
+      const write = planRemoval(provider).operations.find(
+        (operation) =>
+          operation.kind === 'write' && operation.path === 'src/app/_lib/imageHosts.ts',
+      );
+
+      if (!write || write.kind !== 'write') {
+        throw new Error(`No imageHosts write planned for ${provider}.`);
+      }
+
+      return write.contents;
+    };
+
+    expect(written('payload')).toContain('blob.vercel-storage.com');
+
+    expect(written('mock')).toContain('remoteImageHosts: string[] = []');
+    expect(written('api')).toContain('remoteImageHosts: string[] = []');
+
+    for (const provider of setupProviders) {
+      expect(written(provider)).toContain("img-src 'self'");
+    }
+  });
+
+  it('tells an api project where to declare its image host', () => {
+    expect(planRemoval('api').notes.join('\n')).toContain('imageHosts.ts');
+
+    expect(planRemoval('mock').notes.join('\n')).not.toContain('imageHosts.ts');
+  });
+
   it('always drops the PROVIDER switch', () => {
     for (const provider of setupProviders) {
       const deleted = deletedPaths(planRemoval(provider).operations);

@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  baselineSecurityHeaders,
-  BLOB_IMAGE_HOSTNAME,
-  contentSecurityPolicy,
-  PUBLIC_PATHS,
-} from './securityHeaders';
+import { remoteImageHosts } from './imageHosts';
+import { baselineSecurityHeaders, contentSecurityPolicy, PUBLIC_PATHS } from './securityHeaders';
 
 function directive(name: string): string | undefined {
   return contentSecurityPolicy.split('; ').find((part) => part.startsWith(`${name} `));
@@ -25,8 +21,20 @@ describe('the content security policy', () => {
     expect(directive('form-action')).toBe("form-action 'self'");
   });
 
-  it('allows images from the blob store the uploads live in', () => {
-    expect(directive('img-src')).toContain(BLOB_IMAGE_HOSTNAME);
+  it('allows exactly the remote image hosts this project declared, and no others', () => {
+    const imgSrc = directive('img-src') ?? '';
+
+    for (const host of remoteImageHosts) {
+      expect(imgSrc).toContain(host);
+    }
+
+    expect(imgSrc.split(' ').filter((part) => part.startsWith('https://'))).toHaveLength(
+      remoteImageHosts.length,
+    );
+  });
+
+  it('always allows same-origin images, which is where a bundled image lives', () => {
+    expect(directive('img-src')).toContain("'self'");
   });
 
   it('starts from default-src self, so anything unlisted is refused', () => {

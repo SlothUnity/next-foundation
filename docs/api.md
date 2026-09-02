@@ -87,6 +87,14 @@ Sem `API_URL` o provider falha no primeiro pedido, com a variável nomeada na me
 
 O ambiente é lido **dentro do pedido**, não no import: o [createApiClient](../src/providers/api/createApiClient.ts) não é memoizado, e o `ApiClient` não guarda estado nem abre conexões. É isso que permite ao `createProvider` importar este bundle sem rebentar quando o `PROVIDER` activo é outro — ver a nota sobre bundles em [providers.md](providers.md#cada-provider-expõe-o-seu-bundle).
 
+### As imagens vêm de um sítio que só tu sabes
+
+Uma coisa que **não** é variável de ambiente: o host de onde a API serve as imagens. Declara-se em [imageHosts.ts](../src/app/_lib/imageHosts.ts), e o `pnpm setup:provider` deixa a lista vazia para este provider precisamente porque não a pode adivinhar.
+
+Enquanto estiver vazia, o `next/image` recusa qualquer imagem remota e o CSP bloqueia-a. As duas coisas são de propósito: um curinga ali é um buraco, e uma imagem que não aparece é um erro mais barato do que uma política que aceita tudo.
+
+Não é ambiente porque as duas leituras acontecem em build — o `remotePatterns` do `next.config.ts` e a directiva `img-src` — e porque é uma decisão do projecto e não do deploy.
+
 ## O que sai: createPageRequest
 
 Por omissão o pedido é o caminho, e mais nada:

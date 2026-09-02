@@ -74,6 +74,30 @@ const envExample: Record<SetupProvider, string> = {
   ].join('\n'),
 };
 
+function imageHostsFile(hosts: string[]): string {
+  const declared = hosts.length
+    ? ['[', ...hosts.map((host) => `  '${host}',`), ']'].join('\n')
+    : '[]';
+
+  return [
+    `export const remoteImageHosts: string[] = ${declared};`,
+    '',
+    'export const imageSourceDirective = [',
+    `  "img-src 'self'",`,
+    "  'data:',",
+    "  'blob:',",
+    '  ...remoteImageHosts.map((host) => `https://${host}`),',
+    "].join(' ');",
+    '',
+  ].join('\n');
+}
+
+const imageHosts: Record<SetupProvider, string> = {
+  payload: imageHostsFile(['*.public.blob.vercel-storage.com']),
+  api: imageHostsFile([]),
+  mock: imageHostsFile([]),
+};
+
 const providerExport: Record<SetupProvider, string> = {
   payload: "export { payloadProvider as provider } from './payload/provider';\n",
   api: "export { apiProvider as provider } from './api/provider';\n",
@@ -237,6 +261,12 @@ function notesFor(provider: SetupProvider): string[] {
     );
   }
 
+  if (provider === 'api') {
+    notes.push(
+      'Images: declare the host your API serves them from in src/app/_lib/imageHosts.ts. Until you do, next/image refuses remote images and the CSP blocks them — both on purpose, because a wildcard there is a hole.',
+    );
+  }
+
   if (provider === 'mock') {
     notes.push(
       'The mock provider serves hand-written pages and has no draft mode. It is a prototyping target, not a production one.',
@@ -269,6 +299,12 @@ export function planRemoval(provider: SetupProvider): SetupPlan {
       path: '.env.example',
       contents: envExample[provider],
       why: `only the ${provider} provider reads configuration now`,
+    },
+    {
+      kind: 'write',
+      path: 'src/app/_lib/imageHosts.ts',
+      contents: imageHosts[provider],
+      why: 'where images come from follows the provider',
     },
   ];
 

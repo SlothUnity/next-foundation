@@ -1,4 +1,4 @@
-export const BLOB_IMAGE_HOSTNAME = '*.public.blob.vercel-storage.com';
+import { imageSourceDirective } from './imageHosts';
 
 export const contentSecurityPolicy = [
   "default-src 'self'",
@@ -6,7 +6,7 @@ export const contentSecurityPolicy = [
   "object-src 'none'",
   "form-action 'self'",
   "frame-ancestors 'self'",
-  `img-src 'self' data: blob: https://${BLOB_IMAGE_HOSTNAME}`,
+  imageSourceDirective,
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
   "script-src 'self' 'unsafe-inline'",
