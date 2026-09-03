@@ -1,19 +1,10 @@
-import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createFoundation } from '@/core/foundation';
-import { TestPageSource, TestSiteSource } from '@/testing/testSources';
+import { render, screen } from '@testing-library/react';
 
-import { ModuleRenderer } from './ModuleRenderer';
+import { ModuleErrorFallback } from './ModuleErrorFallback';
 
-function createTestFoundation() {
-  return createFoundation({
-    page: new TestPageSource(),
-    site: new TestSiteSource(),
-  });
-}
-
-describe('ModuleRenderer', () => {
+describe('ModuleErrorFallback, in development', () => {
   beforeEach(() => {
     vi.stubEnv('NODE_ENV', 'development');
   });
@@ -22,110 +13,37 @@ describe('ModuleRenderer', () => {
     vi.unstubAllEnvs();
   });
 
-  it('renders a registered module with validated data', () => {
-    const foundation = createTestFoundation();
+  it('names the module that failed, which is the only thing worth showing', () => {
+    render(<ModuleErrorFallback alias="hero" />);
 
-    render(
-      <ModuleRenderer
-        foundation={foundation}
-        module={{
-          id: 'hero-1',
-          alias: 'hero',
-          name: 'Hero',
-          data: {
-            title: 'Hello Foundation',
-            subtitle: 'Testing the renderer',
-          },
-        }}
-      />,
-    );
-
-    expect(
-      screen.getByRole('heading', {
-        name: 'Hello Foundation',
-      }),
-    ).toBeInTheDocument();
-
-    expect(screen.getByText('Testing the renderer')).toBeInTheDocument();
+    expect(screen.getByText(/hero/)).toBeInTheDocument();
   });
 
-  it('throws when module data is invalid in development', () => {
-    const foundation = createTestFoundation();
+  it('renders something, so a hole in the page is visible while building it', () => {
+    const { container } = render(<ModuleErrorFallback alias="hero" />);
 
-    expect(() =>
-      render(
-        <ModuleRenderer
-          foundation={foundation}
-          module={{
-            id: 'hero-1',
-            alias: 'hero',
-            name: 'Hero',
-            data: {
-              subtitle: 'Missing title',
-            },
-          }}
-        />,
-      ),
-    ).toThrow('Module "hero" data validation failed.');
+    expect(container).not.toBeEmptyDOMElement();
   });
+});
 
-  it('throws when module alias is not registered in development', () => {
-    const foundation = createTestFoundation();
-
-    expect(() =>
-      render(
-        <ModuleRenderer
-          foundation={foundation}
-          module={{
-            id: 'unknown-1',
-            alias: 'does-not-exist',
-            name: 'Unknown',
-            data: {},
-          }}
-        />,
-      ),
-    ).toThrow('Module "does-not-exist" is not registered.');
-  });
-
-  it('renders nothing when module alias is unknown in production', () => {
+describe('ModuleErrorFallback, in production', () => {
+  beforeEach(() => {
     vi.stubEnv('NODE_ENV', 'production');
+  });
 
-    const foundation = createTestFoundation();
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
 
-    const { container } = render(
-      <ModuleRenderer
-        foundation={foundation}
-        module={{
-          id: 'unknown-1',
-          alias: 'does-not-exist',
-          name: 'Unknown',
-          data: {},
-        }}
-      />,
-    );
+  it('renders nothing at all, so a visitor sees no hole and no internal name', () => {
+    const { container } = render(<ModuleErrorFallback alias="hero" />);
 
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('renders nothing when module data is invalid in production', () => {
-    vi.stubEnv('NODE_ENV', 'production');
+  it('never leaks the alias, which is a name from the codebase', () => {
+    const { container } = render(<ModuleErrorFallback alias="hero" />);
 
-    const foundation = createTestFoundation();
-
-    const { container } = render(
-      <ModuleRenderer
-        foundation={foundation}
-        module={{
-          id: 'hero-invalid-1',
-          alias: 'hero',
-          name: 'Hero',
-          data: {
-            subtitle: 'Missing title',
-          },
-        }}
-      />,
-    );
-
-    expect(container).toBeEmptyDOMElement();
+    expect(container.innerHTML).not.toContain('hero');
   });
 });

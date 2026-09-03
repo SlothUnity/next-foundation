@@ -130,6 +130,8 @@ O de reporting corre com `NODE_ENV` em `production`, que é o único modo onde a
 
 Os testes manipulam `process.env.NODE_ENV` para cobrir os dois comportamentos, e devem manter-se independentes entre si — cada um constrói a sua `Foundation`.
 
+O [ModuleErrorFallback.test.tsx](../../src/core/renderer/ModuleErrorFallback.test.tsx) testa o componente **em separado** do renderer, e nos dois modos: em desenvolvimento nomeia o alias, em produção não desenha nada e não deixa o alias sair no HTML. Essa última afirmação é a que interessa — o alias é um nome do código, e uma página pública não o mostra.
+
 ## Fronteiras
 
 **PageRenderer** — estrutura da página e delegação. Não descobre módulos, não valida schemas, não conhece o CMS.

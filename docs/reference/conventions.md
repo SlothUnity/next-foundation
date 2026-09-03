@@ -79,6 +79,18 @@ Ao lado do que testam, não numa pasta `__tests__/`. Ler uma unidade não deve o
 
 A excepção é o que os testes **partilham**: [src/testing/](../../src/testing) para helpers usados por testes de camadas diferentes. Um helper vive ao lado do teste enquanto só um o usa; quando o segundo aparece, sobe para lá, pela mesma regra das pastas logo abaixo.
 
+**O que deliberadamente não tem teste.** Um ficheiro sem teste ao lado não é uma lacuna por omissão, e vale distinguir para ninguém «corrigir» o que está certo. No `core` são cinco casos, e cada um por uma razão diferente:
+
+| Não tem                          | Porque                                                                                                                       |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| os `.types.ts`                   | um teste ali afirmava o compilador, que já corre no portão                                                                   |
+| `PageSource.ts`, `SiteSource.ts` | classes abstractas: só assinaturas. O contrato é exercido pelo teste de cada origem que o cumpre                             |
+| `defineModule.ts`                | é `return module`. Existe para a inferência de tipos, e é o `tsc` que a verifica                                             |
+| `registerModules.ts`             | exercido pelo `createFoundation.test.ts`, que afirma que o `hero` fica registado                                             |
+| `foundation.ts`                  | é o singleton: `createFoundation` com o provider real. Testá-lo era testar a composição, e essa corre em cada teste do `app` |
+
+O contrário também vale: **um ficheiro de teste tem de testar o que o nome dele diz.** Houve aqui um `ModuleErrorFallback.test.tsx` cujo `describe` se chamava `ModuleRenderer` e que nunca importava o `ModuleErrorFallback` — três dos seus cinco testes eram cópias do ficheiro ao lado. Um nome desses é pior do que nenhum teste: conta-se na cobertura e não cobre nada.
+
 **O `vitest.setup.ts` desmonta o DOM entre testes**, com um `afterEach(cleanup)`. Isto não é cerimónia: o auto-cleanup do testing-library só se registra quando o Vitest corre com `globals: true`, e esta configuração não corre. Sem ele os renders acumulavam-se no `document.body` dentro de cada ficheiro, e um `screen.getByRole(...)` podia encontrar o elemento do teste anterior — um teste a passar pela razão errada, que é pior do que um teste a faltar. Provado com dois testes num ficheiro: o segundo via **dois** cabeçalhos.
 
 ## Pastas
