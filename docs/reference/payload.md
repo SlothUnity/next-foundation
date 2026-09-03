@@ -1,6 +1,6 @@
 # Provider Payload
 
-Tudo o que é específico do Payload vive em [src/providers/payload/](../src/providers/payload/). O resto do projecto não sabe que existe.
+Tudo o que é específico do Payload vive em [src/providers/payload/](../../src/providers/payload). O resto do projecto não sabe que existe.
 
 ```
 providers/payload/
@@ -21,7 +21,7 @@ providers/payload/
 
 ## Configuração
 
-[payload.config.ts](../payload.config.ts) na raiz, por convenção do Payload.
+[payload.config.ts](../../payload.config.ts) na raiz, por convenção do Payload.
 
 ```ts
 export default buildConfig({
@@ -42,7 +42,7 @@ export default buildConfig({
 });
 ```
 
-O `env` vem do [payloadEnv](../src/providers/payload/payloadEnv.ts), um schema Zod lido **uma vez** em escopo de módulo: configuração em falta ou mal formada derruba o arranque em vez de degradar em silêncio, e um `|| ''` num segredo de assinatura produziria tokens forjáveis sem um único aviso.
+O `env` vem do [payloadEnv](../../src/providers/payload/payloadEnv.ts), um schema Zod lido **uma vez** em escopo de módulo: configuração em falta ou mal formada derruba o arranque em vez de degradar em silêncio, e um `|| ''` num segredo de assinatura produziria tokens forjáveis sem um único aviso.
 
 Uma leitura em vez de três chamadas tem duas consequências práticas. As mensagens vêm **todas de uma vez** — ambiente vazio dá as três variáveis numa só falha, em vez de uma por tentativa — e há sítio para validar o **formato**, não só a presença:
 
@@ -55,7 +55,7 @@ A segunda linha não é preciosismo. O Live Preview compara este valor com a ori
 
 ## Localização
 
-Os idiomas estão declarados em [locales.ts](../src/providers/payload/locales.ts) numa lista única, e derivam dela tanto a config do Payload como o type guard usado nas sources:
+Os idiomas estão declarados em [locales.ts](../../src/providers/payload/locales.ts) numa lista única, e derivam dela tanto a config do Payload como o type guard usado nas sources:
 
 ```ts
 export const availableLocales = [
@@ -79,9 +79,9 @@ Um idioma novo acrescenta-se aqui e propaga-se sozinho: aparece nas opções do 
 | `payloadDefaultLocale` (`'pt-PT'`) | o default do Payload, para o comportamento dos campos  |
 | `SiteDefinition.defaultLocale`     | o default **do site**, o que não recebe prefixo na URL |
 
-O primeiro é uma constante de código, partilhada pelo `localization.defaultLocale` do [payload.config.ts](../payload.config.ts) para não haver duas cópias do mesmo valor. Com `fallback: false` e com todas as queries a passarem locale explícito, governa pouco.
+O primeiro é uma constante de código, partilhada pelo `localization.defaultLocale` do [payload.config.ts](../../payload.config.ts) para não haver duas cópias do mesmo valor. Com `fallback: false` e com todas as queries a passarem locale explícito, governa pouco.
 
-O segundo é o que manda no routing, e sai do [mapPayloadSite](../src/providers/payload/mappers/mapPayloadSite.ts):
+O segundo é o que manda no routing, e sai do [mapPayloadSite](../../src/providers/payload/mappers/mapPayloadSite.ts):
 
 ```ts
 defaultLocale: locales[0] ?? payloadDefaultLocale;
@@ -93,7 +93,7 @@ O `filterAvailableLocales` esconde do admin os idiomas que o global `Site` não 
 
 ## Pages
 
-[collections/Pages.ts](../src/providers/payload/collections/Pages.ts) — a collection central. Dois tabs:
+[collections/Pages.ts](../../src/providers/payload/collections/Pages.ts) — a collection central. Dois tabs:
 
 **Configuration** — `isHome`, `is404`, `title` (localizado), `breadcrumbs` (oculto, gerado), e o campo `pageUrl`.
 
@@ -103,7 +103,7 @@ O `filterAvailableLocales` esconde do admin os idiomas que o global `Site` não 
 
 Duas checkboxes com a mesma regra: **um só** documento da collection pode ter cada uma ligada. A primeira diz «esta é a homepage», a segunda «esta é a página de erro».
 
-A regra vive numa fábrica, [fields/uniqueFlagField.ts](../src/providers/payload/fields/uniqueFlagField.ts), e não em duas cópias:
+A regra vive numa fábrica, [fields/uniqueFlagField.ts](../../src/providers/payload/fields/uniqueFlagField.ts), e não em duas cópias:
 
 ```ts
 uniqueFlagField({
@@ -181,7 +181,7 @@ O `defaultLocale` vem do `mapPayloadSite` e não de um `enabledLocales?.[0]` loc
 
 ### O campo pageUrl
 
-[components/PageUrl.tsx](../src/providers/payload/components/PageUrl.tsx) é um campo `type: 'ui'` que mostra ao editor o URL público da página. **Corre só no servidor e não faz pedido nenhum à API.**
+[components/PageUrl.tsx](../../src/providers/payload/components/PageUrl.tsx) é um campo `type: 'ui'` que mostra ao editor o URL público da página. **Corre só no servidor e não faz pedido nenhum à API.**
 
 Um componente de campo de servidor recebe nas props tudo o que este campo precisa:
 
@@ -202,7 +202,7 @@ O caminho do componente é uma **string** na config — ver o aviso em [conventi
 
 ## Redirects
 
-[collections/Redirects.ts](../src/providers/payload/collections/Redirects.ts) — uma linha por caminho antigo. O `from`, o destino, e o `permanent`.
+[collections/Redirects.ts](../../src/providers/payload/collections/Redirects.ts) — uma linha por caminho antigo. O `from`, o destino, e o `permanent`.
 
 **Sem versões.** Não há rascunho de um redirect: qualquer gravação é uma publicação, e por isso os hooks invalidam sempre, sem a guarda de `_status` que a `Pages` precisa por causa do autosave.
 
@@ -238,7 +238,7 @@ O [`@payloadcms/plugin-redirects`](https://payloadcms.com/docs/plugins/redirects
 
 ## Site
 
-[globals/Site.ts](../src/providers/payload/globals/Site.ts) — nome do site e `enabledLocales` (select `hasMany`, ordenável).
+[globals/Site.ts](../../src/providers/payload/globals/Site.ts) — nome do site e `enabledLocales` (select `hasMany`, ordenável).
 
 **Este global tem de estar gravado**, mas já não é catastrófico se não estiver. Com `enabledLocales` vazio, o `mapPayloadSite` cai no `payloadDefaultLocale` para o routing não parar e avisa no log que o está a fazer; o Live Preview e o `pageUrl` continuam a funcionar, porque os dois passam a resposta a esse mesmo mapeador.
 
@@ -246,7 +246,7 @@ Tem um `afterChange` a invalidar a tag `payload:site` — sem guarda nenhuma, po
 
 ## Media e Users
 
-[Media.ts](../src/providers/payload/collections/Media.ts) — `upload` com **allowlist de mimeTypes**, mais um campo `alt` obrigatório e localizado. Leitura pública: é a única collection aberta, porque as imagens de um site público têm de ser carregadas pelo browser.
+[Media.ts](../../src/providers/payload/collections/Media.ts) — `upload` com **allowlist de mimeTypes**, mais um campo `alt` obrigatório e localizado. Leitura pública: é a única collection aberta, porque as imagens de um site público têm de ser carregadas pelo browser.
 
 O `mimeTypes` é uma allowlist e não uma blocklist, para um formato em que ninguém pensou ser recusado até alguém o acrescentar. **O SVG está deliberadamente fora:** um `.svg` servido da mesma origem do site executa script nessa origem, e sem CSP nada o atenua. Um projecto que precise de logótipos vectoriais tem de os sanear ou servi-los de outra origem — herdar o buraco por omissão não é a troca a fazer num boilerplate. O tecto de tamanho são 8 MB, declarado no `upload` da raiz do config porque a opção do parser é global e não por collection.
 
@@ -258,17 +258,17 @@ O `imageSizes` gera três derivadas (400, 900 e 1600 de largura, sem ampliar o o
 
 Um bloco com um campo `upload` chega ao mapper já populado, porque a consulta usa `depth: 2`. Se essa forma passasse tal e qual para o módulo, o `modules/` passava a conhecer o CMS — o que a [regra de camadas](architecture.md) proíbe.
 
-É por isso que a tradução vive no provider, em [mapPayloadImage.ts](../src/providers/payload/mappers/mapPayloadImage.ts): o `cleanValue` do mapper reconhece um upload **pela forma** (tem `url` e `filename`) e devolve o `ImageData` do [core](core.md#imagens). Não há lista de nomes de campos a manter — um campo de imagem novo em qualquer bloco é traduzido sem se tocar no mapper.
+É por isso que a tradução vive no provider, em [mapPayloadImage.ts](../../src/providers/payload/mappers/mapPayloadImage.ts): o `cleanValue` do mapper reconhece um upload **pela forma** (tem `url` e `filename`) e devolve o `ImageData` do [core](core.md#imagens). Não há lista de nomes de campos a manter — um campo de imagem novo em qualquer bloco é traduzido sem se tocar no mapper.
 
 O reconhecimento por forma tem um limite que vale dizer: uma relação **não** populada é só um id e não é reconhecida, e um objecto qualquer com `url` e `filename` seria. É uma troca a favor de não ter uma lista que apodrece.
 
-[Users.ts](../src/providers/payload/collections/Users.ts) — `auth: true`, usada como `admin.user`. É a autenticação que a rota de preview valida. Tem um campo `roles` (`admin` ou `editor`) cujo default conta os utilizadores existentes, para que a **primeira** conta criada seja administradora.
+[Users.ts](../../src/providers/payload/collections/Users.ts) — `auth: true`, usada como `admin.user`. É a autenticação que a rota de preview valida. Tem um campo `roles` (`admin` ou `editor`) cujo default conta os utilizadores existentes, para que a **primeira** conta criada seja administradora.
 
 ## Access control
 
 O default do Payload é `({ req: { user } }) => Boolean(user)`: uma collection sem `access` declarado exige utilizador para tudo, incluindo ler. Isso fecha o CMS ao anónimo — e **não distingue nada entre quem já entrou.** Com uma só classe de conta, qualquer editor podia mudar o email e a password do dono do site, apagar as outras contas e reescrever as Site Settings.
 
-Os papéis estão em [roles.ts](../src/providers/payload/roles.ts) e as regras em [access/](../src/providers/payload/access/), uma função por regra. A matriz é esta:
+Os papéis estão em [roles.ts](../../src/providers/payload/roles.ts) e as regras em [access/](../../src/providers/payload/access), uma função por regra. A matriz é esta:
 
 |                      | read                      | create | update                    | delete |
 | -------------------- | ------------------------- | ------ | ------------------------- | ------ |
@@ -281,7 +281,7 @@ Três detalhes que sustentam o resto:
 
 - **o campo `roles` tem access próprio, admin-only.** Sem isso, o `update: isAdminOrSelf` da `Users` deixava um editor dar-se a si mesmo o papel de admin — a alteração de acesso criava a escalada que devia impedir;
 - **um editor a ler `Users` recebe um `Where`** que o limita à sua própria linha, em vez de uma recusa seca, para a página de conta continuar a funcionar;
-- **o `Site` fica legível ao editor de propósito:** o `filterAvailableLocales` do [payload.config.ts](../payload.config.ts) pede o global com o utilizador do pedido, e sem essa leitura o selector de idioma do admin apaga-se.
+- **o `Site` fica legível ao editor de propósito:** o `filterAvailableLocales` do [payload.config.ts](../../payload.config.ts) pede o global com o utilizador do pedido, e sem essa leitura o selector de idioma do admin apaga-se.
 
 O `create: isAdmin` da `Users` não tranca ninguém fora de uma instalação nova: o `registerFirstUser` do Payload corre com `overrideAccess: true`, portanto o ecrã de criar o primeiro utilizador continua a funcionar.
 
@@ -295,11 +295,11 @@ Consequência a ter presente: uma página que nunca foi publicada dá 404 em pú
 
 ## Plugins
 
-[plugins/nestedDocs.ts](../src/providers/payload/plugins/nestedDocs.ts) — hierarquia de páginas e geração de breadcrumbs. O `generateURL` constrói o caminho a partir dos títulos, passados por [createSlug](../src/providers/payload/utils/createSlug.ts), e **exclui documentos com `isHome`** para que os filhos da homepage não herdem o slug dela.
+[plugins/nestedDocs.ts](../../src/providers/payload/plugins/nestedDocs.ts) — hierarquia de páginas e geração de breadcrumbs. O `generateURL` constrói o caminho a partir dos títulos, passados por [createSlug](../../src/providers/payload/utils/createSlug.ts), e **exclui documentos com `isHome`** para que os filhos da homepage não herdem o slug dela.
 
 ### O que o createSlug não resolve
 
-O [createSlug](../src/providers/payload/utils/createSlug.ts) tira diacríticos, junta corridas de pontuação num hífen e é idempotente. Tem [testes](../src/providers/payload/utils/createSlug.test.ts) — e metade deles existe para **fixar três arestas, não para as abençoar**. Um `it` que afirma `createSlug('日本語') === ''` está a garantir que ninguém muda isso por acidente, não a dizer que está certo.
+O [createSlug](../../src/providers/payload/utils/createSlug.ts) tira diacríticos, junta corridas de pontuação num hífen e é idempotente. Tem [testes](../../src/providers/payload/utils/createSlug.test.ts) — e metade deles existe para **fixar três arestas, não para as abençoar**. Um `it` que afirma `createSlug('日本語') === ''` está a garantir que ninguém muda isso por acidente, não a dizer que está certo.
 
 | O que acontece                                      | Porque é que dói                                                                                                                                                                         |
 | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -309,11 +309,11 @@ O [createSlug](../src/providers/payload/utils/createSlug.ts) tira diacríticos, 
 
 Nenhuma está corrigida, e a correcção **não é só no `createSlug`**: mudar o que ele devolve muda o URL de páginas já publicadas, o que precisa de um campo `slug` editável, de validação de unicidade, de uma lista de palavras reservadas e de um redirect automático quando o slug muda. É trabalho de produto, não um ajuste de função — e é por isso que os testes o descrevem em vez de o esconder.
 
-[plugins/breadcrumbsField.ts](../src/providers/payload/plugins/breadcrumbsField.ts) — o campo em si, oculto no admin. Está separado do plugin porque é adicionado explicitamente à `Pages`, e não pelo plugin.
+[plugins/breadcrumbsField.ts](../../src/providers/payload/plugins/breadcrumbsField.ts) — o campo em si, oculto no admin. Está separado do plugin porque é adicionado explicitamente à `Pages`, e não pelo plugin.
 
-[plugins/seo.ts](../src/providers/payload/plugins/seo.ts) — `@payloadcms/plugin-seo` com `tabbedUI`, mais quatro campos: `ogTitle`, `ogDescription`, `noIndex`, `noFollow`. Os campos default do plugin são relaxados para opcionais.
+[plugins/seo.ts](../../src/providers/payload/plugins/seo.ts) — `@payloadcms/plugin-seo` com `tabbedUI`, mais quatro campos: `ogTitle`, `ogDescription`, `noIndex`, `noFollow`. Os campos default do plugin são relaxados para opcionais.
 
-[plugins/storage.ts](../src/providers/payload/plugins/storage.ts) — `@payloadcms/storage-vercel-blob` para a `Media`. Sem adaptador, o Payload escreve numa pasta ao lado do config, e no Vercel esse disco não sobrevive ao deploy seguinte: o primeiro logótipo carregado em produção desaparecia.
+[plugins/storage.ts](../../src/providers/payload/plugins/storage.ts) — `@payloadcms/storage-vercel-blob` para a `Media`. Sem adaptador, o Payload escreve numa pasta ao lado do config, e no Vercel esse disco não sobrevive ao deploy seguinte: o primeiro logótipo carregado em produção desaparecia.
 
 O adaptador **já** cai para o disco local quando falta o `BLOB_READ_WRITE_TOKEN` — a documentação dele di-lo — e é essa queda silenciosa o problema. O plugin acrescenta a guarda que falta: token em falta **com `VERCEL=1`** atira.
 
@@ -329,7 +329,7 @@ O que a foundation deve dizer, e diz aqui, é onde é que a escolha colide: um s
 
 ## Sources
 
-[sources/PayloadPageSource.ts](../src/providers/payload/sources/PayloadPageSource.ts)
+[sources/PayloadPageSource.ts](../../src/providers/payload/sources/PayloadPageSource.ts)
 
 ```ts
 async getPage(path, locale, options) {
@@ -356,9 +356,9 @@ Um locale que o Payload não conheça devolve `{ status: 'notFound' }` **com um 
 
 **O redirect resolve-se antes de se procurar página nenhuma**, e fora do `getCachedPage`. Se vivesse lá dentro, a decisão de redireccionar ficava guardada dentro da entrada da página, com a tag das páginas — e mudar um redirect não a invalidava. Assim são duas caches com duas tags, cada uma a expirar pelo seu motivo.
 
-O [getPayloadClient](../src/providers/payload/getPayloadClient.ts) importa o `payload.config.ts` **dinamicamente**, para que o config não seja avaliado com `PROVIDER=mock`.
+O [getPayloadClient](../../src/providers/payload/getPayloadClient.ts) importa o `payload.config.ts` **dinamicamente**, para que o config não seja avaliado com `PROVIDER=mock`.
 
-[sources/resolvePayloadPage.ts](../src/providers/payload/sources/resolvePayloadPage.ts) — a query:
+[sources/resolvePayloadPage.ts](../../src/providers/payload/sources/resolvePayloadPage.ts) — a query:
 
 ```ts
 await payload.find({
@@ -385,7 +385,7 @@ O mesmo ficheiro exporta o `resolvePayloadNotFoundPage`, que é a mesma consulta
 
 Um 404 em rascunho não passa: o filtro de `_status` vale para a página de erro como para as outras, senão um 404 por publicar aparecia a toda a gente sem ninguém o ter publicado.
 
-[sources/loadPayloadRedirects.ts](../src/providers/payload/sources/loadPayloadRedirects.ts) — a tabela de redirects de um idioma, como **mapa** de caminho antigo para destino.
+[sources/loadPayloadRedirects.ts](../../src/providers/payload/sources/loadPayloadRedirects.ts) — a tabela de redirects de um idioma, como **mapa** de caminho antigo para destino.
 
 Um mapa e não uma lista, e a tabela inteira e não uma consulta por caminho, porque isto corre antes de cada página: guardado, é uma entrada de cache por idioma partilhada por todo o site; consultado por caminho, seria uma entrada por URL visitado e uma consulta a frio em cada um deles.
 
@@ -405,7 +405,7 @@ const result = await payload.find({
 
 O `_status: 'published'` não é copiado por hábito. **Um redirect para uma página por publicar mandava o visitante a um 404 — e sendo 308, o browser guardava esse caminho e continuava a ir lá depois de o problema estar resolvido.** É pior do que não haver redirect nenhum, e por isso a linha é ignorada com um aviso que a nomeia.
 
-O URL final sai do último breadcrumb passado pelo [createPagePath](../src/core/routing/createPagePath.ts), que é quem sabe pôr o prefixo de idioma. A homepage tem `/` como breadcrumb e vira `/` ou `/en` conforme o idioma, de graça.
+O URL final sai do último breadcrumb passado pelo [createPagePath](../../src/core/routing/createPagePath.ts), que é quem sabe pôr o prefixo de idioma. A homepage tem `/` como breadcrumb e vira `/` ou `/en` conforme o idioma, de graça.
 
 A chave é normalizada para a forma em que o caminho chega — sem barras nas pontas, com a raiz (`/`) a virar a cadeia vazia, que é como a homepage aparece aqui.
 
@@ -413,7 +413,7 @@ Há um limite de mil linhas. Não é um número mágico: é o ponto onde carrega
 
 ## Mapper
 
-[mappers/mapPayloadPage.ts](../src/providers/payload/mappers/mapPayloadPage.ts) — a fronteira onde o formato do Payload deixa de existir.
+[mappers/mapPayloadPage.ts](../../src/providers/payload/mappers/mapPayloadPage.ts) — a fronteira onde o formato do Payload deixa de existir.
 
 ```ts
 function mapBlock(block): ModuleInstance {
@@ -434,7 +434,7 @@ O `removeNullValues` é recursivo e existe porque o Payload devolve `null` para 
 
 ## Cache
 
-[cache/](../src/providers/payload/cache/)
+[cache/](../../src/providers/payload/cache)
 
 Sem ela, cada visita a cada página fazia duas consultas ao Postgres — uma ao global `Site`, outra à página. O `cache()` do React só deduplica dentro de um pedido, e o frontend é SSR, portanto não havia nada a guardar entre pedidos. Medido num servidor de produção contra a base de dados real: **133 ms a frio, ~20 ms a quente.**
 
@@ -442,16 +442,16 @@ Sem ela, cada visita a cada página fazia duas consultas ao Postgres — uma ao 
 
 Guarda-se o `PageResponse` e o `SiteDefinition` — o resultado do mapeamento, não o documento cru. O documento vem com `depth: 2`, e arrasta media e relações inteiras; o `PageDefinition` é o que o renderer precisa e nada mais, é JSON puro, e é isso que o `unstable_cache` sabe serializar. O envelope inteiro também o é.
 
-| Ficheiro                                                                                    | Papel                                                |
-| ------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| [sources/loadPayloadPage.ts](../src/providers/payload/sources/loadPayloadPage.ts)           | consulta + mapeamento, sem cache nenhuma             |
-| [sources/loadPayloadRedirects.ts](../src/providers/payload/sources/loadPayloadRedirects.ts) | a tabela de redirects de um idioma, como mapa        |
-| [sources/loadPayloadSite.ts](../src/providers/payload/sources/loadPayloadSite.ts)           | o mesmo para o global `Site`, com `depth: 0`         |
-| [cache/getCachedPage.ts](../src/providers/payload/cache/getCachedPage.ts)                   | o `loadPayloadPage` com o `draft` fixo em `false`    |
-| [cache/getCachedRedirects.ts](../src/providers/payload/cache/getCachedRedirects.ts)         | o mapa de redirects guardado                         |
-| [cache/getCachedSite.ts](../src/providers/payload/cache/getCachedSite.ts)                   | o `loadPayloadSite` guardado                         |
-| [cache/tags.ts](../src/providers/payload/cache/tags.ts)                                     | `payload:pages`, `payload:redirects`, `payload:site` |
-| [cache/hooks.ts](../src/providers/payload/cache/hooks.ts)                                   | os hooks do Payload que invalidam                    |
+| Ficheiro                                                                                       | Papel                                                |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| [sources/loadPayloadPage.ts](../../src/providers/payload/sources/loadPayloadPage.ts)           | consulta + mapeamento, sem cache nenhuma             |
+| [sources/loadPayloadRedirects.ts](../../src/providers/payload/sources/loadPayloadRedirects.ts) | a tabela de redirects de um idioma, como mapa        |
+| [sources/loadPayloadSite.ts](../../src/providers/payload/sources/loadPayloadSite.ts)           | o mesmo para o global `Site`, com `depth: 0`         |
+| [cache/getCachedPage.ts](../../src/providers/payload/cache/getCachedPage.ts)                   | o `loadPayloadPage` com o `draft` fixo em `false`    |
+| [cache/getCachedRedirects.ts](../../src/providers/payload/cache/getCachedRedirects.ts)         | o mapa de redirects guardado                         |
+| [cache/getCachedSite.ts](../../src/providers/payload/cache/getCachedSite.ts)                   | o `loadPayloadSite` guardado                         |
+| [cache/tags.ts](../../src/providers/payload/cache/tags.ts)                                     | `payload:pages`, `payload:redirects`, `payload:site` |
+| [cache/hooks.ts](../../src/providers/payload/cache/hooks.ts)                                   | os hooks do Payload que invalidam                    |
 
 O `path` e o `locale` entram na chave por serem argumentos — o `unstable_cache` inclui-os por si, e o `keyParts` serve só de prefixo. Cada idioma tem a sua entrada; o global `Site` tem uma só, partilhada por todas as rotas. Os redirects têm uma por idioma, também partilhada por todas as rotas — é o que torna barato consultá-los antes de cada página.
 
@@ -477,7 +477,7 @@ Grosseiras **entre si não são**: os redirects têm tag própria, porque apagar
 
 É o preço da referência, e é barato: o mapa de redirects reconstrói-se em duas consultas, uma vez, contra o URL errado servido durante horas.
 
-Duas decisões no [revalidatePayloadTag](../src/providers/payload/cache/revalidatePayloadTag.ts):
+Duas decisões no [revalidatePayloadTag](../../src/providers/payload/cache/revalidatePayloadTag.ts):
 
 - **`{ expire: 0 }` e não `'max'`.** O `'max'` que a documentação do Next recomenda marca como velho e serve o conteúdo antigo enquanto revalida em fundo. Errado para um CMS: quem carrega em publicar veria a página velha à primeira. A forma de um só argumento faria o mesmo que `{ expire: 0 }` mas está depreciada em Next 16.
 - **Os hooks também correm fora do Next.** Um script de seed, uma migração ou o CLI do Payload chamam o mesmo `afterChange`, e aí o `revalidateTag` atira por não encontrar contexto de pedido. Nesse caso não há cache para invalidar, portanto engole-se — mas só esse erro, identificado pelo código `E263` e não pela mensagem.
@@ -511,7 +511,7 @@ O locale por omissão que entra nesse caminho sai do `mapPayloadSite`, e não de
 
 O `previewSecret` é **parâmetro** do `getLivePreviewUrl`, não uma leitura de `process.env` lá dentro, e serve de chave de assinatura — não vai no URL (ver [O segredo não viaja](#o-segredo-não-viaja)). A collection detecta a ausência antes de gerar o link, regista `PREVIEW_SECRET is not set` no log do servidor e devolve `undefined` — o preview fica desligado de propósito, não por acidente.
 
-[app/(frontend)/next/preview/route.ts](<../src/app/(frontend)/next/preview/route.ts>) — as guardas antes de activar o `draftMode`, por esta ordem:
+[app/(frontend)/next/preview/route.ts](<../../src/app/(frontend)/next/preview/route.ts>) — as guardas antes de activar o `draftMode`, por esta ordem:
 
 1. `PREVIEW_SECRET` tem de estar definido → 503, e a mensagem nomeia a variável
 2. `isSafeRedirectPath(path)` — só caminhos relativos à própria origem → 400 (ver [routing.md](routing.md#issaferedirectpath))
@@ -523,7 +523,7 @@ A ordem não é arbitrária: o caminho é validado **antes** do token porque ent
 
 ### O segredo não viaja
 
-[utils/previewToken.ts](../src/providers/payload/utils/previewToken.ts)
+[utils/previewToken.ts](../../src/providers/payload/utils/previewToken.ts)
 
 O `PREVIEW_SECRET` **assina**, não circula. O que vai no URL é um token: `<expiração>.<HMAC-SHA256 de "caminho|expiração">`.
 
@@ -541,11 +541,11 @@ Por isso a verificação distingue **expirado** de **inválido**: um link velho 
 
 A expiração faz parte do que é assinado, portanto empurrá-la para o futuro invalida a assinatura em vez de estender o token.
 
-[next/exit-preview/route.ts](<../src/app/(frontend)/next/exit-preview/route.ts>) desliga o cookie. Sem passar por aqui, a navegação normal continua a servir rascunhos.
+[next/exit-preview/route.ts](<../../src/app/(frontend)/next/exit-preview/route.ts>) desliga o cookie. Sem passar por aqui, a navegação normal continua a servir rascunhos.
 
-O [PayloadLivePreview.tsx](../src/providers/payload/components/PayloadLivePreview.tsx) é montado pelo [layout.tsx](<../src/app/(frontend)/layout.tsx>), condicionado ao `draftMode`, e chega lá pelo `provider.preview` — o `core` não participa.
+O [PayloadLivePreview.tsx](../../src/providers/payload/components/PayloadLivePreview.tsx) é montado pelo [layout.tsx](<../../src/app/(frontend)/layout.tsx>), condicionado ao `draftMode`, e chega lá pelo `provider.preview` — o `core` não participa.
 
-O `matcher` do [proxy](../src/proxy.ts) exclui `next/`, portanto as duas rotas de preview não passam por ele. Se essa exclusão desaparecer, o preview deixa de existir sem dizer porquê.
+O `matcher` do [proxy](../../src/proxy.ts) exclui `next/`, portanto as duas rotas de preview não passam por ele. Se essa exclusão desaparecer, o preview deixa de existir sem dizer porquê.
 
 ### O que está por verificar contra o admin
 

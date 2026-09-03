@@ -146,7 +146,7 @@ function removePayload(): SetupOperation[] {
     { kind: 'delete', path: 'payload.config.ts', why },
     { kind: 'delete', path: 'payload-types.ts', why },
     { kind: 'delete', path: 'generator/templates/module/block.hbs', why },
-    { kind: 'delete', path: 'docs/payload.md', why },
+    { kind: 'delete', path: 'docs/reference/payload.md', why },
 
     {
       kind: 'removeJsonKeys',
@@ -209,18 +209,24 @@ function removePayload(): SetupOperation[] {
     {
       kind: 'removeLines',
       path: 'README.md',
-      containing: ['[payload.md](docs/payload.md)'],
-      why: 'docs/payload.md was deleted',
+      containing: ['[payload.md](docs/reference/payload.md)'],
+      why: 'docs/reference/payload.md was deleted',
     },
     {
       kind: 'removeLines',
-      path: 'docs/resumo.md',
+      path: 'docs/start/overview.md',
       containing: [
-        '[payload.md](payload.md#ishome-e-is404)',
-        '[payload.md](payload.md#redirects)',
-        '| [payload.md](payload.md)',
+        '[payload.md](../reference/payload.md#ishome-e-is404)',
+        '[payload.md](../reference/payload.md#redirects)',
+        '| [payload.md](../reference/payload.md)',
       ],
-      why: 'docs/payload.md was deleted',
+      why: 'docs/reference/payload.md was deleted',
+    },
+    {
+      kind: 'removeLines',
+      path: 'docs/README.md',
+      containing: ['| [payload.md](reference/payload.md)'],
+      why: 'the docs index must not name a document that is gone',
     },
   ];
 }
@@ -230,19 +236,25 @@ function removeApi(): SetupOperation[] {
 
   return [
     { kind: 'delete', path: 'src/providers/api', why },
-    { kind: 'delete', path: 'docs/api.md', why },
+    { kind: 'delete', path: 'docs/reference/api.md', why },
 
     {
       kind: 'removeLines',
       path: 'README.md',
-      containing: ['[api.md](docs/api.md)'],
-      why: 'docs/api.md was deleted',
+      containing: ['[api.md](docs/reference/api.md)'],
+      why: 'docs/reference/api.md was deleted',
     },
     {
       kind: 'removeLines',
-      path: 'docs/resumo.md',
-      containing: ['→ [api.md](api.md)', '| [api.md](api.md)'],
-      why: 'docs/api.md was deleted',
+      path: 'docs/start/overview.md',
+      containing: ['→ [api.md](../reference/api.md)', '| [api.md](../reference/api.md)'],
+      why: 'docs/reference/api.md was deleted',
+    },
+    {
+      kind: 'removeLines',
+      path: 'docs/README.md',
+      containing: ['| [api.md](reference/api.md)'],
+      why: 'the docs index must not name a document that is gone',
     },
   ];
 }
@@ -264,14 +276,14 @@ const removals: Record<SetupProvider, () => SetupOperation[]> = {
 };
 
 const deletedDocs: Record<SetupProvider, string[]> = {
-  payload: ['api.md'],
-  api: ['payload.md'],
-  mock: ['payload.md', 'api.md'],
+  payload: ['reference/api.md'],
+  api: ['reference/payload.md'],
+  mock: ['reference/payload.md', 'reference/api.md'],
 };
 
 function notesFor(provider: SetupProvider): string[] {
   const notes = [
-    'docs/providers.md documents PROVIDER and createProvider, which no longer exist. It still explains the Provider contract, so read it as design background rather than as instructions.',
+    'docs/reference/providers.md documents PROVIDER and createProvider, which no longer exist. It still explains the Provider contract, so read it as design background rather than as instructions.',
     'Run pnpm check:links for the exact list of prose that now points at deleted files, and prune it. It runs in the pre-commit hook, so it will stop your first commit until you do. It is deliberately not in pnpm build: a stale sentence must never fail a deploy.',
   ];
 

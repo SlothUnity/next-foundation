@@ -6,7 +6,7 @@ No fim deves conseguir abrir qualquer ficheiro do `src/` e explicar o que lá es
 
 > **Não há comentários no código deste projecto.** Este guia é onde o raciocínio vive, e é por isso que ele é longo — ver [conventions.md § Comentários](conventions.md#comentários).
 >
-> Se não tens tempo para o percurso todo: o [resumo.md](resumo.md) dá a ideia inteira em dez minutos, e o [fluxos.md](fluxos.md) dá por onde passa cada pedido, ficheiro a ficheiro.
+> Se não tens tempo para o percurso todo: o [overview.md](../start/overview.md) dá a ideia inteira em dez minutos, e o [flows.md](../start/flows.md) dá por onde passa cada pedido, ficheiro a ficheiro.
 
 ## Como ler este guia
 
@@ -745,7 +745,7 @@ return {
 };
 ```
 
-Três coisas a reter. O `??` (_nullish coalescing_) só entra se o lado esquerdo for `null` ou `undefined` — ao contrário do `||`, que também entra com `''` ou `0`; aqui isso importa, porque um `ogTitle` vazio deve cair para o `title` mas não deve ser confundido com um título legítimo. O padrão `ogTitle ?? title` é a regra editorial: quem preenche o campo de Open Graph manda; quem não preenche herda. E `robots: { index: !meta.noIndex }` é uma **inversão deliberada** — no CMS o campo é `noIndex` (marcar para esconder, que é como o editor pensa), no Next é `index` (afirmar que se quer indexar). Este ficheiro existe para essa tradução, e é por isso que o tipo `Meta` do projeto ([`src/core/pages/Page.types.ts:3`](../src/core/pages/Page.types.ts)) não precisa de se parecer com o `Metadata` do Next.
+Três coisas a reter. O `??` (_nullish coalescing_) só entra se o lado esquerdo for `null` ou `undefined` — ao contrário do `||`, que também entra com `''` ou `0`; aqui isso importa, porque um `ogTitle` vazio deve cair para o `title` mas não deve ser confundido com um título legítimo. O padrão `ogTitle ?? title` é a regra editorial: quem preenche o campo de Open Graph manda; quem não preenche herda. E `robots: { index: !meta.noIndex }` é uma **inversão deliberada** — no CMS o campo é `noIndex` (marcar para esconder, que é como o editor pensa), no Next é `index` (afirmar que se quer indexar). Este ficheiro existe para essa tradução, e é por isso que o tipo `Meta` do projeto ([`src/core/pages/Page.types.ts:3`](../../src/core/pages/Page.types.ts)) não precisa de se parecer com o `Metadata` do Next.
 
 **Segunda — a página**:
 
@@ -851,7 +851,7 @@ O Next chama o `layout.tsx`, o `generateMetadata` e o `Page` de forma independen
 
 Só que precisam todos das mesmas respostas. O `generateMetadata` e o `Page` querem a página; o layout quer o site. Sem defesa, seriam várias idas à base de dados por pedido — e mais do que parece, porque cada resolução de página faz duas consultas: o site e a página. Para desenhar uma página.
 
-São por isso **duas** funções em cache, e não uma: o [resolveSite](<../src/app/(frontend)/_lib/resolveSite.ts>), que o layout usa sozinho, e o [resolvePage](<../src/app/(frontend)/_lib/resolvePage.ts>), que o usa por dentro.
+São por isso **duas** funções em cache, e não uma: o [resolveSite](<../../src/app/(frontend)/_lib/resolveSite.ts>), que o layout usa sozinho, e o [resolvePage](<../../src/app/(frontend)/_lib/resolvePage.ts>), que o usa por dentro.
 
 A solução, `resolvePage.ts:19`:
 
@@ -3070,7 +3070,7 @@ O que ela apanhou ao ser ligada é a parte interessante: **um erro em código de
 E a tentação, nos testes, era pôr `!` em vinte e seis sítios — que é precisamente a afirmação por verificar que a flag existe para apanhar. O que se fez em vez disso:
 
 - onde a asserção era «foi chamado com isto», passou a usar os matchers do Vitest (`expect.stringContaining`, `expect.objectContaining`). Lêem-se melhor e dão melhores mensagens de falha;
-- onde o teste precisava mesmo do valor, um helper partilhado, [src/testing/callArg.ts](../src/testing/callArg.ts), que verifica o índice e diz **qual** mock não foi chamado e quantas vezes o foi — em vez do `Cannot read properties of undefined` que o `!` daria.
+- onde o teste precisava mesmo do valor, um helper partilhado, [src/testing/callArg.ts](../../src/testing/callArg.ts), que verifica o índice e diz **qual** mock não foi chamado e quantas vezes o foi — em vez do `Cannot read properties of undefined` que o `!` daria.
 
 Uma flag que só se pagasse em `!` não valeria a pena. Esta pagou-se em mensagens de erro.
 

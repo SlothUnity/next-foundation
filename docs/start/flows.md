@@ -2,9 +2,9 @@
 
 Por onde passa cada pedido, ficheiro a ficheiro.
 
-A [architecture.md](architecture.md) diz **como as camadas se relacionam**. Este documento diz **o que acontece**, na ordem em que acontece, com o ficheiro de cada passo. É o mapa que se abre quando algo falha e não se sabe onde pôr o `console.log`.
+A [architecture.md](../reference/architecture.md) diz **como as camadas se relacionam**. Este documento diz **o que acontece**, na ordem em que acontece, com o ficheiro de cada passo. É o mapa que se abre quando algo falha e não se sabe onde pôr o `console.log`.
 
-Para o porquê de cada decisão, cada passo liga ao documento que a explica. Para o passeio completo e comentado, [guia.md](guia.md).
+Para o porquê de cada decisão, cada passo liga ao documento que a explica. Para o passeio completo e comentado, [guide.md](../reference/guide.md).
 
 ## Índice
 
@@ -74,24 +74,24 @@ GET /en/servicos/consultoria
 
 ### Passo a passo
 
-| #   | Ficheiro                                                                      | O que faz                                                                  |
-| --- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| 1   | [src/proxy.ts](../src/proxy.ts)                                               | expõe o pathname num header. Não reescreve nem redirecciona                |
-| 2   | [layout.tsx](<../src/app/(frontend)/layout.tsx>)                              | o `<html lang>` e o `<body>`; monta o preview se o rascunho estiver ligado |
-| 3   | [page.tsx](<../src/app/(frontend)/[[...segments]]/page.tsx>)                  | `generateMetadata`                                                         |
-| 4   | o mesmo ficheiro                                                              | o componente de página                                                     |
-| 5   | [\_lib/resolvePage.ts](<../src/app/(frontend)/_lib/resolvePage.ts>)           | traduz segmentos em `{ locale, path }` e pergunta à origem                 |
-| 6   | [PayloadPageSource.ts](../src/providers/payload/sources/PayloadPageSource.ts) | decide entre redirect, cache e rascunho                                    |
-| 7   | [loadPayloadPage.ts](../src/providers/payload/sources/loadPayloadPage.ts)     | consulta e mapeia                                                          |
-| 8   | [PageRenderer](../src/core/renderer/)                                         | as três regiões                                                            |
-| 9   | [ModuleRenderer](../src/core/renderer/ModuleRenderer.tsx)                     | alias → componente, com validação                                          |
+| #   | Ficheiro                                                                         | O que faz                                                                  |
+| --- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1   | [src/proxy.ts](../../src/proxy.ts)                                               | expõe o pathname num header. Não reescreve nem redirecciona                |
+| 2   | [layout.tsx](<../../src/app/(frontend)/layout.tsx>)                              | o `<html lang>` e o `<body>`; monta o preview se o rascunho estiver ligado |
+| 3   | [page.tsx](<../../src/app/(frontend)/[[...segments]]/page.tsx>)                  | `generateMetadata`                                                         |
+| 4   | o mesmo ficheiro                                                                 | o componente de página                                                     |
+| 5   | [\_lib/resolvePage.ts](<../../src/app/(frontend)/_lib/resolvePage.ts>)           | traduz segmentos em `{ locale, path }` e pergunta à origem                 |
+| 6   | [PayloadPageSource.ts](../../src/providers/payload/sources/PayloadPageSource.ts) | decide entre redirect, cache e rascunho                                    |
+| 7   | [loadPayloadPage.ts](../../src/providers/payload/sources/loadPayloadPage.ts)     | consulta e mapeia                                                          |
+| 8   | [PageRenderer](../../src/core/renderer)                                          | as três regiões                                                            |
+| 9   | [ModuleRenderer](../../src/core/renderer/ModuleRenderer.tsx)                     | alias → componente, com validação                                          |
 
 ### O que decide o quê
 
-- **O `x-pathname` existe porque o layout não recebe `params`.** É a única forma de o layout saber em que URL está sem o duplicar na rota — [routing.md](routing.md#o-proxy).
-- **O `resolvePage` é chamado duas vezes e corre uma.** O `cache()` do React deduplica dentro do pedido, e a chave é normalizada com `join('/')` porque o React compara argumentos por identidade — [guia.md](guia.md#22-o-que-o-cache-garante--e-o-que-não-garante).
-- **O redirect é consultado antes da página.** Custa uma leitura de cache, não uma consulta — [payload.md](payload.md#redirects).
-- **Não há uma única página estática.** O layout chama `draftMode()` e `headers()`, e qualquer um retira a rota da geração estática — [routing.md](routing.md#o-frontend-é-ssr).
+- **O `x-pathname` existe porque o layout não recebe `params`.** É a única forma de o layout saber em que URL está sem o duplicar na rota — [routing.md](../reference/routing.md#o-proxy).
+- **O `resolvePage` é chamado duas vezes e corre uma.** O `cache()` do React deduplica dentro do pedido, e a chave é normalizada com `join('/')` porque o React compara argumentos por identidade — [guide.md](../reference/guide.md#22-o-que-o-cache-garante--e-o-que-não-garante).
+- **O redirect é consultado antes da página.** Custa uma leitura de cache, não uma consulta — [payload.md](../reference/payload.md#redirects).
+- **Não há uma única página estática.** O layout chama `draftMode()` e `headers()`, e qualquer um retira a rota da geração estática — [routing.md](../reference/routing.md#o-frontend-é-ssr).
 
 ### Onde costuma falhar
 
@@ -132,18 +132,18 @@ GET /caminho-que-nao-existe
 
 ### O que decide o quê
 
-- **A segunda consulta só corre no caminho de falha.** Uma página que existe continua a custar uma — [payload.md](payload.md#sources).
+- **A segunda consulta só corre no caminho de falha.** Uma página que existe continua a custar uma — [payload.md](../reference/payload.md#sources).
 - **O `_status: 'published'` vale para a página de erro como para as outras.** Um 404 por publicar aparecia a toda a gente sem ninguém o ter publicado.
-- **O status HTTP é 200, e é uma troca deliberada.** Em troca vem HTML servido dentro do nosso layout, em vez do shell vazio que o `notFound()` produz neste projecto. A medição está em [routing.md](routing.md#o-404-é-conteúdo).
-- **O `MissingNotFoundPage` não é a página de erro do site** — é o aviso de que ela não existe. Vive em [\_components/](<../src/app/(frontend)/_components/MissingNotFoundPage.tsx>).
+- **O status HTTP é 200, e é uma troca deliberada.** Em troca vem HTML servido dentro do nosso layout, em vez do shell vazio que o `notFound()` produz neste projecto. A medição está em [routing.md](../reference/routing.md#o-404-é-conteúdo).
+- **O `MissingNotFoundPage` não é a página de erro do site** — é o aviso de que ela não existe. Vive em [\_components/](<../../src/app/(frontend)/_components/MissingNotFoundPage.tsx>).
 
 ### Por provider
 
-| Provider  | De onde vem a página de erro                                              |
-| --------- | ------------------------------------------------------------------------- |
-| `payload` | a página marcada com `is404` na collection `Pages`                        |
-| `mocks`   | [pages/notFound.ts](../src/providers/mocks/pages/notFound.ts), por idioma |
-| `api`     | nenhuma — costura por ligar, ver [api.md](api.md)                         |
+| Provider  | De onde vem a página de erro                                                 |
+| --------- | ---------------------------------------------------------------------------- |
+| `payload` | a página marcada com `is404` na collection `Pages`                           |
+| `mocks`   | [pages/notFound.ts](../../src/providers/mocks/pages/notFound.ts), por idioma |
+| `api`     | nenhuma — costura por ligar, ver [api.md](../reference/api.md)               |
 
 ---
 
@@ -191,8 +191,8 @@ loadPayloadRedirects(locale, defaultLocale)
 
 - **O redirect ganha à página.** É o que permite substituir um URL sem apagar o conteúdo que estava nele.
 - **A tabela vem inteira, como mapa, numa entrada de cache por idioma.** Por caminho, seria uma entrada por URL do site e uma consulta a frio em cada um.
-- **O destino é uma referência a documento, não um caminho escrito.** Um caminho à mão apodrece quando o `nestedDocs` reescreve o slug — [payload.md](payload.md#o-destino-é-uma-referência-não-um-caminho).
-- **São 307 e 308, não 301 e 302.** Esses exigiriam produzir a resposta no proxy — [routing.md](routing.md#redirects).
+- **O destino é uma referência a documento, não um caminho escrito.** Um caminho à mão apodrece quando o `nestedDocs` reescreve o slug — [payload.md](../reference/payload.md#o-destino-é-uma-referência-não-um-caminho).
+- **São 307 e 308, não 301 e 302.** Esses exigiriam produzir a resposta no proxy — [routing.md](../reference/routing.md#redirects).
 - **Em modo rascunho não se olha para os redirects** — ver o [fluxo 5](#5-renderizar-um-rascunho).
 
 ---
@@ -229,9 +229,9 @@ o admin monta o URL
 
 ### O que decide o quê
 
-- **O segredo assina, não viaja.** O URL leva um token HMAC preso ao caminho e com uma hora de validade — [payload.md](payload.md#o-segredo-não-viaja).
+- **O segredo assina, não viaja.** O URL leva um token HMAC preso ao caminho e com uma hora de validade — [payload.md](../reference/payload.md#o-segredo-não-viaja).
 - **Expirado e forjado são respostas diferentes.** Um link velho é uma vista de edição aberta há muito tempo, não um ataque; dizê-lo poupa uma investigação.
-- **O `isSafeRedirectPath` fecha o open redirect.** Sem ele, `?path=https://sitemau.com` transformava esta rota numa máquina de phishing — [routing.md](routing.md#issaferedirectpath).
+- **O `isSafeRedirectPath` fecha o open redirect.** Sem ele, `?path=https://sitemau.com` transformava esta rota numa máquina de phishing — [routing.md](../reference/routing.md#issaferedirectpath).
 - **A autenticação vem depois do token, e as duas são precisas.** O token prova que o link foi gerado pelo servidor; o `payload.auth` prova que quem o abre é um editor.
 
 ---
@@ -316,7 +316,7 @@ o editor carrega em Publish
 - **Uma página invalida as duas tags.** O destino de um redirect por referência é o URL de uma página; mudar o slug dessa página deixava o mapa a apontar para um URL que já não existe. O contrário não é verdade.
 - **`{ expire: 0 }` e não `'max'`.** O `'max'` serve o conteúdo antigo enquanto revalida em fundo — errado para um CMS: quem carrega em publicar veria a página velha à primeira.
 - **O `E263` é engolido, e só ele.** Um script de seed ou o CLI do Payload chamam o mesmo `afterChange` fora do Next, onde não há cache para invalidar.
-- **As tags são grosseiras de propósito.** Uma tag por página não é de confiança: o `nestedDocs` reescreve breadcrumbs de filhos sem garantia de que o `afterChange` de cada um dispare — [payload.md](payload.md#invalidação).
+- **As tags são grosseiras de propósito.** Uma tag por página não é de confiança: o `nestedDocs` reescreve breadcrumbs de filhos sem garantia de que o `afterChange` de cada um dispare — [payload.md](../reference/payload.md#invalidação).
 
 ---
 
@@ -345,8 +345,8 @@ import { foundation } from '@/core/foundation/foundation'
 
 ### O que decide o quê
 
-- **O singleton está fora do barrel.** Importar `foundation.ts` põe a aplicação de pé — incluindo o Payload. Enquanto estava no barrel, os testes do renderer carregavam o `payload.config.ts` só por importarem `createFoundation` — [architecture.md](architecture.md#6-os-barrels-não-podem-ter-efeitos-secundários).
-- **O `payload.config.ts` é importado dinamicamente** pelo [getPayloadClient](../src/providers/payload/getPayloadClient.ts), para não ser avaliado com `PROVIDER=mock`. É o que permite correr o site sem base de dados.
+- **O singleton está fora do barrel.** Importar `foundation.ts` põe a aplicação de pé — incluindo o Payload. Enquanto estava no barrel, os testes do renderer carregavam o `payload.config.ts` só por importarem `createFoundation` — [architecture.md](../reference/architecture.md#6-os-barrels-não-podem-ter-efeitos-secundários).
+- **O `payload.config.ts` é importado dinamicamente** pelo [getPayloadClient](../../src/providers/payload/getPayloadClient.ts), para não ser avaliado com `PROVIDER=mock`. É o que permite correr o site sem base de dados.
 - **Um `PROVIDER` desconhecido derruba o arranque.** Cair no default deixava alguém a perguntar-se porque é que o site mostra dados de teste.
 - **O schema de ambiente derruba o arranque quando falta configuração obrigatória**, ou quando ela está mal formada. Um `|| ''` num segredo de assinatura produz tokens forjáveis sem um único aviso.
 
@@ -379,7 +379,7 @@ ModuleInstance  { id, name, alias, data }
 - **Sem schema não há validação nenhuma**, e o cast do `createModuleComponent` passa a ser uma afirmação sem nada por trás. Daí o aviso em desenvolvimento.
 - **O `id` tem de ser único dentro da página.** Nos mocks é derivado do alias e da posição, porque dois `hero-1` colados por copy-paste davam uma key repetida em React, que falha em silêncio.
 
-Detalhe completo em [renderer.md](renderer.md).
+Detalhe completo em [renderer.md](../reference/renderer.md).
 
 ---
 
@@ -412,7 +412,7 @@ pnpm generate
 - **Os templates estão no `.prettierignore`.** O parser de handlebars do Prettier reescreve os `.hbs` e destrói a indentação do código que eles geram.
 - **O código gerado passa `typecheck`, `lint` e o teste que ele próprio escreve**, sem se tocar em nada.
 
-Receita completa em [modules.md](modules.md).
+Receita completa em [modules.md](../reference/modules.md).
 
 ---
 
@@ -429,4 +429,4 @@ Todos os fluxos acima passam pelo mesmo ponto — `foundation.page.getPage(path,
 | mapeamento          | `mapPayloadPage`                         | `mapApiPage` — **por escrever** | nenhum: já são `PageDefinition` |
 | cache entre pedidos | `unstable_cache` + tags                  | `next.revalidate` + tags        | nenhuma                         |
 
-O `mapApiPage` fica por escrever de propósito: o formato é de quem desenhou a API, e um mapper genérico seria um palpite que parece funcionar — [api.md](api.md).
+O `mapApiPage` fica por escrever de propósito: o formato é de quem desenhou a API, e um mapper genérico seria um palpite que parece funcionar — [api.md](../reference/api.md).

@@ -28,7 +28,7 @@ src/modules/Hero/
 
 Os estilos são um **CSS Module**: o `.module.scss` faz o Next gerar nomes de classe únicos, portanto o que um módulo escreve não escapa para os outros. Antes eram uma folha global — e o `h1 { color: red }` do Hero restilava todos os `<h1>` do site, incluindo os das páginas de erro.
 
-Foi isso que obrigou a renomear a definição do módulo para `.definition.ts`. As duas coisas queriam chamar-se `.module.*` com significados diferentes, e o [guia.md](guia.md) já tinha marcado a colisão como «uma armadilha à espera». O `.module.*` passa a querer dizer só uma coisa nesta pasta: CSS com scope.
+Foi isso que obrigou a renomear a definição do módulo para `.definition.ts`. As duas coisas queriam chamar-se `.module.*` com significados diferentes, e o [guide.md](guide.md) já tinha marcado a colisão como «uma armadilha à espera». O `.module.*` passa a querer dizer só uma coisa nesta pasta: CSS com scope.
 
 O `sass` está declarado como devDependency — o Next compila `.scss` assim que o pacote existe, sem configuração nenhuma. **Não há sistema de tema, e é deliberado**: variáveis, tokens, reset, escalas — a foundation não impõe nenhum, porque isso é decisão de quem monta o site. O que ela garante é o sítio onde os estilos de um módulo vivem e o nome que têm.
 
@@ -101,7 +101,7 @@ Quatro passos, nenhum deles toca no renderer.
 
 **1. Criar a pasta** em `src/modules/<Nome>/` com os ficheiros acima.
 
-**2. Exportar do barrel** [src/modules/index.ts](../src/modules/index.ts):
+**2. Exportar do barrel** [src/modules/index.ts](../../src/modules/index.ts):
 
 ```ts
 export { heroModule } from './Hero';
@@ -110,7 +110,7 @@ export { galleryModule } from './Gallery';
 
 O `registerModules` registra tudo o que este barrel exportar — não há mais nada a ligar. Exporta o **módulo**, não o componente: o registry itera sobre os valores exportados e espera definições de módulo.
 
-**3. Criar o bloco correspondente no CMS.** No Payload, um `Block` em [providers/payload/blocks/](../src/providers/payload/blocks/) com `slug` igual ao `alias` do módulo:
+**3. Criar o bloco correspondente no CMS.** No Payload, um `Block` em [providers/payload/blocks/](../../src/providers/payload/blocks) com `slug` igual ao `alias` do módulo:
 
 ```ts
 export const GalleryBlock: Block = {
@@ -121,7 +121,7 @@ export const GalleryBlock: Block = {
 };
 ```
 
-E adicioná-lo a [blocks/index.ts](../src/providers/payload/blocks/index.ts):
+E adicioná-lo a [blocks/index.ts](../../src/providers/payload/blocks/index.ts):
 
 ```ts
 export const pageBlocks = [HeroBlock, GalleryBlock];
@@ -171,7 +171,7 @@ Um módulo que precise de interactividade marca-se com `'use client'` normalment
 
 ## O gerador
 
-[generator/plopfile.ts](../generator/plopfile.ts), ligado ao script `pnpm generate`.
+[generator/plopfile.ts](../../generator/plopfile.ts), ligado ao script `pnpm generate`.
 
 ```
 $ pnpm generate
@@ -220,7 +220,7 @@ O que sai é código pronto a correr, não um esqueleto vazio: o `pnpm typecheck
 
 ### As três coisas invulgares que vais notar
 
-**As âncoras `// plop:` no [blocks/index.ts](../src/providers/payload/blocks/index.ts).**
+**As âncoras `// plop:` no [blocks/index.ts](../../src/providers/payload/blocks/index.ts).**
 
 ```ts
 import { HeroBlock } from './HeroBlock';
@@ -234,9 +234,9 @@ export const pageBlocks = [
 
 Este é o único ficheiro que precisa de **duas** inserções — o import e a entrada no array — e um append cego só sabe escrever no fim. As âncoras dizem ao Plop onde pôr cada uma. O `src/modules/index.ts` não precisa delas porque só tem exports, e o fim do ficheiro serve.
 
-**Os templates estão no [.prettierignore](../.prettierignore).** O Prettier tem parser de handlebars e, se lhe deixarem ver um `.hbs`, reescreve-o como se fosse markup — o que destrói a indentação do código que o template gera. Já aconteceu neste repositório: os templates estiveram meses a produzir ficheiros numa linha só. Se um dia o código gerado voltar a sair mal formatado, é aqui que se olha primeiro.
+**Os templates estão no [.prettierignore](../../.prettierignore).** O Prettier tem parser de handlebars e, se lhe deixarem ver um `.hbs`, reescreve-o como se fosse markup — o que destrói a indentação do código que o template gera. Já aconteceu neste repositório: os templates estiveram meses a produzir ficheiros numa linha só. Se um dia o código gerado voltar a sair mal formatado, é aqui que se olha primeiro.
 
-**O `~` no `className` do [module.hbs](../generator/templates/module/module.hbs).**
+**O `~` no `className` do [module.hbs](../../generator/templates/module/module.hbs).**
 
 ```hbs
 <section className={styles.{{camelCase name~}} }>
@@ -244,7 +244,7 @@ Este é o único ficheiro que precisa de **duas** inserções — o import e a e
 
 O `~` come o espaço que vem depois, portanto o que sai é `className={styles.cta}` — sem espaço a mais, igual ao que uma pessoa escreveria e igual ao que o Prettier deixaria ficar. Sem ele, o `}}` do mustache cola ao `}` do JSX, o Handlebars lê `}}}` como um _triple-stash_, e o template **deixa de compilar**: o `pnpm generate` aborta na primeira acção e deixa só uma pasta vazia.
 
-Foi o que aconteceu ao adoptar CSS Modules, e passou despercebido porque nada no portão corria o gerador. Agora corre: o [plopfile.test.ts](../generator/plopfile.test.ts) compila todos os templates, com o mesmo Handlebars que o Plop usa, e verifica que a classe que o componente consome é a que a folha declara.
+Foi o que aconteceu ao adoptar CSS Modules, e passou despercebido porque nada no portão corria o gerador. Agora corre: o [plopfile.test.ts](../../generator/plopfile.test.ts) compila todos os templates, com o mesmo Handlebars que o Plop usa, e verifica que a classe que o componente consome é a que a folha declara.
 
 ## Regras
 
@@ -269,7 +269,7 @@ Não é trabalho pendente da foundation — é o que se descobre ao construir o 
 
 Ficam ao critério de quem monta o projecto, porque dependem da página onde o módulo cai ou do produto que se está a construir — e a foundation não tem como os adivinhar.
 
-**O nível do título.** O gerador emite `<h2>`, que é o que costuma estar certo: uma página tem um `<h1>` e os módulos vêm abaixo dele. Mas o [Hero.tsx](../src/modules/Hero/Hero.tsx) emite `<h1>` — dois heros na mesma página dariam dois `<h1>`, o que é um erro de estrutura de documento. O `Hero` é um exemplo para provar que o mecanismo funciona, não um modelo a copiar nesse ponto.
+**O nível do título.** O gerador emite `<h2>`, que é o que costuma estar certo: uma página tem um `<h1>` e os módulos vêm abaixo dele. Mas o [Hero.tsx](../../src/modules/Hero/Hero.tsx) emite `<h1>` — dois heros na mesma página dariam dois `<h1>`, o que é um erro de estrutura de documento. O `Hero` é um exemplo para provar que o mecanismo funciona, não um modelo a copiar nesse ponto.
 
 Se um projecto precisar de o resolver a sério, o módulo tem de saber a sua posição na página, e isso **altera o contrato dos módulos** — ou o `ModuleRenderer` passa a dar o índice, ou o nível vem de um campo do CMS. É uma decisão do projecto.
 

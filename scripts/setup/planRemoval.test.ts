@@ -266,7 +266,7 @@ describe('planRemoval', () => {
 
   it('names the stale providers.md in its notes', () => {
     for (const provider of setupProviders) {
-      expect(planRemoval(provider).notes.join('\n')).toContain('docs/providers.md');
+      expect(planRemoval(provider).notes.join('\n')).toContain('docs/reference/providers.md');
     }
   });
 });

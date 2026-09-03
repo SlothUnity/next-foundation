@@ -10,7 +10,7 @@ export function mapApiPaths(raw: unknown): PagePath[] {
       'mapApiPaths() has no mapping yet, so the sitemap cannot be built.',
       `The API returned ${describeBody(raw)}.`,
       'Write the translation in src/providers/api/mappers/mapApiPaths.ts',
-      '— see docs/api.md.',
+      '— see docs/reference/api.md.',
     ].join(' '),
   );
 }

@@ -4,7 +4,7 @@ O `core/` define o vocabulário do projecto. Não conhece Next.js, não conhece 
 
 ## PageSource
 
-Abstracção de obtenção de páginas. [core/pages/PageSource.ts](../src/core/pages/PageSource.ts)
+Abstracção de obtenção de páginas. [core/pages/PageSource.ts](../../src/core/pages/PageSource.ts)
 
 ```ts
 export interface GetPageOptions {
@@ -36,7 +36,7 @@ Sem isto, **nenhum módulo conseguia reagir a uma query string**: não havia `?p
 
 A parte que decide o desenho é a cache. O `resolvePage` está envolvido no `cache()` do React, que compara os argumentos **por identidade** — logo passar a query como objecto falhava a cache em todos os pedidos, e deixá-la fora dos argumentos servia os dados da primeira query à segunda. A chave é por isso a query serializada, e a função em cache volta a parsear a string. Esse ida-e-volta não é enfeite: é o que torna demonstrável que o valor que a origem vê é o mesmo que a chave codifica.
 
-O [normalizeQuery](../src/core/routing/normalizeQuery.ts) ordena as chaves, para `?a=1&b=2` e `?b=2&a=1` partilharem uma entrada, e **preserva a ordem dos valores repetidos**, porque essa ordem tem significado.
+O [normalizeQuery](../../src/core/routing/normalizeQuery.ts) ordena as chaves, para `?a=1&b=2` e `?b=2&a=1` partilharem uma entrada, e **preserva a ordem dos valores repetidos**, porque essa ordem tem significado.
 
 ### Imagens
 
@@ -101,7 +101,7 @@ O `permanent` mapeia para os helpers do Next: `redirect` dá 307, `permanentRedi
 
 ## SiteSource
 
-Configuração global do site. [core/site/SiteSource.ts](../src/core/site/SiteSource.ts)
+Configuração global do site. [core/site/SiteSource.ts](../../src/core/site/SiteSource.ts)
 
 ```ts
 export abstract class SiteSource {
@@ -111,7 +111,7 @@ export abstract class SiteSource {
 
 ## PageDefinition
 
-O contrato interno de página. [core/pages/Page.types.ts](../src/core/pages/Page.types.ts)
+O contrato interno de página. [core/pages/Page.types.ts](../../src/core/pages/Page.types.ts)
 
 ```ts
 export interface PageDefinition {
@@ -152,7 +152,7 @@ O `alternates` é o caminho desta página em cada idioma, para o `hreflang`. É 
 
 ## SiteDefinition
 
-[core/site/Site.types.ts](../src/core/site/Site.types.ts)
+[core/site/Site.types.ts](../../src/core/site/Site.types.ts)
 
 ```ts
 export interface SiteDefinition {
@@ -171,7 +171,7 @@ A ordem de `locales` continua a ser a que a origem declara, e o provider payload
 
 ## Tipos de módulo
 
-[core/modules/Module.types.ts](../src/core/modules/Module.types.ts)
+[core/modules/Module.types.ts](../../src/core/modules/Module.types.ts)
 
 ```ts
 export type ModuleProps = object;
@@ -207,7 +207,7 @@ export interface ModuleInstance<TData extends ModuleProps = ModuleProps> {
 
 ## Registry
 
-[core/registry/Registry.ts](../src/core/registry/Registry.ts) — um `Map` com invariantes.
+[core/registry/Registry.ts](../../src/core/registry/Registry.ts) — um `Map` com invariantes.
 
 ```ts
 class Registry<TKey, TValue> {
@@ -231,7 +231,7 @@ class ModuleRegistry extends Registry<string, Module> {
 
 ## Routing
 
-[core/routing/](../src/core/routing/) junta as funções puras sobre caminhos: `resolveRoute`, `createPagePath`, `getLocaleSegment` e `isSafeRedirectPath`. Nenhuma toca em Next nem em IO, e todas têm testes.
+[core/routing/](../../src/core/routing) junta as funções puras sobre caminhos: `resolveRoute`, `createPagePath`, `getLocaleSegment` e `isSafeRedirectPath`. Nenhuma toca em Next nem em IO, e todas têm testes.
 
 Documentadas em [routing.md](routing.md).
 
@@ -245,11 +245,11 @@ export interface Foundation {
 }
 ```
 
-Construída por [createFoundation](../src/core/foundation/createFoundation.ts), que cria o registry e corre o `registerModules`. O singleton está em `foundation.ts` e **fora do barrel** — ver [architecture.md](architecture.md#6-os-barrels-não-podem-ter-efeitos-secundários).
+Construída por [createFoundation](../../src/core/foundation/createFoundation.ts), que cria o registry e corre o `registerModules`. O singleton está em `foundation.ts` e **fora do barrel** — ver [architecture.md](architecture.md#6-os-barrels-não-podem-ter-efeitos-secundários).
 
 ## Erros
 
-[core/errors/](../src/core/errors/)
+[core/errors/](../../src/core/errors)
 
 | Erro                    | Quando                                                   |
 | ----------------------- | -------------------------------------------------------- |

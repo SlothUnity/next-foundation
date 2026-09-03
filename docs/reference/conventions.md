@@ -23,7 +23,7 @@ O vocabulário é fechado. Um sufixo novo só entra se representar um papel genu
 
 ### Tipos ficam junto de quem os define
 
-Não existe uma pasta `src/types/`. O `PageDefinition` vive em [core/pages/Page.types.ts](../src/core/pages/Page.types.ts), ao lado do `PageSource.ts` que o usa. Uma árvore de tipos paralela à árvore de código obriga a manter duas estruturas em sincronia, e elas divergem sempre.
+Não existe uma pasta `src/types/`. O `PageDefinition` vive em [core/pages/Page.types.ts](../../src/core/pages/Page.types.ts), ao lado do `PageSource.ts` que o usa. Uma árvore de tipos paralela à árvore de código obriga a manter duas estruturas em sincronia, e elas divergem sempre.
 
 O sufixo `.types.ts` é o que torna isto legível: ao olhar para uma pasta vê-se logo o que é contrato e o que é implementação.
 
@@ -32,7 +32,7 @@ O sufixo `.types.ts` é o que torna isto legível: ao olhar para uma pasta vê-s
 Nem todos. O critério é se o tipo **viaja**:
 
 - **Atravessa camadas → `.types.ts`.** `PageDefinition`, `Meta`, `SiteDefinition`, `Foundation`, `Provider`, os tipos de `Module`. São contratos: mais do que um sítio depende deles, e ter um ficheiro só para eles é o que permite importá-los sem arrastar implementação atrás.
-- **Descreve o input ou o output de uma função → fica ao lado dela.** `GetPageOptions` em [PageSource.ts](../src/core/pages/PageSource.ts), `ResolvedRoute` em [resolveRoute.ts](../src/core/routing/resolveRoute.ts), `ResolvedPage` em `resolvePage.ts`, `PageRequestContext` em `createPageRequest.ts`. Exilá-los para um `.types.ts` separava-os da única coisa que lhes dá sentido.
+- **Descreve o input ou o output de uma função → fica ao lado dela.** `GetPageOptions` em [PageSource.ts](../../src/core/pages/PageSource.ts), `ResolvedRoute` em [resolveRoute.ts](../../src/core/routing/resolveRoute.ts), `ResolvedPage` em `resolvePage.ts`, `PageRequestContext` em `createPageRequest.ts`. Exilá-los para um `.types.ts` separava-os da única coisa que lhes dá sentido.
 
 Um teste rápido: se o tipo só é mencionado na assinatura de uma função e por quem a chama, fica com a função. Se é a forma de um dado que passa de mão em mão, é um contrato e leva ficheiro próprio.
 
@@ -58,7 +58,7 @@ Parece incoerente e não é — são dois sistemas, cada um para o seu caso:
 
 A mesma leitura explica o resto do `core`: `PageSource.ts`, `ModuleRegistry.ts`, `PageRenderer.tsx` são coisas; `Page.types.ts`, `Module.types.ts`, `Foundation.types.ts` descrevem.
 
-O terceiro caso é a excepção honesta: quando um ficheiro junta um punhado de ajudantes irmãos e **nenhum domina**, dá-se-lhe um nome colectivo em vez de escolher um export ao acaso ou criar um ficheiro por função. É o caso do [locales.ts](../src/providers/payload/locales.ts) (a lista, o tipo derivado, o adaptador e o type guard, todos sobre locales) e do [normalize.ts](../src/providers/api/mappers/normalize.ts) (`optionalText`, `optionalFlag`, `optionalList`). Usa-o com parcimónia: se o ficheiro começar a juntar coisas sem relação entre si, o nome colectivo passa a ser uma desculpa.
+O terceiro caso é a excepção honesta: quando um ficheiro junta um punhado de ajudantes irmãos e **nenhum domina**, dá-se-lhe um nome colectivo em vez de escolher um export ao acaso ou criar um ficheiro por função. É o caso do [locales.ts](../../src/providers/payload/locales.ts) (a lista, o tipo derivado, o adaptador e o type guard, todos sobre locales) e do [normalize.ts](../../src/providers/api/mappers/normalize.ts) (`optionalText`, `optionalFlag`, `optionalList`). Usa-o com parcimónia: se o ficheiro começar a juntar coisas sem relação entre si, o nome colectivo passa a ser uma desculpa.
 
 ### Cuidado com a caixa dos nomes em Windows
 
@@ -77,7 +77,7 @@ Para confirmar que o disco e o git concordam, compara `git ls-files` com os nome
 
 Ao lado do que testam, não numa pasta `__tests__/`. Ler uma unidade não deve obrigar a navegar duas árvores, e o `.test` no nome já os distingue à vista.
 
-A excepção é o que os testes **partilham**: [src/testing/](../src/testing/) para helpers usados por testes de camadas diferentes. Um helper vive ao lado do teste enquanto só um o usa; quando o segundo aparece, sobe para lá, pela mesma regra das pastas logo abaixo.
+A excepção é o que os testes **partilham**: [src/testing/](../../src/testing) para helpers usados por testes de camadas diferentes. Um helper vive ao lado do teste enquanto só um o usa; quando o segundo aparece, sobe para lá, pela mesma regra das pastas logo abaixo.
 
 **O `vitest.setup.ts` desmonta o DOM entre testes**, com um `afterEach(cleanup)`. Isto não é cerimónia: o auto-cleanup do testing-library só se registra quando o Vitest corre com `globals: true`, e esta configuração não corre. Sem ele os renders acumulavam-se no `document.body` dentro de cada ficheiro, e um `screen.getByRole(...)` podia encontrar o elemento do teste anterior — um teste a passar pela razão errada, que é pior do que um teste a faltar. Provado com dois testes num ficheiro: o segundo via **dois** cabeçalhos.
 
@@ -117,11 +117,11 @@ app/(frontend)/
 └── next/preview/route.ts
 ```
 
-São **duas** pastas e não uma porque guardam coisas diferentes: `_lib` são funções, `_components` são componentes React. É a mesma separação que os providers já fazem — o provider payload tem um [components/](../src/providers/payload/components/) ao lado dos `utils/` e dos `mappers/`. Com uma pasta só, o segundo componente a aparecer transforma o `_lib` numa gaveta.
+São **duas** pastas e não uma porque guardam coisas diferentes: `_lib` são funções, `_components` são componentes React. É a mesma separação que os providers já fazem — o provider payload tem um [components/](../../src/providers/payload/components) ao lado dos `utils/` e dos `mappers/`. Com uma pasta só, o segundo componente a aparecer transforma o `_lib` numa gaveta.
 
 **Porque é que não ficam na raiz do grupo, ao lado do `error.tsx`.** É tentador: o `MissingNotFoundPage` até se parece com um boundary. Mas o `error.tsx` e o `global-error.tsx` são **convenções do Next** — é o Next que os encontra pelo nome e os monta. O `MissingNotFoundPage` é um componente normal, importado à mão pelo `page.tsx`. Pô-lo lado a lado sugeria que o Next também o monta, e é exactamente o mal-entendido que esta regra existe para evitar.
 
-O que é puro e não depende do Next não fica em nenhuma das duas — sai de `app/` de vez. Foi o caso do `isSafeRedirectPath`, que é uma função sobre caminhos e por isso vive em [core/routing/](../src/core/routing/), ao lado do `createPagePath` e do `resolveRoute`.
+O que é puro e não depende do Next não fica em nenhuma das duas — sai de `app/` de vez. Foi o caso do `isSafeRedirectPath`, que é uma função sobre caminhos e por isso vive em [core/routing/](../../src/core/routing), ao lado do `createPagePath` e do `resolveRoute`.
 
 O que fica no `_lib` é o que **só** faz sentido dentro de um pedido do Next: o `resolvePage` e o `resolveSite` usam `draftMode()` e o singleton `foundation`, e o `createMetadata` fala o vocabulário do Next. Nenhum deles pode ser importado pelo `core` ou pelos `providers` — se fossem parar a um `utils/` partilhado, um dia seriam.
 
@@ -148,7 +148,7 @@ import { mapPayloadPage } from '../mappers/mapPayloadPage'; // 3. relativos
 
 **Alias `@/` para cruzar camadas, relativo dentro da mesma pasta.** Um `import config from '../../../../payload.config'` não diz nada sobre o que está a importar; `@payload-config` diz.
 
-Aliases disponíveis ([tsconfig.json](../tsconfig.json)):
+Aliases disponíveis ([tsconfig.json](../../tsconfig.json)):
 
 | Alias             | Aponta para                 |
 | ----------------- | --------------------------- |
@@ -162,24 +162,26 @@ Usa sempre `import type` para tipos. É apagado na compilação, o que evita arr
 
 Alguns caminhos vivem em strings e o `typecheck` passa por eles sem os validar:
 
-- **Componentes de admin do Payload** — `Field: '/providers/payload/components/PageUrl#default'` em [Pages.ts](../src/providers/payload/collections/Pages.ts). Se o caminho ficar desalinhado, o campo desaparece do admin sem um único erro.
-- **[importMap.js](<../src/app/(payload)/admin/importMap.js>)** — gerado a partir dessas strings. Corre `pnpm payload:generate` depois de mover qualquer componente de admin.
+- **Componentes de admin do Payload** — `Field: '/providers/payload/components/PageUrl#default'` em [Pages.ts](../../src/providers/payload/collections/Pages.ts). Se o caminho ficar desalinhado, o campo desaparece do admin sem um único erro.
+- **[importMap.js](<../../src/app/(payload)/admin/importMap.js>)** — gerado a partir dessas strings. Corre `pnpm payload:generate` depois de mover qualquer componente de admin.
 
 Sempre que renomeares algo dentro de `src/providers/payload/`, procura o nome antigo em strings antes de assumir que o `typecheck` verde significa que está feito.
 
 ## Comentários
 
-**Não há comentários no código.** O raciocínio vive em `docs/`.
+**Não há comentários no código.** O raciocínio vive em `docs/`, em duas vertentes: `start/` lê-se de seguida uma vez, `reference/` consulta-se sempre. O índice está em [docs/README.md](../README.md), e a diferença entre as duas não é o assunto — é a pergunta que respondem.
+
+**Os nomes de ficheiro e de pasta são em inglês, o conteúdo é em português.** Vale para todo o repositório, `docs/` incluído: quem lê um caminho num stack trace, num `git log` ou num import lê inglês, e quem lê uma explicação lê português.
 
 Não é aversão a explicar — é o contrário. Este projecto tinha 229 comentários, muitos deles com o porquê de uma decisão, e o porquê de uma decisão é a coisa que mais depressa fica desactualizada num ficheiro que alguém edita por outro motivo. Um docblock a explicar uma medição que já não é verdade é pior do que nenhum: parece autoridade.
 
 Nos documentos o mesmo raciocínio é revisível, pesquisável, e liga-se ao resto. E há um verificador de links a apanhar as referências que apodrecem.
 
-Esta última frase esteve muito tempo a ser falsa em todos os clones menos um: o verificador existia como script solto **fora** do repositório, portanto era verdade na máquina de quem o escreveu e mentira em qualquer cópia. Agora é o [`pnpm check:links`](../scripts/links/run.ts), corre no hook de pre-commit, e chumba: percorre os `.md` do repositório, confirma que cada ficheiro referenciado existe e que cada âncora corresponde a um título real.
+Esta última frase esteve muito tempo a ser falsa em todos os clones menos um: o verificador existia como script solto **fora** do repositório, portanto era verdade na máquina de quem o escreveu e mentira em qualquer cópia. Agora é o [`pnpm check:links`](../../scripts/links/run.ts), corre no hook de pre-commit, e chumba: percorre os `.md` do repositório, confirma que cada ficheiro referenciado existe e que cada âncora corresponde a um título real.
 
-**Não está no `pnpm build`, e é de propósito.** O `build` é o caminho de deploy, e uma frase desactualizada não pode derrubar um deploy. Isso tem uma consequência visível logo depois do `setup:provider`: num projecto `api` ou `mock` o `docs/payload.md` e o `src/providers/payload/` desaparecem, e a prosa que lhes aponta passa a estar quebrada — dezenas de ligações. O comando avisa e diz para correr este verificador, que dá a lista exacta a podar. O primeiro commit fica bloqueado até isso ser feito; o deploy não.
+**Não está no `pnpm build`, e é de propósito.** O `build` é o caminho de deploy, e uma frase desactualizada não pode derrubar um deploy. Isso tem uma consequência visível logo depois do `setup:provider`: num projecto `api` ou `mock` o `docs/reference/payload.md` e o `src/providers/payload/` desaparecem, e a prosa que lhes aponta passa a estar quebrada — dezenas de ligações. O comando avisa e diz para correr este verificador, que dá a lista exacta a podar. O primeiro commit fica bloqueado até isso ser feito; o deploy não.
 
-O que ele **não** faz é ir à internet — só responde pelo repositório. E as duas partes que decidem (extrair as ligações de um texto, e transformar um título numa âncora como o GitHub faz) [têm testes](../scripts/links/parse.test.ts), porque uma ferramenta que julga o resto tem de ser julgada primeiro. Ambos os testes existem por erro meu: a primeira versão partia as ligações envolvidas em `<>` com parênteses no caminho, e comia o `_` de um `unstable_cache` num título.
+O que ele **não** faz é ir à internet — só responde pelo repositório. E as duas partes que decidem (extrair as ligações de um texto, e transformar um título numa âncora como o GitHub faz) [têm testes](../../scripts/links/parse.test.ts), porque uma ferramenta que julga o resto tem de ser julgada primeiro. Ambos os testes existem por erro meu: a primeira versão partia as ligações envolvidas em `<>` com parênteses no caminho, e comia o `_` de um `unstable_cache` num título.
 
 ### Onde é que o raciocínio vai parar
 
@@ -187,9 +189,9 @@ O que ele **não** faz é ir à internet — só responde pelo repositório. E a
 | -------------------------------------- | ------------------------------------------------------------------------------ |
 | o que esta função faz                  | no nome dela; se não couber no nome, a função é grande                         |
 | porque é que está escrita assim        | o documento do assunto — [payload.md](payload.md), [routing.md](routing.md), … |
-| por onde passa isto em execução        | [fluxos.md](fluxos.md)                                                         |
-| que decisão isto fecha, e o que custou | [guia.md](guia.md), nos blocos de decisão                                      |
-| o que aqui esteve e saiu               | [guia.md](guia.md), nos blocos de correcção                                    |
+| por onde passa isto em execução        | [flows.md](../start/flows.md)                                                  |
+| que decisão isto fecha, e o que custou | [guide.md](guide.md), nos blocos de decisão                                    |
+| o que aqui esteve e saiu               | [guide.md](guide.md), nos blocos de correcção                                  |
 | um caso de fronteira que não é óbvio   | o **nome de um teste**                                                         |
 
 A última linha é a que mais trabalho poupa. Um `it('keeps unpublished pages off the public site')` diz o mesmo que um comentário e **falha** quando deixa de ser verdade.
@@ -201,7 +203,7 @@ A última linha é a que mais trabalho poupa. Um `it('keeps unpublished pages of
 // plop: block
 ```
 
-Vivem em [blocks/index.ts](../src/providers/payload/blocks/index.ts) e são **funcionais**: o gerador procura-as por regex para saber onde inserir. Apagá-las parte o `pnpm generate` sem partir nem o `typecheck` nem os testes.
+Vivem em [blocks/index.ts](../../src/providers/payload/blocks/index.ts) e são **funcionais**: o gerador procura-as por regex para saber onde inserir. Apagá-las parte o `pnpm generate` sem partir nem o `typecheck` nem os testes.
 
 Os quatro ficheiros em `src/app/(payload)/` são gerados pelo Payload e trazem o cabeçalho dele. Não se editam.
 
@@ -211,7 +213,7 @@ Precisas de escrever um comentário quando o código faz uma coisa que parece er
 
 ## Finais de linha
 
-[.gitattributes](../.gitattributes) declara `* text=auto eol=lf`, e as duas metades fazem coisas diferentes: o `text=auto` normaliza para LF **no que o Git guarda**, e o `eol=lf` força LF **no disco**.
+[.gitattributes](../../.gitattributes) declara `* text=auto eol=lf`, e as duas metades fazem coisas diferentes: o `text=auto` normaliza para LF **no que o Git guarda**, e o `eol=lf` força LF **no disco**.
 
 É a segunda que resolve o problema real. O repositório já guardava LF, mas com `core.autocrlf=true` — o default de muitas instalações do Git em Windows — o checkout escrevia CRLF, e o Prettier (que corre com `endOfLine: "lf"`) reprovava seis ficheiros que ninguém tinha editado. A única forma de os «corrigir» era um commit de ruído que o próximo checkout desfazia.
 
@@ -221,12 +223,12 @@ Com isto no repositório, a decisão deixa de depender da configuração de cada
 
 Dois ficheiros são escritos pelo Payload e não por nós:
 
-| Ficheiro                                                  | Quem o escreve               |
-| --------------------------------------------------------- | ---------------------------- |
-| [payload-types.ts](../payload-types.ts)                   | `payload generate:types`     |
-| [importMap.js](<../src/app/(payload)/admin/importMap.js>) | `payload generate:importmap` |
+| Ficheiro                                                     | Quem o escreve               |
+| ------------------------------------------------------------ | ---------------------------- |
+| [payload-types.ts](../../payload-types.ts)                   | `payload generate:types`     |
+| [importMap.js](<../../src/app/(payload)/admin/importMap.js>) | `payload generate:importmap` |
 
-Estão os dois no [.prettierignore](../.prettierignore), e a razão é operacional: **o `next dev` com o `withPayload` reescreve-os a cada recompilação**, sem o Prettier deste projecto. Formatá-los não é só inútil — com o dev server a correr é um ciclo, porque o Prettier escreve, o watcher vê a alteração e regenera.
+Estão os dois no [.prettierignore](../../.prettierignore), e a razão é operacional: **o `next dev` com o `withPayload` reescreve-os a cada recompilação**, sem o Prettier deste projecto. Formatá-los não é só inútil — com o dev server a correr é um ciclo, porque o Prettier escreve, o watcher vê a alteração e regenera.
 
 A alternativa tentada — um `prettier --write` a seguir ao `payload:generate` — funciona, mas só para quem corre o script à mão. Ficam de fora, e o `pnpm format:check` volta a dizer a verdade sobre os ficheiros que alguém escreve.
 

@@ -1,6 +1,6 @@
 # Routing, locales e metadata
 
-Uma única rota serve todo o site: [app/(frontend)/[[...segments]]/page.tsx](<../src/app/(frontend)/[[...segments]]/page.tsx>), um catch-all opcional. Não há rotas por idioma nem por tipo de página.
+Uma única rota serve todo o site: [app/(frontend)/[[...segments]]/page.tsx](<../../src/app/(frontend)/[[...segments]]/page.tsx>), um catch-all opcional. Não há rotas por idioma nem por tipo de página.
 
 ## Da URL à página
 
@@ -20,7 +20,7 @@ O `locales` e o `defaultLocale` vêm ambos de `site.getSite()`, ou seja da orige
 
 ## resolveRoute
 
-[core/routing/resolveRoute.ts](../src/core/routing/resolveRoute.ts)
+[core/routing/resolveRoute.ts](../../src/core/routing/resolveRoute.ts)
 
 ```ts
 export function resolveRoute({ segments, locales, defaultLocale }): ResolvedRoute;
@@ -43,7 +43,7 @@ Consequência a ter em conta: o locale por omissão **não tem prefixo**, logo u
 
 ## getLocaleSegment
 
-[core/routing/getLocaleSegment.ts](../src/core/routing/getLocaleSegment.ts)
+[core/routing/getLocaleSegment.ts](../../src/core/routing/getLocaleSegment.ts)
 
 ```ts
 export function getLocaleSegment(locale: string): string {
@@ -57,7 +57,7 @@ Isto significa que **dois locales com o mesmo idioma colidem** — `'en-GB'` e `
 
 ## createPagePath
 
-[core/routing/createPagePath.ts](../src/core/routing/createPagePath.ts) — o inverso do `resolveRoute`.
+[core/routing/createPagePath.ts](../../src/core/routing/createPagePath.ts) — o inverso do `resolveRoute`.
 
 ```ts
 createPagePath({ path: '/servicos', locale: 'en-GB', defaultLocale: 'pt-PT' }); // '/en/servicos'
@@ -69,7 +69,7 @@ Normaliza barras a mais e omite o prefixo quando o locale é o default. É usado
 
 ## isSafeRedirectPath
 
-[core/routing/isSafeRedirectPath.ts](../src/core/routing/isSafeRedirectPath.ts) — aceita apenas caminhos relativos à própria origem.
+[core/routing/isSafeRedirectPath.ts](../../src/core/routing/isSafeRedirectPath.ts) — aceita apenas caminhos relativos à própria origem.
 
 Vive no `core/routing` por ser o mesmo género de coisa que as funções acima: pura, sem dependências, testável sem levantar nada. O único consumidor é a rota de preview, mas a regra é sobre caminhos, não sobre preview.
 
@@ -91,7 +91,7 @@ Nota: o `breadcrumbs.url` só é recalculado quando o documento é gravado. Um t
 
 ## Metadata
 
-[app/(frontend)/\_lib/createMetadata.ts](<../src/app/(frontend)/_lib/createMetadata.ts>) traduz o `Meta` do domínio para o `Metadata` do Next.
+[app/(frontend)/\_lib/createMetadata.ts](<../../src/app/(frontend)/_lib/createMetadata.ts>) traduz o `Meta` do domínio para o `Metadata` do Next.
 
 Os campos de Open Graph caem para os campos gerais quando não estão preenchidos, e os booleanos invertem-se: o CMS pergunta «não indexar?», o Next quer saber «indexar?». O cartão do Twitter passa a `summary_large_image` quando há imagem e a `summary` quando não há.
 
@@ -107,13 +107,13 @@ O `canonical` sai do `createPagePath` com o locale da rota, o que o torna a miti
 
 O **hreflang** não se pode adivinhar prefixando o caminho actual com cada idioma, porque os slugs são traduzidos — o URL sairia errado. Vem do provider, que responde o caminho da mesma página em cada idioma: no Payload, o campo `breadcrumbs` é localizado, portanto um `findByID` com `locale: 'all'` traz todos de uma vez. É uma consulta a mais por página, dentro da mesma entrada de cache. Uma origem que não saiba responder deixa o `alternates` vazio, e o `hreflang` simplesmente não é emitido.
 
-O `generateMetadata` e a página chamam ambos o mesmo [resolvePage](<../src/app/(frontend)/_lib/resolvePage.ts>), envolvido no `cache` do React: duas chamadas, uma resolução por pedido. A chave é o caminho em string e não o array de segmentos, porque o `cache` compara argumentos por identidade e cada `await params` devolve um array novo.
+O `generateMetadata` e a página chamam ambos o mesmo [resolvePage](<../../src/app/(frontend)/_lib/resolvePage.ts>), envolvido no `cache` do React: duas chamadas, uma resolução por pedido. A chave é o caminho em string e não o array de segmentos, porque o `cache` compara argumentos por identidade e cada `await params` devolve um array novo.
 
 ## O idioma do `<html>`
 
-O layout de raiz vive no topo do route group, em [app/(frontend)/layout.tsx](<../src/app/(frontend)/layout.tsx>) — é onde o Next o procura quando se usam route groups como raízes separadas.
+O layout de raiz vive no topo do route group, em [app/(frontend)/layout.tsx](<../../src/app/(frontend)/layout.tsx>) — é onde o Next o procura quando se usam route groups como raízes separadas.
 
-O custo de estar aí é não haver `params`. O caminho chega por header, posto pelo [proxy](../src/proxy.ts):
+O custo de estar aí é não haver `params`. O caminho chega por header, posto pelo [proxy](../../src/proxy.ts):
 
 ```tsx
 const pathname = (await headers()).get(PATHNAME_HEADER) ?? '';
@@ -131,19 +131,19 @@ O `lang` sai do locale **da rota** e não do `meta.locale` da página. É uma fu
 
 ## O proxy
 
-[src/proxy.ts](../src/proxy.ts) — em Next 16 a convenção `middleware` está depreciada; o ficheiro chama-se `proxy` e exporta uma função `proxy`.
+[src/proxy.ts](../../src/proxy.ts) — em Next 16 a convenção `middleware` está depreciada; o ficheiro chama-se `proxy` e exporta uma função `proxy`.
 
 Não reescreve nem redirecciona: só copia o pathname para o header `x-pathname`. É deliberado. Reescrever obrigaria o proxy a saber qual é o locale por omissão, e esse é uma resposta do provider — ver [providers.md](providers.md). Ao não decidir nada aqui, o default continua a viver onde deve e as URLs ficam como estão.
 
 O `matcher` exclui o admin, a API do Payload, as rotas de preview, os assets do Next e os ficheiros com extensão. Como não se reescreve nada, apanhar o resto seria inofensivo — mas é trabalho por pedido a troco de nada.
 
-**As exclusões têm fronteira de segmento**, `admin(?:/|$)` e não `admin`. Sem ela o padrão excluía qualquer caminho que apenas _comece_ pelo prefixo: uma página chamada «Administração» ou «Apiário» ficava sem o `x-pathname`. Era inerte por sorte — o primeiro segmento desses caminhos nunca é um segmento de locale, portanto o fallback do layout coincidia com o locale certo — e deixava de o ser no dia em que o header servisse outra coisa. O [proxy.test.ts](../src/proxy.test.ts) tem os três casos (`/administracao`, `/apiario`, `/apis-e-abelhas`), e são exactamente os que chumbam se o padrão voltar atrás.
+**As exclusões têm fronteira de segmento**, `admin(?:/|$)` e não `admin`. Sem ela o padrão excluía qualquer caminho que apenas _comece_ pelo prefixo: uma página chamada «Administração» ou «Apiário» ficava sem o `x-pathname`. Era inerte por sorte — o primeiro segmento desses caminhos nunca é um segmento de locale, portanto o fallback do layout coincidia com o locale certo — e deixava de o ser no dia em que o header servisse outra coisa. O [proxy.test.ts](../../src/proxy.test.ts) tem os três casos (`/administracao`, `/apiario`, `/apis-e-abelhas`), e são exactamente os que chumbam se o padrão voltar atrás.
 
 ## Cabeçalhos de resposta
 
-As definições estão em [securityHeaders.ts](../src/app/_lib/securityHeaders.ts) e não no `next.config.ts`, para poderem ser testadas — quem alargar a política tem de mexer num teste, o que é o ponto.
+As definições estão em [securityHeaders.ts](../../src/app/_lib/securityHeaders.ts) e não no `next.config.ts`, para poderem ser testadas — quem alargar a política tem de mexer num teste, o que é o ponto.
 
-**De onde vêm as imagens segue o provider**, e por isso tem um dono só: [imageHosts.ts](../src/app/_lib/imageHosts.ts). Tanto o `img-src` do CSP como o `remotePatterns` do `next.config.ts` derivam dessa lista, em vez de repetirem um host cada um.
+**De onde vêm as imagens segue o provider**, e por isso tem um dono só: [imageHosts.ts](../../src/app/_lib/imageHosts.ts). Tanto o `img-src` do CSP como o `remotePatterns` do `next.config.ts` derivam dessa lista, em vez de repetirem um host cada um.
 
 | Provider  | O que declara                                                                                                   |
 | --------- | --------------------------------------------------------------------------------------------------------------- |
@@ -194,7 +194,7 @@ O prefixo `next/` isola as rotas de framework do namespace de conteúdo — é a
 
 ## Sitemap e robots
 
-O [sitemap.ts](<../src/app/(frontend)/sitemap.ts>) pergunta os caminhos à origem — o `listPaths` do [core.md](core.md#listar-caminhos) — e torna-os absolutos. O [robots.ts](../src/app/robots.ts) desautoriza `/admin`, `/api` e `/next/`.
+O [sitemap.ts](<../../src/app/(frontend)/sitemap.ts>) pergunta os caminhos à origem — o `listPaths` do [core.md](core.md#listar-caminhos) — e torna-os absolutos. O [robots.ts](../../src/app/robots.ts) desautoriza `/admin`, `/api` e `/next/`.
 
 Uma página marcada como **`noIndex` no admin não entra no sitemap**. Os dois sinais teriam de se contradizer — o sitemap a dizer «indexa isto», a `<meta robots>` a dizer o contrário — e é o sitemap que cede, porque o `noIndex` é uma escolha explícita de quem edita.
 
@@ -202,7 +202,7 @@ O `listPaths` **devolve a página de qualquer maneira**, com a marca. Não filtr
 
 ### Quem serve o sitemap não é sempre este projecto
 
-Um sitemap com zero URLs **não é um default neutro**: é uma afirmação de que o site não tem páginas. E há mais do que dois estados — nós geramos, alguém serve num sítio fixo, alguém serve num sítio que só a origem sabe, ou não existe. Quem os distingue é [sitemapLocation.ts](../src/app/_lib/sitemapLocation.ts), pela mesma razão que o [imageHosts.ts](../src/app/_lib/imageHosts.ts) existe: é uma verdade do projecto, não do framework.
+Um sitemap com zero URLs **não é um default neutro**: é uma afirmação de que o site não tem páginas. E há mais do que dois estados — nós geramos, alguém serve num sítio fixo, alguém serve num sítio que só a origem sabe, ou não existe. Quem os distingue é [sitemapLocation.ts](../../src/app/_lib/sitemapLocation.ts), pela mesma razão que o [imageHosts.ts](../../src/app/_lib/imageHosts.ts) existe: é uma verdade do projecto, não do framework.
 
 | `sitemapLocation`           | O `/sitemap.xml`                            | O `robots.txt`                                    |
 | --------------------------- | ------------------------------------------- | ------------------------------------------------- |
@@ -211,7 +211,7 @@ Um sitemap com zero URLs **não é um default neutro**: é uma afirmação de qu
 | `{ kind: 'external', url }` | 404                                         | **nomeia esse URL**, fixo                         |
 | `{ kind: 'none' }`          | 404                                         | não diz nada sobre sitemaps                       |
 
-O `source` e o `external` respondem à mesma pergunta e diferem em **quando** se sabe a resposta. Se o URL é fixo, é `external` e não custa um pedido. Se varia — por ambiente, ou por tenant — é `source`, e o [SiteDefinition](../src/core/site/Site.types.ts) leva um `sitemapUrl?` opcional para a origem o reportar. O `robots.ts` só chama o `getSite()` nesse caso; nos outros três não toca na origem.
+O `source` e o `external` respondem à mesma pergunta e diferem em **quando** se sabe a resposta. Se o URL é fixo, é `external` e não custa um pedido. Se varia — por ambiente, ou por tenant — é `source`, e o [SiteDefinition](../../src/core/site/Site.types.ts) leva um `sitemapUrl?` opcional para a origem o reportar. O `robots.ts` só chama o `getSite()` nesse caso; nos outros três não toca na origem.
 
 O `pnpm setup:provider` escreve o estado certo: `app` para o `payload` e para os `mocks`, que sabem enumerar-se; `none` para o `api`, que ainda não sabe.
 
@@ -221,7 +221,7 @@ Num projecto `api`, das duas uma. Se a tua API serve o sitemap — o caso normal
 
 **O `robots.ts` está na raiz do `app/` e o `sitemap.ts` dentro do grupo. Isso não é preferência.** O Next casa a convenção do sitemap com um padrão não ancorado, portanto ela resolve dentro de um route group; casa a do robots com `/^[\\/]robots/`, **ancorado**. Um `robots.ts` dentro do `(frontend)` é descartado sem rota, sem output e sem aviso nenhum — só se percebe a ler o `is-metadata-route.js` do Next. Se algum dia o `/robots.txt` desaparecer da tabela de rotas do build, é aqui que se olha.
 
-O URL absoluto vem do **host do pedido** ([requestOrigin.ts](../src/app/_lib/requestOrigin.ts)) e não do `NEXT_PUBLIC_SERVER_URL`. São três razões: uma fonte de verdade em vez de duas, correcção quando um deploy serve vários domínios, e — a razão prática — o `next build` continua verde sem ambiente nenhum, que é a garantia que o [setup:provider](providers.md#remover-o-payload) estabeleceu para os providers `api` e `mock`.
+O URL absoluto vem do **host do pedido** ([requestOrigin.ts](../../src/app/_lib/requestOrigin.ts)) e não do `NEXT_PUBLIC_SERVER_URL`. São três razões: uma fonte de verdade em vez de duas, correcção quando um deploy serve vários domínios, e — a razão prática — o `next build` continua verde sem ambiente nenhum, que é a garantia que o [setup:provider](providers.md#remover-o-payload) estabeleceu para os providers `api` e `mock`.
 
 Ambas as rotas leem `headers()`, portanto são dinâmicas e o Next não as pré-renderiza. Se o `sitemap.ts` existir numa origem que não sabe listar, **atira** — e a mensagem nomeia as duas saídas, implementar o `listPaths` ou declarar o sitemap noutro sítio. Antes respondia vazio com um aviso no log, o que servia um `<urlset></urlset>` a quem o fosse ler: um aviso que ninguém lê não compensa uma resposta errada.
 
@@ -266,7 +266,7 @@ o Next injectava sozinho.
 
 Se a origem disser `notFound` sem página — no Payload, enquanto ninguém marcar uma
 página com `is404` — a aplicação desenha o
-[MissingNotFoundPage](<../src/app/(frontend)/_components/MissingNotFoundPage.tsx>), que avisa
+[MissingNotFoundPage](<../../src/app/(frontend)/_components/MissingNotFoundPage.tsx>), que avisa
 no log em vez de fingir que está tudo bem.
 
 ### Porque é que não se recupera o status
@@ -303,7 +303,7 @@ GET /pagina-antiga  →  HTTP/1.1 308 Permanent Redirect
 ```
 
 São 307 e 308, e não 301/302: esses
-exigiriam produzir a resposta no [proxy](../src/proxy.ts), onde o `NextResponse.redirect`
+exigiriam produzir a resposta no [proxy](../../src/proxy.ts), onde o `NextResponse.redirect`
 aceita a lista toda.
 
 O `mocks` traz um exemplo em cada idioma, numa lista à mão. O `payload` lê-os de uma

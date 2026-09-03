@@ -4,7 +4,7 @@ Um provider é um adaptador entre uma fonte de conteúdo e os contratos do `core
 
 ## O contrato
 
-[providers/Provider.types.ts](../src/providers/Provider.types.ts)
+[providers/Provider.types.ts](../../src/providers/Provider.types.ts)
 
 ```ts
 export interface Provider {
@@ -74,7 +74,7 @@ A consequência prática está no [routing.md](routing.md): como o default vive 
 
 ## Resolução
 
-[providers/createProvider.ts](../src/providers/createProvider.ts) escolhe pela variável `PROVIDER`:
+[providers/createProvider.ts](../../src/providers/createProvider.ts) escolhe pela variável `PROVIDER`:
 
 ```ts
 export function createProvider(): Provider {
@@ -98,7 +98,7 @@ export function createProvider(): Provider {
 
 Falha alto num valor desconhecido, em vez de cair no default e deixar alguém a perguntar-se porque é que o site mostra dados de teste.
 
-[providers/provider.ts](../src/providers/provider.ts) é o singleton:
+[providers/provider.ts](../../src/providers/provider.ts) é o singleton:
 
 ```ts
 export const provider = createProvider();
@@ -205,37 +205,37 @@ porque é que sair pela metade não funciona.
 
 O que apagar:
 
-|                                                           |                                                                                                                                      |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/app/(payload)/`                                      | o admin e a API REST                                                                                                                 |
-| [src/app/(frontend)/next/](<../src/app/(frontend)/next/>) | `preview` e `exit-preview`, que autenticam com `payload.auth()`                                                                      |
-| `src/providers/payload/`                                  | as sources, o mapper, as collections, a cache                                                                                        |
-| `payload.config.ts`                                       | e os caminhos `@payload-config` e `@payload-types` no [tsconfig.json](../tsconfig.json) e no [vitest.config.ts](../vitest.config.ts) |
+|                                                             |                                                                                                                                            |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/app/(payload)/`                                        | o admin e a API REST                                                                                                                       |
+| [src/app/(frontend)/next/](<../../src/app/(frontend)/next>) | `preview` e `exit-preview`, que autenticam com `payload.auth()`                                                                            |
+| `src/providers/payload/`                                    | as sources, o mapper, as collections, a cache                                                                                              |
+| `payload.config.ts`                                         | e os caminhos `@payload-config` e `@payload-types` no [tsconfig.json](../../tsconfig.json) e no [vitest.config.ts](../../vitest.config.ts) |
 
 E depois duas edições:
 
-- o `case 'payload'` do [createProvider.ts](../src/providers/createProvider.ts) e o import
+- o `case 'payload'` do [createProvider.ts](../../src/providers/createProvider.ts) e o import
   no topo — os três providers são importados estaticamente, portanto um que deixe de
   existir parte a compilação;
 - os scripts `payload:*` e `dev:payload` do `package.json`, o `withPayload` do
-  [next.config.ts](../next.config.ts), e as dependências `payload`, `@payloadcms/*`.
+  [next.config.ts](../../next.config.ts), e as dependências `payload`, `@payloadcms/*`.
 
 O `setup:provider` vai um passo mais longe do que estas duas edições, e de propósito: com
 um provider só, o `switch` e a variável `PROVIDER` são código morto. Ele apaga o
-`createProvider.ts` e o teste dele, e reescreve o [provider.ts](../src/providers/provider.ts)
+`createProvider.ts` e o teste dele, e reescreve o [provider.ts](../../src/providers/provider.ts)
 como um re-export directo do provider escolhido. O contrato em
-[Provider.types.ts](../src/providers/Provider.types.ts) fica intacto — é ele que permite
+[Provider.types.ts](../../src/providers/Provider.types.ts) fica intacto — é ele que permite
 voltar a acrescentar um provider mais tarde.
 
 Além de apagar, o comando **reescreve quatro ficheiros**, porque há verdades que mudam com
 a escolha e não podem ficar a afirmar o que era verdade noutro projecto:
 
-| Ficheiro                                                 | O que passa a dizer                                                          |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| [provider.ts](../src/providers/provider.ts)              | um re-export directo do provider escolhido                                   |
-| `.env.example`                                           | só as variáveis que este provider lê                                         |
-| [imageHosts.ts](../src/app/_lib/imageHosts.ts)           | de onde vêm as imagens — o Blob no `payload`, nada nos outros dois           |
-| [sitemapLocation.ts](../src/app/_lib/sitemapLocation.ts) | quem serve o sitemap — esta app no `payload` e nos `mocks`, ninguém no `api` |
+| Ficheiro                                                    | O que passa a dizer                                                          |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [provider.ts](../../src/providers/provider.ts)              | um re-export directo do provider escolhido                                   |
+| `.env.example`                                              | só as variáveis que este provider lê                                         |
+| [imageHosts.ts](../../src/app/_lib/imageHosts.ts)           | de onde vêm as imagens — o Blob no `payload`, nada nos outros dois           |
+| [sitemapLocation.ts](../../src/app/_lib/sitemapLocation.ts) | quem serve o sitemap — esta app no `payload` e nos `mocks`, ninguém no `api` |
 
 Os quatro já existem na foundation: o comando substitui-lhes o conteúdo, não os cria. As
 duas últimas estão explicadas em [routing.md](routing.md#sitemap-e-robots) — e no fim o
@@ -251,14 +251,14 @@ preenche passa a ser o `mapApiPage`.
 
 ## O provider api
 
-[providers/api/](../src/providers/api/) serve conteúdo de uma API HTTP externa, escrita por alguém que não conhece esta estrutura.
+[providers/api/](../../src/providers/api) serve conteúdo de uma API HTTP externa, escrita por alguém que não conhece esta estrutura.
 
 O pedido vai a cru — `API_URL` mais o caminho onde estamos — e a resposta, que não se sabe qual é, é traduzida para o contrato interno. São duas costuras, uma por direcção, e são os únicos ficheiros a editar:
 
-| Direcção | Ficheiro                                                            |
-| -------- | ------------------------------------------------------------------- |
-| Sai      | [createPageRequest.ts](../src/providers/api/createPageRequest.ts)   |
-| Entra    | [mappers/mapApiPage.ts](../src/providers/api/mappers/mapApiPage.ts) |
+| Direcção | Ficheiro                                                               |
+| -------- | ---------------------------------------------------------------------- |
+| Sai      | [createPageRequest.ts](../../src/providers/api/createPageRequest.ts)   |
+| Entra    | [mappers/mapApiPage.ts](../../src/providers/api/mappers/mapApiPage.ts) |
 
 O `createPageRequest` recebe `path`, `locale` e `draft`. O `locale` chega já resolvido — o `ApiPageSource` pergunta o default à sua `SiteSource` quando ninguém o indica — mas a implementação por omissão ainda não o põe no pedido: é uma das costuras por escrever.
 
@@ -270,7 +270,7 @@ Não declara `preview`, por isso é — como o `mocks` — um caso de teste do `
 
 ## O provider mock
 
-[providers/mocks/](../src/providers/mocks/) serve páginas escritas à mão, sem base de dados.
+[providers/mocks/](../../src/providers/mocks) serve páginas escritas à mão, sem base de dados.
 
 ```
 mocks/
@@ -334,7 +334,7 @@ export const home = definePage({
 });
 ```
 
-Depois junta-se a `home` à lista em [pages/index.ts](../src/providers/mocks/pages/index.ts). A lista é escrita à mão, e não varrida do disco: uma página só aparece no site depois de alguém a pôr lá, e é aí que se vê de uma vez o que os mocks servem.
+Depois junta-se a `home` à lista em [pages/index.ts](../../src/providers/mocks/pages/index.ts). A lista é escrita à mão, e não varrida do disco: uma página só aparece no site depois de alguém a pôr lá, e é aí que se vê de uma vez o que os mocks servem.
 
 Três decisões que fazem esta forma valer a pena:
 
