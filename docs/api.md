@@ -113,7 +113,17 @@ O `robots.txt` passa a nomear esse URL. Isso não é só conveniência: um sitem
 
 Se o URL **variar** — por ambiente, ou por tenant — não o fixes aqui: passa a `{ kind: 'source' }` e devolve-o no `getSite()` do [ApiSiteSource](../src/providers/api/sources/ApiSiteSource.ts), no campo `sitemapUrl` do `SiteDefinition`. É o mesmo sítio onde o `name` e os `locales` deixam de ser os valores fixos com que este provider sai da caixa.
 
-A outra saída é a API expor os caminhos publicados. Nesse caso implementa o `listPaths` no `ApiPageSource` e passa a `{ kind: 'app' }` — a rota já está lá, só está a recusar-se a responder.
+A outra saída é a API expor os caminhos publicados. O `listPaths` já está no `ApiPageSource` e o caminho está todo montado, com **uma peça por escrever** — o [mapApiPaths](../src/providers/api/mappers/mapApiPaths.ts), pela mesma razão que o `mapApiPage`:
+
+```
+mapApiPaths() has no mapping yet, so the sitemap cannot be built.
+The API returned an array of 12 item(s). Write the translation in
+src/providers/api/mappers/mapApiPaths.ts — see docs/api.md.
+```
+
+O erro diz-te o que a tua API devolveu, para não teres de adivinhar a forma. O que ele tem de produzir é uma lista de [PagePath](../src/core/pages/Page.types.ts): `path` já com o prefixo de idioma que o site serve, `locale`, e — opcionais — `updatedAt` para o `lastmod` e `noIndex` para a página ficar de fora.
+
+O endpoint é o `/paths` com os locales em `params`, e é um valor a mudar como o do `createPageRequest`: ver [createPathsRequest](../src/providers/api/createPathsRequest.ts). Depois de o mapper existir, passa a `{ kind: 'app' }` e o `/sitemap.xml` deixa de responder 404.
 
 ## O que sai: createPageRequest
 

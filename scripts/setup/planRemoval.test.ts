@@ -225,11 +225,14 @@ describe('planRemoval', () => {
     }
   });
 
-  it('tells an api project both ways out of having no sitemap', () => {
+  it('tells an api project all three ways out of having no sitemap', () => {
     const note = planRemoval('api').notes.find((entry) => entry.startsWith('Sitemap:')) ?? '';
 
     expect(note).toContain('sitemapLocation.ts');
-    expect(note).toContain('listPaths');
+
+    expect(note).toContain("{ kind: 'external', url: ... }");
+    expect(note).toContain('sitemapUrl');
+    expect(note).toContain('mapApiPaths');
 
     for (const provider of ['payload', 'mock'] as const) {
       expect(planRemoval(provider).notes.join('\n')).not.toContain('Sitemap:');

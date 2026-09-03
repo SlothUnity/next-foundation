@@ -288,7 +288,7 @@ function notesFor(provider: SetupProvider): string[] {
 
   if (provider === 'api') {
     notes.push(
-      "Sitemap: /sitemap.xml answers 404 and robots.txt says nothing about it, because nothing here can enumerate your pages yet. Both are one line in src/app/_lib/sitemapLocation.ts: point at the sitemap your API serves with { kind: 'external', url: ... }, or implement listPaths on ApiPageSource and switch to { kind: 'app' }.",
+      "Sitemap: /sitemap.xml answers 404 and robots.txt says nothing about it, until you pick one of three in src/app/_lib/sitemapLocation.ts. Your API serves it at a fixed URL: { kind: 'external', url: ... }. At a URL that varies: { kind: 'source' }, and report it as sitemapUrl from ApiSiteSource. Your API can enumerate published paths: write mapApiPaths (and adjust createPathsRequest to your endpoint), then { kind: 'app' }.",
     );
   }
 

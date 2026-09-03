@@ -85,3 +85,28 @@ describe('ApiPageSource', () => {
     await expect(source.getPage('sobre-nos', 'pt-PT')).rejects.toThrow(/metadata, sections/);
   });
 });
+
+describe('ApiPageSource, when asked to list its paths', () => {
+  it('asks one endpoint for every locale the site declares', async () => {
+    const { source, get } = createSource([{ path: '/' }]);
+
+    await source.listPaths().catch(() => undefined);
+
+    expect(endpointOf(get)).toBe('/paths');
+    expect(optionsOf(get)).toMatchObject({ params: { locales: 'pt-PT' } });
+  });
+
+  it('tags the response so a revalidation route can reach it', async () => {
+    const { source, get } = createSource([]);
+
+    await source.listPaths().catch(() => undefined);
+
+    expect(optionsOf(get)).toMatchObject({ tags: ['pages', 'paths'] });
+  });
+
+  it('hands the body to the mapper, which refuses to guess until someone writes it', async () => {
+    const { source } = createSource([{ path: '/sobre-nos' }]);
+
+    await expect(source.listPaths()).rejects.toThrow(/mapApiPaths\.ts/);
+  });
+});

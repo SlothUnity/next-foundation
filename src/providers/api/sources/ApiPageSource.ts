@@ -1,4 +1,4 @@
-import type { PageResponse } from '@/core/pages';
+import type { PagePath, PageResponse } from '@/core/pages';
 
 import type { GetPageOptions } from '@/core/pages/PageSource';
 import { PageSource } from '@/core/pages/PageSource';
@@ -6,7 +6,9 @@ import { PageSource } from '@/core/pages/PageSource';
 import type { ApiClient } from '../ApiClient';
 import { createApiClient } from '../createApiClient';
 import { createPageRequest } from '../createPageRequest';
+import { createPathsRequest } from '../createPathsRequest';
 import { mapApiPage } from '../mappers/mapApiPage';
+import { mapApiPaths } from '../mappers/mapApiPaths';
 import { ApiSiteSource } from './ApiSiteSource';
 
 export class ApiPageSource extends PageSource {
@@ -35,5 +37,21 @@ export class ApiPageSource extends PageSource {
     }
 
     return { status: 'ok', page: mapApiPage(raw) };
+  }
+
+  async listPaths(): Promise<PagePath[]> {
+    const { locales, defaultLocale } = await this.site.getSite();
+
+    const request = createPathsRequest({ locales, defaultLocale });
+
+    const client = this.client ?? createApiClient();
+
+    const raw = await client.get(request.endpoint, {
+      params: request.params,
+      headers: request.headers,
+      tags: ['pages', 'paths'],
+    });
+
+    return mapApiPaths(raw);
   }
 }
