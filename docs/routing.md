@@ -137,6 +137,8 @@ Não reescreve nem redirecciona: só copia o pathname para o header `x-pathname`
 
 O `matcher` exclui o admin, a API do Payload, as rotas de preview, os assets do Next e os ficheiros com extensão. Como não se reescreve nada, apanhar o resto seria inofensivo — mas é trabalho por pedido a troco de nada.
 
+**As exclusões têm fronteira de segmento**, `admin(?:/|$)` e não `admin`. Sem ela o padrão excluía qualquer caminho que apenas _comece_ pelo prefixo: uma página chamada «Administração» ou «Apiário» ficava sem o `x-pathname`. Era inerte por sorte — o primeiro segmento desses caminhos nunca é um segmento de locale, portanto o fallback do layout coincidia com o locale certo — e deixava de o ser no dia em que o header servisse outra coisa. O [proxy.test.ts](../src/proxy.test.ts) tem os três casos (`/administracao`, `/apiario`, `/apis-e-abelhas`), e são exactamente os que chumbam se o padrão voltar atrás.
+
 ## Cabeçalhos de resposta
 
 As definições estão em [securityHeaders.ts](../src/app/_lib/securityHeaders.ts) e não no `next.config.ts`, para poderem ser testadas — quem alargar a política tem de mexer num teste, o que é o ponto.

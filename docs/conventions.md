@@ -79,6 +79,8 @@ Ao lado do que testam, não numa pasta `__tests__/`. Ler uma unidade não deve o
 
 A excepção é o que os testes **partilham**: [src/testing/](../src/testing/) para helpers usados por testes de camadas diferentes. Um helper vive ao lado do teste enquanto só um o usa; quando o segundo aparece, sobe para lá, pela mesma regra das pastas logo abaixo.
 
+**O `vitest.setup.ts` desmonta o DOM entre testes**, com um `afterEach(cleanup)`. Isto não é cerimónia: o auto-cleanup do testing-library só se registra quando o Vitest corre com `globals: true`, e esta configuração não corre. Sem ele os renders acumulavam-se no `document.body` dentro de cada ficheiro, e um `screen.getByRole(...)` podia encontrar o elemento do teste anterior — um teste a passar pela razão errada, que é pior do que um teste a faltar. Provado com dois testes num ficheiro: o segundo via **dois** cabeçalhos.
+
 ## Pastas
 
 **Uma pasta justifica-se a partir de dois ficheiros.** Criar `components/` para um componente ou `types/` para um tipo é custo sem retorno — a pasta nasce quando o segundo ficheiro aparecer.
