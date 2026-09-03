@@ -94,11 +94,33 @@ throw new ModuleValidationError(`Module "${module.alias}" data validation failed
 
 [core/renderer/ModuleErrorFallback.tsx](../src/core/renderer/ModuleErrorFallback.tsx)
 
-Em desenvolvimento mostra o alias que falhou. Em produção devolve `null` — falha silenciosa e sem expor nomes internos.
+Em desenvolvimento mostra o alias que falhou. Em produção devolve `null` — a página não expõe nomes internos ao visitante.
+
+### O silêncio era para o visitante, não para ti
+
+Degradar em silêncio **na página** é a decisão certa. Degradar em silêncio **em todo o sistema** não era: um bloco que deixasse de validar depois de uma mudança de schema desaparecia da página em produção sem uma linha de log, sem sinal nenhum, para ninguém.
+
+O `Foundation` leva agora um `reportError`, e o `ModuleRenderer` chama-o nos dois pontos de falha antes de desenhar o fallback:
+
+```ts
+foundation.reportError({ alias: module.alias, failure: 'invalid-data', cause: error });
+```
+
+Vem pelo `foundation` e não por um global porque o renderer já o recebe — e porque quem decide o destino do relatório é a raiz de composição, não a camada que o produz. O default é o [logModuleError](../src/core/observability/logModuleError.ts), que escreve no `console.error` dizendo o alias, o que falhou e o que verificar. Um projecto passa o seu ao `createFoundation` e o relatório vai para onde quiser: um fornecedor de telemetria, uma fila, um webhook.
+
+O contrato ([ErrorReporter](../src/core/observability/ErrorReporter.types.ts)) é deliberadamente estreito — `alias`, `failure`, `cause` — e não conhece fornecedor nenhum, que é o que o mantém no `core`.
+
+### E o que o renderer não apanha
+
+O `ModuleRenderer` só vê as falhas dos módulos. Para o resto — um erro numa rota, num handler, na resolução de uma página — o sítio é o [instrumentation.ts](../src/instrumentation.ts), o `onRequestError` do Next. Escreve a rota, o tipo de render e o **`digest`**, que é a única coisa que a fronteira de erro mostra ao visitante: sem ele no log, o código que a pessoa tem no ecrã não corresponde a nada do lado do servidor.
+
+É também o ponto onde um Sentry ou equivalente entra, com uma linha. A foundation não escolhe qual — escolher por um cliente que ainda não existe seria decidir a factura dele.
 
 ## Cobertura de testes
 
-O renderer é a parte mais testada do projecto. [ModuleRenderer.test.tsx](../src/core/renderer/ModuleRenderer.test.tsx) · [PageRenderer.test.tsx](../src/core/renderer/PageRenderer.test.tsx) · [ModuleErrorFallback.test.tsx](../src/core/renderer/ModuleErrorFallback.test.tsx)
+O renderer é a parte mais testada do projecto. [ModuleRenderer.test.tsx](../src/core/renderer/ModuleRenderer.test.tsx) · [ModuleRenderer.reporting.test.tsx](../src/core/renderer/ModuleRenderer.reporting.test.tsx) · [PageRenderer.test.tsx](../src/core/renderer/PageRenderer.test.tsx) · [ModuleErrorFallback.test.tsx](../src/core/renderer/ModuleErrorFallback.test.tsx)
+
+O de reporting corre com `NODE_ENV` em `production`, que é o único modo onde a degradação acontece, e inclui um teste do caso que passa: **um módulo que renderiza não reporta nada.** Sem esse, um reporter que disparasse sempre passaria os outros dois e o sinal não valeria nada.
 
 - módulo registado com dados válidos
 - dados inválidos em desenvolvimento e em produção

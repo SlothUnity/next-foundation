@@ -35,6 +35,8 @@ function createTestFoundation(): Foundation {
 
     page: {} as Foundation['page'],
 
+    reportError: () => undefined,
+
     site: {
       async getSite() {
         return {

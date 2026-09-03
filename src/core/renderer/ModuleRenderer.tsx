@@ -18,6 +18,8 @@ export function ModuleRenderer({ module, foundation }: ModuleRendererProps) {
       throw new ModuleRenderError(`Module "${module.alias}" is not registered.`);
     }
 
+    foundation.reportError({ alias: module.alias, failure: 'not-registered' });
+
     return <ModuleErrorFallback alias={module.alias} />;
   }
 
@@ -38,6 +40,8 @@ export function ModuleRenderer({ module, foundation }: ModuleRendererProps) {
           cause: error,
         });
       }
+
+      foundation.reportError({ alias: module.alias, failure: 'invalid-data', cause: error });
 
       return <ModuleErrorFallback alias={module.alias} />;
     }
