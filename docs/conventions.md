@@ -173,6 +173,12 @@ Não é aversão a explicar — é o contrário. Este projecto tinha 229 coment�
 
 Nos documentos o mesmo raciocínio é revisível, pesquisável, e liga-se ao resto. E há um verificador de links a apanhar as referências que apodrecem.
 
+Esta última frase esteve muito tempo a ser falsa em todos os clones menos um: o verificador existia como script solto **fora** do repositório, portanto era verdade na máquina de quem o escreveu e mentira em qualquer cópia. Agora é o [`pnpm check:links`](../scripts/links/run.ts), corre no hook de pre-commit, e chumba: percorre os `.md` do repositório, confirma que cada ficheiro referenciado existe e que cada âncora corresponde a um título real.
+
+**Não está no `pnpm build`, e é de propósito.** O `build` é o caminho de deploy, e uma frase desactualizada não pode derrubar um deploy. Isso tem uma consequência visível logo depois do `setup:provider`: num projecto `api` ou `mock` o `docs/payload.md` e o `src/providers/payload/` desaparecem, e a prosa que lhes aponta passa a estar quebrada — dezenas de ligações. O comando avisa e diz para correr este verificador, que dá a lista exacta a podar. O primeiro commit fica bloqueado até isso ser feito; o deploy não.
+
+O que ele **não** faz é ir à internet — só responde pelo repositório. E as duas partes que decidem (extrair as ligações de um texto, e transformar um título numa âncora como o GitHub faz) [têm testes](../scripts/links/parse.test.ts), porque uma ferramenta que julga o resto tem de ser julgada primeiro. Ambos os testes existem por erro meu: a primeira versão partia as ligações envolvidas em `<>` com parênteses no caminho, e comia o `_` de um `unstable_cache` num título.
+
 ### Onde é que o raciocínio vai parar
 
 | O que o comentário dizia               | Onde passa a viver                                                             |

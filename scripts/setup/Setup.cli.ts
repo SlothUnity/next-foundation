@@ -212,7 +212,7 @@ function selfDestruct(): void {
 
   writeFileSync(manifest, `${JSON.stringify(parsed, null, 2)}\n`);
 
-  rmSync(path.join(root, 'scripts'), { recursive: true, force: true });
+  rmSync(path.join(root, 'scripts/setup'), { recursive: true, force: true });
 }
 
 async function main(): Promise<void> {

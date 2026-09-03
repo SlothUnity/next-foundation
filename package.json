@@ -18,7 +18,8 @@
     "setup:provider": "tsx scripts/setup/Setup.cli.ts",
     "payload:types": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:types",
     "payload:importMap": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:importmap",
-    "payload:generate": "pnpm run payload:types && pnpm run payload:importMap"
+    "payload:generate": "pnpm run payload:types && pnpm run payload:importMap",
+    "check:links": "tsx scripts/links/run.ts"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,md,yml,yaml}": [

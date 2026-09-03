@@ -272,6 +272,7 @@ const deletedDocs: Record<SetupProvider, string[]> = {
 function notesFor(provider: SetupProvider): string[] {
   const notes = [
     'docs/providers.md documents PROVIDER and createProvider, which no longer exist. It still explains the Provider contract, so read it as design background rather than as instructions.',
+    'Run pnpm check:links for the exact list of prose that now points at deleted files, and prune it. It runs in the pre-commit hook, so it will stop your first commit until you do. It is deliberately not in pnpm build: a stale sentence must never fail a deploy.',
   ];
 
   if (provider !== 'payload') {
