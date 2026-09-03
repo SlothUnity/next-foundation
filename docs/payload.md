@@ -288,6 +288,18 @@ Consequência a ter presente: uma página que nunca foi publicada dá 404 em pú
 
 [plugins/nestedDocs.ts](../src/providers/payload/plugins/nestedDocs.ts) — hierarquia de páginas e geração de breadcrumbs. O `generateURL` constrói o caminho a partir dos títulos, passados por [createSlug](../src/providers/payload/utils/createSlug.ts), e **exclui documentos com `isHome`** para que os filhos da homepage não herdem o slug dela.
 
+### O que o createSlug não resolve
+
+O [createSlug](../src/providers/payload/utils/createSlug.ts) tira diacríticos, junta corridas de pontuação num hífen e é idempotente. Tem [testes](../src/providers/payload/utils/createSlug.test.ts) — e metade deles existe para **fixar três arestas, não para as abençoar**. Um `it` que afirma `createSlug('日本語') === ''` está a garantir que ninguém muda isso por acidente, não a dizer que está certo.
+
+| O que acontece                                      | Porque é que dói                                                                                                                                                                         |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Sobre Nós` e `Sobre nós!` dão ambos `sobre-nos`    | duas páginas com o mesmo URL; nada valida a unicidade do `breadcrumbs.url`, e o `resolvePayloadPage` faz `find` com `limit: 1` — uma delas fica inalcançável de forma não determinística |
+| `日本語`, `Ελληνικά`, `Привет`, `خدمات` dão `""`    | o segmento desaparece. Numa página de topo o URL fica `/`, e como a raiz é resolvida por `isHome` e nunca por URL, a página fica **totalmente** inalcançável                             |
+| `Admin`, `API` e `Next` dão `admin`, `api` e `next` | colidem com o admin do CMS e com as rotas de framework. O editor vê a tela de login ou um JSON de erro, sem explicação                                                                   |
+
+Nenhuma está corrigida, e a correcção **não é só no `createSlug`**: mudar o que ele devolve muda o URL de páginas já publicadas, o que precisa de um campo `slug` editável, de validação de unicidade, de uma lista de palavras reservadas e de um redirect automático quando o slug muda. É trabalho de produto, não um ajuste de função — e é por isso que os testes o descrevem em vez de o esconder.
+
 [plugins/breadcrumbsField.ts](../src/providers/payload/plugins/breadcrumbsField.ts) — o campo em si, oculto no admin. Está separado do plugin porque é adicionado explicitamente à `Pages`, e não pelo plugin.
 
 [plugins/seo.ts](../src/providers/payload/plugins/seo.ts) — `@payloadcms/plugin-seo` com `tabbedUI`, mais quatro campos: `ogTitle`, `ogDescription`, `noIndex`, `noFollow`. Os campos default do plugin são relaxados para opcionais.
