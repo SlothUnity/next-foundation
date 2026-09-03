@@ -3,10 +3,10 @@ import type { PagePath, PageResponse } from '@/core/pages';
 import type { GetPageOptions } from '@/core/pages/PageSource';
 import { PageSource } from '@/core/pages/PageSource';
 
-import type { ApiClient } from '../ApiClient';
-import { createApiClient } from '../createApiClient';
-import { createPageRequest } from '../createPageRequest';
-import { createPathsRequest } from '../createPathsRequest';
+import type { ApiClient } from '../client/ApiClient';
+import { createApiClient } from '../client/createApiClient';
+import { createPageRequest } from '../requests/createPageRequest';
+import { createPathsRequest } from '../requests/createPathsRequest';
 import { mapApiPage } from '../mappers/mapApiPage';
 import { mapApiPaths } from '../mappers/mapApiPaths';
 import { ApiSiteSource } from './ApiSiteSource';

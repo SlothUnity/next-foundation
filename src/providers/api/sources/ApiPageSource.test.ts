@@ -3,7 +3,7 @@ import type { Mock } from 'vitest';
 
 import { callArg } from '@/testing/callArg';
 
-import type { ApiClient } from '../ApiClient';
+import type { ApiClient } from '../client/ApiClient';
 
 import { ApiPageSource } from './ApiPageSource';
 

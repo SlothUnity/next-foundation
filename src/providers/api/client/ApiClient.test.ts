@@ -4,7 +4,7 @@ import type { Mock } from 'vitest';
 import { callArg } from '@/testing/callArg';
 
 import { ApiClient } from './ApiClient';
-import { ApiRequestError } from './errors';
+import { ApiRequestError } from '../errors';
 
 interface FetchInit {
   headers?: Record<string, string>;

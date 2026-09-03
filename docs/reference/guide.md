@@ -3237,7 +3237,7 @@ Há ainda um terceiro caso, mais raro: um ficheiro que junta ajudantes irmãos s
 
 Um caminho alternativo, para quando os dados vêm de uma API externa em vez de um CMS próprio. **O transporte está feito e testado; o mapeamento está deliberadamente por escrever.** Vale a pena ler mesmo que nunca o uses, porque tem decisões que contrastam bem com as do lado do Payload.
 
-**`ApiClient`** (`src/providers/api/ApiClient.ts`) — uma classe com um método público:
+**`ApiClient`** (`src/providers/api/client/ApiClient.ts`) — uma classe com um método público:
 
 ```ts
 export class ApiClient {

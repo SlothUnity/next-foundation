@@ -85,16 +85,36 @@ A excepção é o que os testes **partilham**: [src/testing/](../../src/testing)
 
 **Uma pasta justifica-se a partir de dois ficheiros.** Criar `components/` para um componente ou `types/` para um tipo é custo sem retorno — a pasta nasce quando o segundo ficheiro aparecer.
 
-O módulo hero é o exemplo: quatro ficheiros achatados, e um `components/` quando existirem sub-componentes.
+O módulo Hero é o exemplo: quatro ficheiros achatados, e um `components/` quando existirem sub-componentes.
 
 ```
-modules/hero/
+modules/Hero/
 ├── Hero.tsx
 ├── Hero.types.ts
 ├── Hero.schema.ts
 ├── Hero.definition.ts
 └── index.ts
 ```
+
+### Quando a pasta cresce, o nome da subpasta é o trabalho que faz
+
+Um provider é o caso onde isto se vê melhor, porque há dois para comparar. Cada subpasta tem o nome do **papel** que os ficheiros lá dentro desempenham, e na raiz fica só o que é do provider inteiro:
+
+```
+providers/api/                      providers/payload/
+├── client/     falar HTTP          ├── access/       quem pode o quê
+├── requests/   montar o pedido     ├── collections/  o modelo de conteúdo
+├── mappers/    traduzir a resposta ├── cache/        invalidação
+├── sources/    cumprir o contrato  ├── mappers/  sources/  …
+├── errors/                         │
+├── Api.types.ts                    ├── locales.ts
+├── apiEnv.ts                       ├── payloadEnv.ts
+└── provider.ts                     └── provider.ts
+```
+
+O `api` teve sete ficheiros achatados até deixar de os ter, e o sintoma foi este: **duas pastas para o mesmo tipo de coisa, com densidades diferentes.** Se um provider precisa de onze subpastas e o outro de nenhuma, ou os problemas são diferentes ou um dos dois está a esconder a estrutura. Eram sete módulos com três papéis distintos — cliente, pedido, tradução — e nada a dizê-lo.
+
+**Os `.types.ts` sobem quando servem duas subpastas.** O `Api.types.ts` fica na raiz do provider e não no `client/`, porque o `requests/` também devolve um `ApiRequest`. Um tipo partilhado por duas pastas pertence ao nível acima delas.
 
 ### Dentro de `app/`, só ficheiros de rota
 

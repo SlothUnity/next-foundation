@@ -1,4 +1,4 @@
-import { apiEnv } from './apiEnv';
+import { apiEnv } from '../apiEnv';
 import { ApiClient } from './ApiClient';
 
 export function createApiClient(): ApiClient {

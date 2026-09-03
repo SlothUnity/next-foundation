@@ -19,10 +19,10 @@ O que volta não se sabe. Olha-se para a resposta verdadeira, e traduz-se para o
 
 Duas costuras, uma por direcção, e são ficheiros feitos para editar:
 
-| Direcção | Ficheiro                                                               | Decide                                           |
-| -------- | ---------------------------------------------------------------------- | ------------------------------------------------ |
-| Sai      | [createPageRequest.ts](../../src/providers/api/createPageRequest.ts)   | caminho, e o que mais a API vier a precisar      |
-| Entra    | [mappers/mapApiPage.ts](../../src/providers/api/mappers/mapApiPage.ts) | a resposta → `PageDefinition` **(por escrever)** |
+| Direcção | Ficheiro                                                                      | Decide                                           |
+| -------- | ----------------------------------------------------------------------------- | ------------------------------------------------ |
+| Sai      | [createPageRequest.ts](../../src/providers/api/requests/createPageRequest.ts) | caminho, e o que mais a API vier a precisar      |
+| Entra    | [mappers/mapApiPage.ts](../../src/providers/api/mappers/mapApiPage.ts)        | a resposta → `PageDefinition` **(por escrever)** |
 
 Tudo o resto — transporte, cache, erros, 404, testes — está feito, e não se toca para ligar uma API nova.
 
@@ -71,7 +71,7 @@ mapApiPage(raw)                                       ⚠️ costura
 PageDefinition
 ```
 
-O [ApiClient](../../src/providers/api/ApiClient.ts) devolve `unknown` de propósito: não conhece páginas, módulos nem idiomas. Interpretar a resposta é trabalho do mapper, e é a única fronteira onde o formato externo existe.
+O [ApiClient](../../src/providers/api/client/ApiClient.ts) devolve `unknown` de propósito: não conhece páginas, módulos nem idiomas. Interpretar a resposta é trabalho do mapper, e é a única fronteira onde o formato externo existe.
 
 ## Configuração
 
@@ -85,7 +85,7 @@ Só o transporte é que é configurável por ambiente. Tudo o que tenha a ver co
 
 Sem `API_URL` o provider falha no primeiro pedido, com a variável nomeada na mensagem — não serve uma página vazia. Um `API_REVALIDATE` que não seja um inteiro não-negativo é um erro, não um valor a ignorar em silêncio.
 
-O ambiente é lido **dentro do pedido**, não no import: o [createApiClient](../../src/providers/api/createApiClient.ts) não é memoizado, e o `ApiClient` não guarda estado nem abre conexões. É isso que permite ao `createProvider` importar este bundle sem rebentar quando o `PROVIDER` activo é outro — ver a nota sobre bundles em [providers.md](providers.md#cada-provider-expõe-o-seu-bundle).
+O ambiente é lido **dentro do pedido**, não no import: o [createApiClient](../../src/providers/api/client/createApiClient.ts) não é memoizado, e o `ApiClient` não guarda estado nem abre conexões. É isso que permite ao `createProvider` importar este bundle sem rebentar quando o `PROVIDER` activo é outro — ver a nota sobre bundles em [providers.md](providers.md#cada-provider-expõe-o-seu-bundle).
 
 ### As imagens vêm de um sítio que só tu sabes
 
@@ -123,7 +123,7 @@ src/providers/api/mappers/mapApiPaths.ts — see docs/api.md.
 
 O erro diz-te o que a tua API devolveu, para não teres de adivinhar a forma. O que ele tem de produzir é uma lista de [PagePath](../../src/core/pages/Page.types.ts): `path` já com o prefixo de idioma que o site serve, `locale`, e — opcionais — `updatedAt` para o `lastmod` e `noIndex` para a página ficar de fora.
 
-O endpoint é o `/paths` com os locales em `params`, e é um valor a mudar como o do `createPageRequest`: ver [createPathsRequest](../../src/providers/api/createPathsRequest.ts). Depois de o mapper existir, passa a `{ kind: 'app' }` e o `/sitemap.xml` deixa de responder 404.
+O endpoint é o `/paths` com os locales em `params`, e é um valor a mudar como o do `createPageRequest`: ver [createPathsRequest](../../src/providers/api/requests/createPathsRequest.ts). Depois de o mapper existir, passa a `{ kind: 'app' }` e o `/sitemap.xml` deixa de responder 404.
 
 ## O que sai: createPageRequest
 
@@ -369,10 +369,10 @@ O provider Payload sabe o formato do que lê porque o formato é definido no mes
 
 Por isso o que a foundation entrega aqui é um **ponto de partida**: o transporte inteiro montado e testado, e duas costuras marcadas a dizer «isto é teu».
 
-| Direcção | Ficheiro                                                               | O que o projecto decide                                                       |
-| -------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Sai      | [createPageRequest.ts](../../src/providers/api/createPageRequest.ts)   | se o locale entra no pedido, e como: prefixo no caminho, query string, header |
-| Entra    | [mappers/mapApiPage.ts](../../src/providers/api/mappers/mapApiPage.ts) | como o corpo da resposta vira um `PageDefinition`                             |
+| Direcção | Ficheiro                                                                      | O que o projecto decide                                                       |
+| -------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Sai      | [createPageRequest.ts](../../src/providers/api/requests/createPageRequest.ts) | se o locale entra no pedido, e como: prefixo no caminho, query string, header |
+| Entra    | [mappers/mapApiPage.ts](../../src/providers/api/mappers/mapApiPage.ts)        | como o corpo da resposta vira um `PageDefinition`                             |
 
 O `ApiPageSource` já resolve o locale antes de chamar o `createPageRequest` — quer o pedido tenha vindo com um, quer tenha caído no default da `SiteSource`. O que ele **não** faz é decidir por ti se esse locale vai no URL, num parâmetro ou num cabeçalho, porque essa é uma característica da API que se vai ligar.
 
@@ -404,7 +404,7 @@ O segundo tem uma nota: parte dele **é** do projecto. Invalidar por evento exig
 
 1. `API_URL` no `.env.local`, e `PROVIDER=api`.
 2. `pnpm dev`, abre uma página, lê as chaves na mensagem de erro.
-3. Se a API precisar de contexto no pedido, [createPageRequest.ts](../../src/providers/api/createPageRequest.ts).
+3. Se a API precisar de contexto no pedido, [createPageRequest.ts](../../src/providers/api/requests/createPageRequest.ts).
 4. Descreve o corpo num `ApiPage.schema.ts` e traduz em [mapApiPage.ts](../../src/providers/api/mappers/mapApiPage.ts).
 5. Garante que cada `alias` que produzes existe em [src/modules/](../../src/modules). Um bloco da API sem módulo é uma linha no mapa de aliases, ou um módulo novo.
 6. Testa o mapper com um corpo verdadeiro copiado da API.

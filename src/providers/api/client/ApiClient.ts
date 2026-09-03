@@ -1,6 +1,6 @@
-import type { ApiConfig, ApiParamValue, ApiRequestOptions } from './Api.types';
+import type { ApiConfig, ApiParamValue, ApiRequestOptions } from '../Api.types';
 
-import { ApiRequestError } from './errors';
+import { ApiRequestError } from '../errors';
 
 type NextRequestInit = RequestInit & {
   next?: {

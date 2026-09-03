@@ -1,4 +1,4 @@
-import type { ApiRequest } from './Api.types';
+import type { ApiRequest } from '../Api.types';
 
 export interface PageRequestContext {
   path: string;

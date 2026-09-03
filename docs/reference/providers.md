@@ -255,10 +255,10 @@ preenche passa a ser o `mapApiPage`.
 
 O pedido vai a cru — `API_URL` mais o caminho onde estamos — e a resposta, que não se sabe qual é, é traduzida para o contrato interno. São duas costuras, uma por direcção, e são os únicos ficheiros a editar:
 
-| Direcção | Ficheiro                                                               |
-| -------- | ---------------------------------------------------------------------- |
-| Sai      | [createPageRequest.ts](../../src/providers/api/createPageRequest.ts)   |
-| Entra    | [mappers/mapApiPage.ts](../../src/providers/api/mappers/mapApiPage.ts) |
+| Direcção | Ficheiro                                                                      |
+| -------- | ----------------------------------------------------------------------------- |
+| Sai      | [createPageRequest.ts](../../src/providers/api/requests/createPageRequest.ts) |
+| Entra    | [mappers/mapApiPage.ts](../../src/providers/api/mappers/mapApiPage.ts)        |
 
 O `createPageRequest` recebe `path`, `locale` e `draft`. O `locale` chega já resolvido — o `ApiPageSource` pergunta o default à sua `SiteSource` quando ninguém o indica — mas a implementação por omissão ainda não o põe no pedido: é uma das costuras por escrever.
 
