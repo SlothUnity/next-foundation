@@ -148,6 +148,12 @@ versions: {
 
 Com drafts activos, as queries normais passam a devolver só conteúdo publicado. O `375` é o intervalo que a documentação do Payload sugere para compensar o roundtrip do Live Preview server-side.
 
+### O `custom.scss` está vazio de propósito
+
+O [(payload)/custom.scss](<../../src/app/(payload)/custom.scss>) tem zero bytes e é importado pelo [layout do grupo](<../../src/app/(payload)/layout.tsx>). Parece entulho e não é: é o **ponto de entrada do CSS do admin**, e o Payload não tem outro que não passe por um componente próprio.
+
+Fica vazio porque o aspecto do admin é decisão de cada projecto — a mesma razão que deixa o frontend sem folha de estilo. Se um cliente quiser o logótipo dele na barra ou outra cor de acento, é aqui, sem tocar na config. Um ficheiro vazio explicado custa menos do que um ficheiro apagado que alguém tem de descobrir como recriar.
+
 ### Live Preview
 
 ```ts
