@@ -216,9 +216,9 @@ Não é um aviso de erro: é a resposta certa nesse projecto. O que muda é onde
 
 O que o gerador testa é o `index.ts` e não só a pasta, porque é nele que vivem as duas âncoras `// plop:` — sem elas não há onde registar o bloco.
 
-O que sai é código pronto a correr, não um esqueleto vazio: o `pnpm typecheck`, o `pnpm lint` e o teste gerado passam sem se tocar em nada. A partir daí acrescentas campos ao schema e ao bloco, aos pares.
+O que sai é código pronto a correr, não um esqueleto vazio: o `pnpm typecheck`, o `pnpm lint`, o `pnpm format:check` e o teste gerado passam sem se tocar em nada. A partir daí acrescentas campos ao schema e ao bloco, aos pares.
 
-### As duas coisas invulgares que vais notar
+### As três coisas invulgares que vais notar
 
 **As âncoras `// plop:` no [blocks/index.ts](../src/providers/payload/blocks/index.ts).**
 
@@ -235,6 +235,16 @@ export const pageBlocks = [
 Este é o único ficheiro que precisa de **duas** inserções — o import e a entrada no array — e um append cego só sabe escrever no fim. As âncoras dizem ao Plop onde pôr cada uma. O `src/modules/index.ts` não precisa delas porque só tem exports, e o fim do ficheiro serve.
 
 **Os templates estão no [.prettierignore](../.prettierignore).** O Prettier tem parser de handlebars e, se lhe deixarem ver um `.hbs`, reescreve-o como se fosse markup — o que destrói a indentação do código que o template gera. Já aconteceu neste repositório: os templates estiveram meses a produzir ficheiros numa linha só. Se um dia o código gerado voltar a sair mal formatado, é aqui que se olha primeiro.
+
+**O `~` no `className` do [module.hbs](../generator/templates/module/module.hbs).**
+
+```hbs
+<section className={styles.{{camelCase name~}} }>
+```
+
+O `~` come o espaço que vem depois, portanto o que sai é `className={styles.cta}` — sem espaço a mais, igual ao que uma pessoa escreveria e igual ao que o Prettier deixaria ficar. Sem ele, o `}}` do mustache cola ao `}` do JSX, o Handlebars lê `}}}` como um _triple-stash_, e o template **deixa de compilar**: o `pnpm generate` aborta na primeira acção e deixa só uma pasta vazia.
+
+Foi o que aconteceu ao adoptar CSS Modules, e passou despercebido porque nada no portão corria o gerador. Agora corre: o [plopfile.test.ts](../generator/plopfile.test.ts) compila todos os templates, com o mesmo Handlebars que o Plop usa, e verifica que a classe que o componente consome é a que a folha declara.
 
 ## Regras
 
