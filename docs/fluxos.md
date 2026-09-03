@@ -348,7 +348,7 @@ import { foundation } from '@/core/foundation/foundation'
 - **O singleton está fora do barrel.** Importar `foundation.ts` põe a aplicação de pé — incluindo o Payload. Enquanto estava no barrel, os testes do renderer carregavam o `payload.config.ts` só por importarem `createFoundation` — [architecture.md](architecture.md#6-os-barrels-não-podem-ter-efeitos-secundários).
 - **O `payload.config.ts` é importado dinamicamente** pelo [getPayloadClient](../src/providers/payload/getPayloadClient.ts), para não ser avaliado com `PROVIDER=mock`. É o que permite correr o site sem base de dados.
 - **Um `PROVIDER` desconhecido derruba o arranque.** Cair no default deixava alguém a perguntar-se porque é que o site mostra dados de teste.
-- **O `requireEnv` derruba o arranque quando falta configuração obrigatória.** Um `|| ''` num segredo de assinatura produz tokens forjáveis sem um único aviso.
+- **O schema de ambiente derruba o arranque quando falta configuração obrigatória**, ou quando ela está mal formada. Um `|| ''` num segredo de assinatura produz tokens forjáveis sem um único aviso.
 
 ---
 

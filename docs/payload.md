@@ -25,8 +25,8 @@ providers/payload/
 
 ```ts
 export default buildConfig({
-  secret: requireEnv('PAYLOAD_SECRET', 'Payload to sign session tokens'),
-  serverURL: requireEnv('NEXT_PUBLIC_SERVER_URL', …),
+  secret: env.PAYLOAD_SECRET,
+  serverURL: env.NEXT_PUBLIC_SERVER_URL,
 
   sharp,
   upload: { limits: { fileSize: 8 * 1024 * 1024 } },
@@ -37,12 +37,21 @@ export default buildConfig({
   collections: [Users, Pages, Redirects, Media],
   globals: [Site],
 
-  db: postgresAdapter({ pool: { connectionString: requireEnv('DATABASE_URL', …) } }),
+  db: postgresAdapter({ pool: { connectionString: env.DATABASE_URL } }),
   plugins: [nestedDocs, seo, storage],
 });
 ```
 
-O [requireEnv](../src/providers/requireEnv.ts) derruba o arranque quando falta configuração obrigatória, em vez de degradar em silêncio: um `|| ''` num segredo de assinatura produz tokens forjáveis sem um único aviso.
+O `env` vem do [payloadEnv](../src/providers/payload/payloadEnv.ts), um schema Zod lido **uma vez** em escopo de módulo: configuração em falta ou mal formada derruba o arranque em vez de degradar em silêncio, e um `|| ''` num segredo de assinatura produziria tokens forjáveis sem um único aviso.
+
+Uma leitura em vez de três chamadas tem duas consequências práticas. As mensagens vêm **todas de uma vez** — ambiente vazio dá as três variáveis numa só falha, em vez de uma por tentativa — e há sítio para validar o **formato**, não só a presença:
+
+| Variável                 | O que o schema exige além de existir                                    |
+| ------------------------ | ----------------------------------------------------------------------- |
+| `DATABASE_URL`           | começar por `postgres://` ou `postgresql://` — o Supabase entrega ambos |
+| `NEXT_PUBLIC_SERVER_URL` | ser URL absoluto e **não terminar em barra**                            |
+
+A segunda linha não é preciosismo. O Live Preview compara este valor com a origem do browser por **igualdade de string**, portanto uma barra final quebra-o sem erro nenhum: o iframe abre, o conteúdo nunca actualiza, e não há nada no log. É o género de defeito que se procura durante uma tarde.
 
 ## Localização
 

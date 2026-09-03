@@ -5,7 +5,7 @@ import { buildConfig } from 'payload';
 import { postgresAdapter } from '@payloadcms/db-postgres';
 import sharp from 'sharp';
 
-import { requireEnv } from '@/providers/requireEnv';
+import { payloadEnv } from '@/providers/payload/payloadEnv';
 
 import { nestedDocs, seo, storage } from '@/providers/payload/plugins';
 
@@ -22,8 +22,10 @@ const dirname = path.dirname(filename);
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
+const env = payloadEnv();
+
 export default buildConfig({
-  secret: requireEnv('PAYLOAD_SECRET', 'Payload to sign session tokens'),
+  secret: env.PAYLOAD_SECRET,
 
   sharp,
 
@@ -33,10 +35,7 @@ export default buildConfig({
     },
   },
 
-  serverURL: requireEnv(
-    'NEXT_PUBLIC_SERVER_URL',
-    'Payload to check request origins, sign admin cookies and target the Live Preview',
-  ),
+  serverURL: env.NEXT_PUBLIC_SERVER_URL,
 
   localization: {
     locales: payloadLocales,
@@ -80,7 +79,7 @@ export default buildConfig({
 
   db: postgresAdapter({
     pool: {
-      connectionString: requireEnv('DATABASE_URL', 'the Postgres adapter'),
+      connectionString: env.DATABASE_URL,
     },
   }),
 

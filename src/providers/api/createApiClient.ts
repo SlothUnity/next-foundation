@@ -1,31 +1,12 @@
-import { requireEnv } from '@/providers/requireEnv';
-
+import { apiEnv } from './apiEnv';
 import { ApiClient } from './ApiClient';
 
-const DEFAULT_REVALIDATE = 60;
-
-function readRevalidate(): number {
-  const raw = process.env.API_REVALIDATE;
-
-  if (!raw) {
-    return DEFAULT_REVALIDATE;
-  }
-
-  const revalidate = Number(raw);
-
-  if (!Number.isInteger(revalidate) || revalidate < 0) {
-    throw new Error(`Invalid API_REVALIDATE "${raw}". Expected a non-negative integer of seconds.`);
-  }
-
-  return revalidate;
-}
-
 export function createApiClient(): ApiClient {
-  const url = requireEnv('API_URL', 'the "api" provider');
+  const { API_URL, API_TOKEN, API_REVALIDATE } = apiEnv();
 
   return new ApiClient({
-    url,
-    token: process.env.API_TOKEN,
-    revalidate: readRevalidate(),
+    url: API_URL,
+    token: API_TOKEN,
+    revalidate: API_REVALIDATE,
   });
 }

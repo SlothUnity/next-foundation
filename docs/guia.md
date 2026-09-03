@@ -2121,7 +2121,7 @@ Está na **raiz** do projeto, não no `src/`, porque o Payload e o Next esperam-
 
 ```ts
 export default buildConfig({
-  secret: requireEnv('PAYLOAD_SECRET', 'Payload to sign session tokens'),
+  secret: env.PAYLOAD_SECRET,
 ```
 
 **`secret`** — a chave com que o Payload assina os tokens de sessão. Quem a tiver, forja logins.
@@ -2130,7 +2130,7 @@ export default buildConfig({
 >
 > A versão original era `process.env.PAYLOAD_SECRET || ''`, e a `connectionString` mais abaixo tinha o mesmo padrão: faltando a variável, a aplicação **arrancava com uma chave de assinatura vazia** em vez de falhar, e os tokens de sessão passavam a ser trivialmente forjáveis sem um único aviso.
 >
-> Hoje as duas usam o `requireEnv` de `src/providers/requireEnv.ts`, que atira com uma mensagem que diz o nome da variável e quem precisa dela. O `createApiClient` (Cap. 12) foi passado a usar o mesmo helper, para haver uma só forma de exigir configuração.
+> Hoje as duas vêm de um schema Zod lido uma vez — o `payloadEnv` de `src/providers/payload/payloadEnv.ts` — que atira com o nome de **cada** variável em falta ou mal formada e com quem precisa dela. O provider `api` tem o seu (`apiEnv`), pela mesma razão que tem o seu `.env.example`: cada provider lê variáveis diferentes, e o que sobrevive ao `setup:provider` tem de ser só o que se aplica.
 
 ```ts
   serverURL: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
@@ -2191,7 +2191,7 @@ export default buildConfig({
   globals: [Site],
 
   db: postgresAdapter({
-    pool: { connectionString: requireEnv('DATABASE_URL', 'the Postgres adapter') },
+    pool: { connectionString: env.DATABASE_URL },
   }),
 
   plugins: [nestedDocs, seo],
@@ -3118,7 +3118,7 @@ O `@payload-config` só precisa de **resolver**, não de ser avaliado: o `getPay
 
 **O estado dos testes.** São 31 ficheiros e 236 casos, colocados ao lado do código que testam (sem pasta `__tests__/`). Cobrem o `core` (registry, renderer, routing), o transporte do provider `api`, e a fronteira do provider Payload: as queries, os mappers, a cache, os campos de admin e o token de pré-visualização.
 
-**Um teste que prova o valor dos outros dois.** O `createProvider.test.ts` afirma que o provider `mocks` corre sem base de dados nenhuma. Isso só é verdade enquanto o `payload.config.ts` não for avaliado — e para o provar há um terceiro teste que importa a config de propósito e **exige que ela rebente** por falta de `PAYLOAD_SECRET`. Sem essa prova, os dois primeiros passariam mesmo que o `requireEnv` deixasse de exigir seja o que for.
+**Um teste que prova o valor dos outros dois.** O `createProvider.test.ts` afirma que o provider `mocks` corre sem base de dados nenhuma. Isso só é verdade enquanto o `payload.config.ts` não for avaliado — e para o provar há um terceiro teste que importa a config de propósito e **exige que ela rebente** por falta de `PAYLOAD_SECRET`. Sem essa prova, os dois primeiros passariam mesmo que o schema de ambiente deixasse de exigir seja o que for.
 
 Esse ficheiro importa o `createProvider` dentro de cada caso, a seguir a um `vi.resetModules()`. É preciso porque o ambiente que o teste prepara tem de valer no momento em que os módulos são avaliados: sem o reset, a primeira importação ficava em cache e os testes seguintes não veriam o ambiente novo.
 
@@ -3156,15 +3156,15 @@ Assim nada chega a produção sem passar eslint, TypeScript e a suite de testes 
 | Variável                 | Quem a usa                                          | Obrigatória           | Nota                                                                         |
 | ------------------------ | --------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------- |
 | `PROVIDER`               | `createProvider.ts:8`                               | não                   | `payload` (omissão), `api` ou `mock`. Valor desconhecido derruba o arranque. |
-| `DATABASE_URL`           | `payload.config.ts`                                 | **sim**               | ligação ao Postgres. Via `requireEnv` — sem ela a aplicação não arranca.     |
-| `PAYLOAD_SECRET`         | `payload.config.ts`                                 | **sim**               | assina as sessões. Também via `requireEnv`.                                  |
+| `DATABASE_URL`           | `payload.config.ts`                                 | **sim**               | ligação ao Postgres. Via `payloadEnv` — sem ela a aplicação não arranca.     |
+| `PAYLOAD_SECRET`         | `payload.config.ts`                                 | **sim**               | assina as sessões. Também via `payloadEnv`.                                  |
 | `NEXT_PUBLIC_SERVER_URL` | `payload.config.ts:24`, `PayloadLivePreview.tsx:13` | não                   | o URL público. Sem ela, `http://localhost:3000`.                             |
 | `PREVIEW_SECRET`         | `Pages.ts`, `next/preview/route.ts`                 | para live preview     | assina os links; não viaja no URL — ver [9.6](#o-segredo-assina-não-viaja).  |
-| `API_URL`                | `createApiClient.ts`                                | só com `PROVIDER=api` | também via `requireEnv`.                                                     |
+| `API_URL`                | `createApiClient.ts`                                | só com `PROVIDER=api` | via `apiEnv`, que também exige URL absoluto sem barra final.                 |
 | `API_TOKEN`              | `createApiClient.ts`                                | não                   | vira `Authorization: Bearer ...`.                                            |
 | `API_REVALIDATE`         | `createApiClient.ts:6`                              | não                   | segundos de cache; 60 por omissão. Atira se não for um inteiro não-negativo. |
 
-As três obrigatórias passam pelo mesmo `requireEnv` de `src/providers/requireEnv.ts`, que atira com o nome da variável e quem precisa dela. Configuração em falta derruba o arranque em vez de degradar em silêncio — há um `.env.example` na raiz para copiar.
+As obrigatórias passam por um schema Zod do provider que as lê — `payloadEnv` ou `apiEnv`, ambos sobre o mesmo `readEnv` de `src/providers/env.ts`. Atira com o nome de cada uma que falte **ou esteja mal formada**, e com quem precisa dela. Configuração em falta derruba o arranque em vez de degradar em silêncio — há um `.env.example` na raiz para copiar.
 
 **O prefixo `NEXT_PUBLIC_` é a única coisa aqui que tens mesmo de interiorizar.** No Next.js:
 
