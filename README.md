@@ -110,6 +110,24 @@ API_TOKEN=…                                 # opcional
 API_REVALIDATE=60                           # opcional, segundos, 60 por omissão
 ```
 
+### Quem fornece a base de dados
+
+**A foundation não traz `Dockerfile` nem `docker-compose.yml`, e é decisão e não esquecimento.**
+
+Num projecto `payload`, o Postgres é do **Supabase** e quem monta o projecto configura-o junto com o Payload — é a equipa interna, e a montagem faz parte do que ela já sabe fazer. Um `docker-compose` local seria um segundo caminho a manter, com um Postgres de versão diferente da que serve o site, e a divergir do primeiro em silêncio.
+
+Num projecto `api`, não há base de dados nenhuma deste lado: o conteúdo vem de uma API que **outra equipa entrega**. O que este repositório precisa de saber está no `API_URL`, e o que precisa de traduzir está no [mapApiPage](docs/api.md).
+
+Num projecto `mock` não há nada a configurar: as páginas estão no repositório.
+
+Portanto os pré-requisitos por escolha são estes, e só estes:
+
+| Provider  | Precisa de                                  |
+| --------- | ------------------------------------------- |
+| `payload` | um Postgres (Supabase) e as variáveis acima |
+| `api`     | um `API_URL` que responda                   |
+| `mock`    | nada                                        |
+
 O `NEXT_PUBLIC_SERVER_URL` **não pode ter barra final** — é usado como `targetOrigin` de `postMessage` no Live Preview, e a comparação é de string exacta. Com `PROVIDER=payload` é **obrigatório**: o Payload valida com ele a origem dos pedidos ao admin, e o default anterior (`http://localhost:3000`) fazia um deploy sem a variável rejeitar o host verdadeiro em vez de o aceitar.
 
 ## O mapa do `src/`
