@@ -1,12 +1,19 @@
 import type { MetadataRoute } from 'next';
 
+import { notFound } from 'next/navigation';
+
 import { requestOrigin } from '@/app/_lib/requestOrigin';
+import { sitemapLocation } from '@/app/_lib/sitemapLocation';
 import { foundation } from '@/core/foundation/foundation';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  if (sitemapLocation.kind !== 'app') {
+    notFound();
+  }
+
   if (!foundation.page.listPaths) {
     throw new Error(
-      'This route builds the sitemap from the content source, and the source cannot list its paths. Either implement listPaths on your PageSource, or say where the sitemap lives in src/app/_lib/sitemapLocation.ts and delete this route.',
+      'src/app/_lib/sitemapLocation.ts says this app builds the sitemap, and the content source cannot list its paths. Implement listPaths on your PageSource, or say where the sitemap really lives.',
     );
   }
 

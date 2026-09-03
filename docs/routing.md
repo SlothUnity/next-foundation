@@ -208,7 +208,9 @@ Um sitemap com zero URLs **não é um default neutro**: é uma afirmação de qu
 | `{ kind: 'external', url }` | não existe aqui                             | **nomeia o URL de quem o serve** |
 | `{ kind: 'none' }`          | não existe                                  | não diz nada sobre sitemaps      |
 
-O `pnpm setup:provider` escreve o estado certo: `app` para o `payload` e para os `mocks`, que sabem enumerar-se; `none` para o `api`, e nesse caso apaga também o `sitemap.ts` — uma rota que constrói um sitemap a partir de uma origem que não lista só pode mentir.
+O `pnpm setup:provider` escreve o estado certo: `app` para o `payload` e para os `mocks`, que sabem enumerar-se; `none` para o `api`, que ainda não sabe.
+
+**A rota fica em todos os três.** Quando a declaração não é `app`, o `sitemap.ts` chama `notFound()` e o `/sitemap.xml` responde **404** — verificado com o servidor a correr, porque uma rota de metadata a recusar-se a existir não é comportamento documentado. Isso é melhor do que apagar o ficheiro: mudar de ideias passa a ser uma linha na declaração e não um ficheiro para recriar.
 
 Num projecto `api`, das duas uma. Se a tua API serve o sitemap — o caso normal, porque é ela que sabe o que está publicado — passa a `{ kind: 'external', url: 'https://…' }`. Não é só conveniência que o `robots.txt` o nomeie: um sitemap alojado noutro host que liste URLs deste site é uma _cross-submission_, e a referência no `robots.txt` do próprio site é o que a autoriza. Se em vez disso a API souber enumerar caminhos, implementa o `listPaths` no `ApiPageSource`, repõe o `sitemap.ts` e passa a `{ kind: 'app' }`.
 

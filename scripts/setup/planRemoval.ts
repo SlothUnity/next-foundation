@@ -256,18 +256,9 @@ function removeMocks(): SetupOperation[] {
   ];
 }
 
-function dropGeneratedSitemap(): SetupOperation[] {
-  const why = 'an api project does not enumerate its own pages, so it cannot build a sitemap';
-
-  return [
-    { kind: 'delete', path: 'src/app/(frontend)/sitemap.ts', why },
-    { kind: 'delete', path: 'src/app/(frontend)/sitemap.test.ts', why },
-  ];
-}
-
 const removals: Record<SetupProvider, () => SetupOperation[]> = {
   payload: () => [...removeApi(), ...removeMocks()],
-  api: () => [...removePayload(), ...removeMocks(), ...dropGeneratedSitemap()],
+  api: () => [...removePayload(), ...removeMocks()],
   mock: () => [...removePayload(), ...removeApi()],
 };
 
@@ -296,7 +287,7 @@ function notesFor(provider: SetupProvider): string[] {
 
   if (provider === 'api') {
     notes.push(
-      "Sitemap: this project ships without one, and robots.txt says nothing about it. If your API serves a sitemap, point at it with { kind: 'external', url: ... } in src/app/_lib/sitemapLocation.ts. If it can enumerate paths instead, implement listPaths on ApiPageSource, restore src/app/(frontend)/sitemap.ts and set { kind: 'app' }.",
+      "Sitemap: /sitemap.xml answers 404 and robots.txt says nothing about it, because nothing here can enumerate your pages yet. Both are one line in src/app/_lib/sitemapLocation.ts: point at the sitemap your API serves with { kind: 'external', url: ... }, or implement listPaths on ApiPageSource and switch to { kind: 'app' }.",
     );
   }
 

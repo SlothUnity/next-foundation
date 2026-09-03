@@ -217,17 +217,12 @@ describe('planRemoval', () => {
     expect(declared('api')).toContain("{ kind: 'none' }");
   });
 
-  it('drops the route that builds a sitemap only where nothing can build one', () => {
-    const routes = (provider: SetupProvider) =>
-      deletedPaths(planRemoval(provider).operations).filter((path) => path.includes('sitemap'));
+  it('keeps the sitemap route for every provider, because the declaration decides, not the file', () => {
+    for (const provider of setupProviders) {
+      const deleted = deletedPaths(planRemoval(provider).operations);
 
-    expect(routes('api')).toEqual([
-      'src/app/(frontend)/sitemap.ts',
-      'src/app/(frontend)/sitemap.test.ts',
-    ]);
-
-    expect(routes('payload')).toEqual([]);
-    expect(routes('mock')).toEqual([]);
+      expect(deleted.filter((path) => path.includes('sitemap'))).toEqual([]);
+    }
   });
 
   it('tells an api project both ways out of having no sitemap', () => {

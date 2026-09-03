@@ -97,7 +97,7 @@ Não é ambiente porque as duas leituras acontecem em build — o `remotePattern
 
 ### O sitemap também não é nosso
 
-Pela mesma razão, e com uma consequência maior. Um projecto `api` sai **sem `sitemap.ts`** e com o [sitemapLocation.ts](../src/app/_lib/sitemapLocation.ts) em `{ kind: 'none' }`: a origem não sabe enumerar-se — o `listPaths` é opcional no contrato e o `ApiPageSource` não o implementa — e uma rota que constrói um sitemap a partir de uma origem que não lista serviria um `<urlset>` vazio. Um sitemap vazio é pior do que nenhum: afirma que o site não tem páginas.
+Pela mesma razão. Um projecto `api` sai com o [sitemapLocation.ts](../src/app/_lib/sitemapLocation.ts) em `{ kind: 'none' }`, e o `/sitemap.xml` responde **404**: a origem não sabe enumerar-se por omissão, e uma rota que construísse um sitemap a partir de uma origem que não lista serviria um `<urlset>` vazio. Um sitemap vazio é pior do que nenhum — afirma que o site não tem páginas.
 
 Das duas uma, e a escolha é tua:
 
@@ -111,7 +111,7 @@ export const sitemapLocation: SitemapLocation = {
 
 O `robots.txt` passa a nomear esse URL. Isso não é só conveniência: um sitemap noutro host que liste URLs deste site é uma _cross-submission_, e a referência no `robots.txt` do próprio site é o que a torna aceitável para os motores de busca.
 
-A outra saída é a API expor os caminhos publicados. Nesse caso implementa o `listPaths` no `ApiPageSource`, repõe o `sitemap.ts` — [routing.md](routing.md#sitemap-e-robots) tem o corpo dele, são dez linhas — e passa a `{ kind: 'app' }`.
+A outra saída é a API expor os caminhos publicados. Nesse caso implementa o `listPaths` no `ApiPageSource` e passa a `{ kind: 'app' }` — a rota já está lá, só está a recusar-se a responder.
 
 ## O que sai: createPageRequest
 
