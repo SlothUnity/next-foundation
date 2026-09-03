@@ -250,6 +250,20 @@ O [`@payloadcms/plugin-redirects`](https://payloadcms.com/docs/plugins/redirects
 
 Tem um `afterChange` a invalidar a tag `payload:site` — sem guarda nenhuma, porque um global não tem rascunhos e mudar a ordem dos idiomas muda o `<html lang>` de todas as páginas. Ver [Cache](#cache).
 
+## Navigation e Footer
+
+[globals/Navigation.ts](../../src/providers/payload/globals/Navigation.ts) e [globals/Footer.ts](../../src/providers/payload/globals/Footer.ts) — um campo `blocks` cada, chamado `modules`, com **os mesmos blocos que uma página oferece**.
+
+A decisão que importa é essa: não há registo de blocos separado para o cabeçalho. Um módulo é um módulo, e o que decide onde ele serve é quem autora, não o tipo — logo o `pnpm generate` continua a registar num sítio só, e um módulo novo aparece nas três regiões sem trabalho nenhum. A troca assumida é que o admin permite pôr um Hero no rodapé; um projecto que queira restringir passa uma lista filtrada em vez do `pageBlocks`.
+
+**São conteúdo, não configuração**, e por isso a escrita é de `isEditor` e não de `isAdmin` — ao contrário do `Site`, que muda idiomas e derruba URLs.
+
+O `afterChange` invalida a tag **das páginas** e não uma tag própria: o layout viaja dentro de cada `PageResponse`, portanto mudar o rodapé torna velha a resposta cacheada de todas as páginas. Uma tag só para o layout obrigaria a invalidar as duas em conjunto, o que é a mesma coisa com mais peças.
+
+O carregamento está em [loadPayloadLayout.ts](../../src/providers/payload/sources/loadPayloadLayout.ts): lê os dois globals **em paralelo** com o `Promise.all`, com `fallbackLocale: false` pela mesma razão que as páginas — um menu que ninguém traduziu deve vir vazio e não em português no site inglês. Uma região sem módulos é omitida em vez de vir como lista vazia, e é isso que faz o renderer não desenhar o landmark.
+
+A composição acontece no [loadPayloadPage.ts](../../src/providers/payload/sources/loadPayloadPage.ts) e não no mapper: o mapper continua a ser uma função pura sobre **uma** página, e quem junta as três regiões é o loader. A página de erro do CMS recebe o mesmo layout — um 404 com cabeçalho e rodapé é o que um visitante espera. Quando não há página nenhuma para servir, os globals nem são lidos.
+
 ## Media e Users
 
 [Media.ts](../../src/providers/payload/collections/Media.ts) — `upload` com **allowlist de mimeTypes**, mais um campo `alt` obrigatório e localizado. Leitura pública: é a única collection aberta, porque as imagens de um site público têm de ser carregadas pelo browser.

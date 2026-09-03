@@ -12,6 +12,8 @@ import { nestedDocs, seo, storage } from '@/providers/payload/plugins';
 import { payloadDefaultLocale, payloadLocales } from '@/providers/payload/locales';
 
 import { Site } from '@/providers/payload/globals/Site';
+import { Navigation } from '@/providers/payload/globals/Navigation';
+import { Footer } from '@/providers/payload/globals/Footer';
 import { Users } from '@/providers/payload/collections/Users';
 import { Pages } from '@/providers/payload/collections/Pages';
 import { Redirects } from '@/providers/payload/collections/Redirects';
@@ -75,7 +77,7 @@ export default buildConfig({
   },
 
   collections: [Users, Pages, Redirects, Media],
-  globals: [Site],
+  globals: [Site, Navigation, Footer],
 
   db: postgresAdapter({
     pool: {

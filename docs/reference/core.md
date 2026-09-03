@@ -116,13 +116,15 @@ O contrato interno de página. [core/pages/Page.types.ts](../../src/core/pages/P
 ```ts
 export interface PageDefinition {
   meta: Meta;
-  navigation?: ModuleInstance;
+  navigation?: ModuleInstance[];
   main: ModuleInstance[];
-  footer?: ModuleInstance;
+  footer?: ModuleInstance[];
 }
 ```
 
-Três regiões: uma navegação opcional, uma lista de módulos, um footer opcional. É deliberadamente pequeno — o CMS adapta-se a ele.
+Três regiões, e **as três são listas**. O `main` é obrigatório porque uma página sem módulos não é uma página; as outras duas são opcionais porque uma landing pode não querer navegação nenhuma.
+
+Serem listas e não um módulo só é uma correcção: com um `ModuleInstance` singular, uma barra de anúncios acima do menu obrigava a inventar um módulo composto que existia só para agrupar dois. O contrato é o mesmo em todas as regiões, portanto qualquer módulo serve em qualquer uma — quem decide é quem autora, não o tipo.
 
 ## Meta
 

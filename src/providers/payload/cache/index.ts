@@ -3,6 +3,7 @@ export { getCachedPaths } from './getCachedPaths';
 export { getCachedRedirects } from './getCachedRedirects';
 export { getCachedSite } from './getCachedSite';
 export {
+  revalidateLayoutOnChange,
   revalidatePagesOnChange,
   revalidatePagesOnDelete,
   revalidateRedirectsOnChange,

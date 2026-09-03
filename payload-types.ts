@@ -93,9 +93,13 @@ export interface Config {
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('pt-PT' | 'en-GB') | ('pt-PT' | 'en-GB')[];
   globals: {
     site: Site;
+    navigation: Navigation;
+    footer: Footer;
   };
   globalsSelect: {
     site: SiteSelect<false> | SiteSelect<true>;
+    navigation: NavigationSelect<false> | NavigationSelect<true>;
+    footer: FooterSelect<false> | FooterSelect<true>;
   };
   locale: 'pt-PT' | 'en-GB';
   widgets: {
@@ -574,11 +578,65 @@ export interface Site {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "navigation".
+ */
+export interface Navigation {
+  id: number;
+  /**
+   * Rendered above every page, inside the nav landmark.
+   */
+  modules?: HeroBlock[] | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "footer".
+ */
+export interface Footer {
+  id: number;
+  /**
+   * Rendered below every page, inside the footer landmark.
+   */
+  modules?: HeroBlock[] | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site_select".
  */
 export interface SiteSelect<T extends boolean = true> {
   name?: T;
   enabledLocales?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "navigation_select".
+ */
+export interface NavigationSelect<T extends boolean = true> {
+  modules?:
+    | T
+    | {
+        hero?: T | HeroBlockSelect<T>;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "footer_select".
+ */
+export interface FooterSelect<T extends boolean = true> {
+  modules?:
+    | T
+    | {
+        hero?: T | HeroBlockSelect<T>;
+      };
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

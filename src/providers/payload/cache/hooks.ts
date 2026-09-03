@@ -53,3 +53,9 @@ export const revalidateSiteOnChange: GlobalAfterChangeHook = ({ doc }) => {
 
   return doc;
 };
+
+export const revalidateLayoutOnChange: GlobalAfterChangeHook = ({ doc }) => {
+  revalidatePayloadTag(PAGES_TAG);
+
+  return doc;
+};

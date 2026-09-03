@@ -58,11 +58,13 @@ describe('PageRenderer', () => {
         locale: 'pt-PT',
       },
 
-      navigation: {
-        id: 'navigation-1',
-        alias: 'test-navigation',
-        data: {},
-      },
+      navigation: [
+        {
+          id: 'navigation-1',
+          alias: 'test-navigation',
+          data: {},
+        },
+      ],
 
       main: [
         {
@@ -77,11 +79,13 @@ describe('PageRenderer', () => {
         },
       ],
 
-      footer: {
-        id: 'footer-1',
-        alias: 'test-footer',
-        data: {},
-      },
+      footer: [
+        {
+          id: 'footer-1',
+          alias: 'test-footer',
+          data: {},
+        },
+      ],
     };
 
     render(<PageRenderer page={page} foundation={foundation} />);
@@ -126,6 +130,46 @@ describe('PageRenderer', () => {
     expect(screen.queryByTestId('module-test-navigation')).not.toBeInTheDocument();
 
     expect(screen.queryByTestId('module-test-footer')).not.toBeInTheDocument();
+  });
+});
+
+describe('PageRenderer regions', () => {
+  it('renders every module of a region, in the authored order', () => {
+    const foundation = createTestFoundation();
+
+    const page: PageDefinition = {
+      meta: { locale: 'pt-PT' },
+
+      navigation: [
+        { id: 'nav-1', alias: 'test-main-a', data: {} },
+        { id: 'nav-2', alias: 'test-navigation', data: {} },
+      ],
+
+      main: [{ id: 'main-1', alias: 'test-main-b', data: {} }],
+    };
+
+    render(<PageRenderer page={page} foundation={foundation} />);
+
+    const navigation = screen.getByRole('navigation');
+
+    expect(navigation).toContainElement(screen.getByTestId('module-test-main-a'));
+    expect(navigation).toContainElement(screen.getByTestId('module-test-navigation'));
+  });
+
+  it('skips the landmark of a region that came back empty, not just absent', () => {
+    const foundation = createTestFoundation();
+
+    const page: PageDefinition = {
+      meta: { locale: 'pt-PT' },
+      navigation: [],
+      main: [{ id: 'main-1', alias: 'test-main-a', data: {} }],
+      footer: [],
+    };
+
+    render(<PageRenderer page={page} foundation={foundation} />);
+
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
   });
 });
 

@@ -2824,23 +2824,19 @@ Voltemos ao percurso. O `page.tsx` tem um `PageDefinition` e chamou `<PageRender
 export function PageRenderer({ page, foundation }: PageRendererProps) {
   return (
     <>
-      {page.navigation && (
+      {navigation.length > 0 && (
         <nav>
-          <ModuleRenderer module={page.navigation} foundation={foundation} />
+          <Region modules={navigation} foundation={foundation} />
         </nav>
       )}
 
-      <main>
-        {page.main.map((module) => (
-          <Fragment key={module.id}>
-            <ModuleRenderer module={module} foundation={foundation} />
-          </Fragment>
-        ))}
+      <main id={MAIN_LANDMARK_ID}>
+        <Region modules={page.main} foundation={foundation} />
       </main>
 
-      {page.footer && (
+      {footer.length > 0 && (
         <footer>
-          <ModuleRenderer module={page.footer} foundation={foundation} />
+          <Region modules={footer} foundation={foundation} />
         </footer>
       )}
     </>
@@ -2851,7 +2847,7 @@ export function PageRenderer({ page, foundation }: PageRendererProps) {
 O componente **não sabe o que é um hero**. Sabe que uma página tem três regiões e que cada uma se desenha com um `ModuleRenderer`. É esta ignorância que faz o sistema funcionar: acrescentar módulos nunca obriga a tocar aqui.
 
 - **`<>...</>`** é a forma curta de `<Fragment>` — agrupa elementos sem acrescentar um `<div>` ao HTML.
-- **`page.navigation &&`** e **`page.footer &&`** — são opcionais no contrato ([6.2](#62-os-tipos-um-a-um)). Hoje **nenhum provider os preenche**, portanto na prática só o `<main>` é desenhado. A estrutura está pronta e à espera.
+- **`navigation.length > 0`** e **`footer.length > 0`** — as duas regiões são opcionais no contrato ([6.2](#62-os-tipos-um-a-um)), e são **listas**. Testa-se o comprimento e não a presença porque um global do CMS que ninguém preencheu devolve uma lista vazia, e uma lista vazia não deve produzir um `<nav>` vazio. No Payload, quem as enche são os globals `Navigation` e `Footer`.
 - **`key={module.id}`** — o `key` é como o React identifica cada item entre re-renders, para saber o que mudou. Tem de ser **estável e único**. O `module.id` vem do Payload e cumpre as duas condições. Usar o índice do array seria um erro clássico: reordenar dois módulos no CMS faria o React pensar que o conteúdo mudou em vez de a ordem, e o estado dos componentes ia parar aos sítios errados.
 - **Porquê o `Fragment` explícito à volta**, se o `ModuleRenderer` já é um elemento só? Porque o `key` tem de estar no elemento de topo do `.map()`. Podia estar diretamente no `<ModuleRenderer key={...}>`; envolver num `Fragment` deixa espaço para acrescentar um wrapper por módulo depois sem mexer na chave. É uma questão de gosto.
 

@@ -177,9 +177,9 @@ Isso é o desenho, não uma falha: a mensagem traz as chaves do topo do corpo ve
 ```ts
 {
   meta: { locale?, title?, description?, ogTitle?, ogDescription?, noIndex?, noFollow? },
-  navigation?: ModuleInstance,
+  navigation?: ModuleInstance[],
   main: ModuleInstance[],
-  footer?: ModuleInstance,
+  footer?: ModuleInstance[],
 }
 ```
 

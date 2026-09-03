@@ -4,6 +4,7 @@ import { getPayloadClient } from '@/providers/payload/getPayloadClient';
 import type { SupportedLocale } from '@/providers/payload/locales';
 import { mapPayloadPage } from '@/providers/payload/mappers/mapPayloadPage';
 import { loadPayloadAlternates } from '@/providers/payload/sources/loadPayloadAlternates';
+import { loadPayloadLayout } from '@/providers/payload/sources/loadPayloadLayout';
 import {
   resolvePayloadNotFoundPage,
   resolvePayloadPage,
@@ -21,15 +22,24 @@ export async function loadPayloadPage(
   const page = await resolvePayloadPage(payload, path, locale, draft);
 
   if (page) {
-    const alternates = await loadPayloadAlternates(payload, page.id, locales, defaultLocale);
+    const [alternates, layout] = await Promise.all([
+      loadPayloadAlternates(payload, page.id, locales, defaultLocale),
+      loadPayloadLayout(payload, locale),
+    ]);
 
-    return { status: 'ok', page: mapPayloadPage(page, locale, alternates) };
+    return { status: 'ok', page: { ...mapPayloadPage(page, locale, alternates), ...layout } };
   }
 
   const notFound = await resolvePayloadNotFoundPage(payload, locale, draft);
 
+  if (!notFound) {
+    return { status: 'notFound' };
+  }
+
+  const layout = await loadPayloadLayout(payload, locale);
+
   return {
     status: 'notFound',
-    page: notFound ? mapPayloadPage(notFound, locale) : undefined,
+    page: { ...mapPayloadPage(notFound, locale), ...layout },
   };
 }

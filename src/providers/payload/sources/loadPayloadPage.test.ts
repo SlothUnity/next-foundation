@@ -1,17 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { findByID, getPayloadClient, resolvePayloadNotFoundPage, resolvePayloadPage } = vi.hoisted(
-  () => {
+const { findByID, findGlobal, getPayloadClient, resolvePayloadNotFoundPage, resolvePayloadPage } =
+  vi.hoisted(() => {
     const findByID = vi.fn();
+    const findGlobal = vi.fn();
 
     return {
       findByID,
-      getPayloadClient: vi.fn().mockResolvedValue({ findByID }),
+      findGlobal,
+      getPayloadClient: vi.fn().mockResolvedValue({ findByID, findGlobal }),
       resolvePayloadNotFoundPage: vi.fn(),
       resolvePayloadPage: vi.fn(),
     };
-  },
-);
+  });
 
 vi.mock('@/providers/payload/getPayloadClient', () => ({ getPayloadClient }));
 vi.mock('@/providers/payload/sources/resolvePayloadPage', () => ({
@@ -29,6 +30,8 @@ describe('loadPayloadPage', () => {
   beforeEach(() => {
     resolvePayloadPage.mockReset().mockResolvedValue(undefined);
     resolvePayloadNotFoundPage.mockReset().mockResolvedValue(undefined);
+
+    findGlobal.mockReset().mockResolvedValue({ modules: [] });
 
     findByID.mockReset().mockResolvedValue({
       breadcrumbs: {
@@ -74,9 +77,50 @@ describe('loadPayloadPage', () => {
   it('carries the draft flag into both queries', async () => {
     await loadPayloadPage('nao-existe', 'pt-PT', true);
 
-    expect(resolvePayloadPage).toHaveBeenCalledWith({ findByID }, 'nao-existe', 'pt-PT', true);
+    const client = { findByID, findGlobal };
 
-    expect(resolvePayloadNotFoundPage).toHaveBeenCalledWith({ findByID }, 'pt-PT', true);
+    expect(resolvePayloadPage).toHaveBeenCalledWith(client, 'nao-existe', 'pt-PT', true);
+
+    expect(resolvePayloadNotFoundPage).toHaveBeenCalledWith(client, 'pt-PT', true);
+  });
+
+  it('composes the authored layout into the page it answers with', async () => {
+    resolvePayloadPage.mockResolvedValue(payloadPage('Sobre nós'));
+
+    findGlobal.mockImplementation(async ({ slug }: { slug: string }) => ({
+      modules: [{ id: `${slug}-1`, blockType: 'hero', blockName: null, title: slug }],
+    }));
+
+    const response = await loadPayloadPage('sobre-nos', 'pt-PT', false);
+
+    expect(response).toMatchObject({
+      status: 'ok',
+      page: {
+        navigation: [{ id: 'navigation-1', alias: 'hero' }],
+        footer: [{ id: 'footer-1', alias: 'hero' }],
+      },
+    });
+  });
+
+  it('gives the CMS error page the same layout, so a 404 is not a bare page', async () => {
+    resolvePayloadNotFoundPage.mockResolvedValue(payloadPage('Não encontrada'));
+
+    findGlobal.mockResolvedValue({
+      modules: [{ id: 'nav-1', blockType: 'hero', blockName: null, title: 'Menu' }],
+    });
+
+    const response = await loadPayloadPage('nao-existe', 'pt-PT', false);
+
+    expect(response).toMatchObject({
+      status: 'notFound',
+      page: { navigation: [{ id: 'nav-1' }] },
+    });
+  });
+
+  it('does not read the globals when there is no page at all to decorate', async () => {
+    await loadPayloadPage('nao-existe', 'pt-PT', false);
+
+    expect(findGlobal).not.toHaveBeenCalled();
   });
 
   it('resolves the alternate path of every locale the site serves', async () => {

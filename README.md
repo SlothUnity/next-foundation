@@ -167,16 +167,17 @@ O `dev:mock` e a variável `PROVIDER` já não existem: o passo 4 apagou-os, e o
 
 ### 7. Dar conteúdo ao site
 
-#### `payload` — quatro coisas no admin, por esta ordem
+#### `payload` — cinco coisas no admin, por esta ordem
 
 Com o servidor a correr, abre `/admin`:
 
-| #   | No admin                                                                           | Sem isto                                                                         |
-| --- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| 1   | **cria o primeiro utilizador** — o ecrã aparece sozinho enquanto não houver nenhum | não entras. É a única criação de conta que dispensa autorização, e dá-te `admin` |
-| 2   | **Website → Site Settings**: nome e idiomas (o primeiro é o default)               | o site responde, mas com dois avisos no log e sem template de título             |
-| 3   | **Pages**: cria a página de raiz e marca-a como **Root Page**                      | `/` responde «404 — Page not found»                                              |
-| 4   | **Pages**: cria a página de erro e marca-a como **Not Found Page**                 | um caminho inexistente cai no 404 genérico, sem conteúdo teu                     |
+| #   | No admin                                                                                    | Sem isto                                                                         |
+| --- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 1   | **cria o primeiro utilizador** — o ecrã aparece sozinho enquanto não houver nenhum          | não entras. É a única criação de conta que dispensa autorização, e dá-te `admin` |
+| 2   | **Website → Site Settings**: nome e idiomas (o primeiro é o default)                        | o site responde, mas com dois avisos no log e sem template de título             |
+| 3   | **Pages**: cria a página de raiz e marca-a como **Root Page**                               | `/` responde «404 — Page not found»                                              |
+| 4   | **Pages**: cria a página de erro e marca-a como **Not Found Page**                          | um caminho inexistente cai no 404 genérico, sem conteúdo teu                     |
+| 5   | **Website → Navigation** e **Website → Footer**: põe lá os módulos do cabeçalho e do rodapé | o site sai só com `<main>`: sem menu e sem rodapé, em todas as páginas           |
 
 Publica as duas — um rascunho não é conteúdo público.
 

@@ -14,9 +14,9 @@ export interface MockPageContent {
 
   meta?: Omit<Meta, 'locale'>;
 
-  navigation?: MockBlock;
+  navigation?: MockBlock[];
   main: MockBlock[];
-  footer?: MockBlock;
+  footer?: MockBlock[];
 }
 
 export interface MockPage {
@@ -46,6 +46,12 @@ function toInstance(mockBlock: MockBlock, id: string): ModuleInstance {
   };
 }
 
+function toRegion(mockBlocks: MockBlock[], region: string): ModuleInstance[] {
+  return mockBlocks.map((mockBlock, index) =>
+    toInstance(mockBlock, `${region}-${mockBlock.alias}-${index + 1}`),
+  );
+}
+
 export function definePage(translations: Partial<Record<MockLocale, MockPageContent>>): MockPage[] {
   return Object.entries(translations).map(([locale, content]) => ({
     path: content.path,
@@ -54,17 +60,11 @@ export function definePage(translations: Partial<Record<MockLocale, MockPageCont
     page: {
       meta: { ...content.meta, locale },
 
-      ...(content.navigation
-        ? { navigation: toInstance(content.navigation, `${content.navigation.alias}-navigation`) }
-        : {}),
+      ...(content.navigation ? { navigation: toRegion(content.navigation, 'navigation') } : {}),
 
-      main: content.main.map((mockBlock, index) =>
-        toInstance(mockBlock, `${mockBlock.alias}-${index + 1}`),
-      ),
+      main: toRegion(content.main, 'main'),
 
-      ...(content.footer
-        ? { footer: toInstance(content.footer, `${content.footer.alias}-footer`) }
-        : {}),
+      ...(content.footer ? { footer: toRegion(content.footer, 'footer') } : {}),
     },
   }));
 }

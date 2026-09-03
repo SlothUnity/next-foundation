@@ -19,9 +19,9 @@ export interface Meta {
 
 export interface PageDefinition {
   meta: Meta;
-  navigation?: ModuleInstance;
+  navigation?: ModuleInstance[];
   main: ModuleInstance[];
-  footer?: ModuleInstance;
+  footer?: ModuleInstance[];
 }
 
 export type PageQuery = Record<string, string | string[]>;
