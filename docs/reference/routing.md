@@ -160,6 +160,14 @@ Duas directivas merecem nota:
 - **`frame-ancestors 'self'`** e não `DENY`. O Live Preview mete o site público num iframe do admin, na mesma origem: bloquear framing por completo desligava-o;
 - **`script-src` e `style-src` com `'unsafe-inline'`.** O Next injecta script e estilo inline, e o admin também. A alternativa é um CSP com nonce, que obriga a passar o nonce do [proxy](#o-proxy) até ao layout — o `PATHNAME_HEADER` mostra que o caminho existe. Fica por fazer, e é a diferença entre esta política e uma apertada a sério.
 
+### `'unsafe-eval'` existe em desenvolvimento, e só lá
+
+É a razão por que o `contentSecurityPolicy` é uma função e não uma constante: recebe `allowEval`, e quem lê o `NODE_ENV` é o `next.config.ts`. O módulo fica puro e testável nos dois estados — há um teste a fixar que a política por omissão **não** traz a directiva, e outro a fixar que ligá-la muda uma directiva e mais nenhuma.
+
+O runtime RSC do React sonda o ambiente com `(0, eval)("null")` e, se o CSP o bloquear, imprime `eval() is not supported in this environment`. O que se perde não é a página — é a **reconstrução no browser dos stacks que nasceram no servidor**, ou seja a informação de que mais se precisa quando um componente de servidor falha. O bloco inteiro está atrás de um guarda de compilação `"production" !== "development"`, portanto num build de produção esse código não existe e a directiva não faz falta nenhuma.
+
+É também o que o próprio Next recomenda, em `node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md` — `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`.
+
 O `poweredByHeader` está desligado: não há razão para anunciar a versão do framework.
 
 ## O que é rota e o que não é

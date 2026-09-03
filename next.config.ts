@@ -28,7 +28,12 @@ const nextConfig: NextConfig = {
       },
       {
         source: PUBLIC_PATHS,
-        headers: [{ key: 'Content-Security-Policy', value: contentSecurityPolicy }],
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: contentSecurityPolicy({ allowEval: process.env.NODE_ENV === 'development' }),
+          },
+        ],
       },
     ];
   },

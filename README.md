@@ -4,6 +4,202 @@ Framework de frontend modular em Next.js. Uma página é descrita por dados, nã
 
 A consequência prática: **trocar de CMS não obriga a tocar no frontend**, e adicionar um módulo de conteúdo novo não obriga a tocar no renderer.
 
+Este README é o caminho para pôr o projecto de pé, pela ordem em que se faz. Se preferires perceber antes de correr, o [overview.md](docs/start/overview.md) são dez minutos e responde ao «o que é isto».
+
+## Arrancar, por passos
+
+Oito passos. Os três primeiros são iguais para todos; **do quarto em diante o caminho separa-se pelo provider que escolheres**, e cada passo diz o que devias ver e o que aparece quando falta algo.
+
+| #   | Passo                                    | Comando                         |
+| --- | ---------------------------------------- | ------------------------------- |
+| 1   | pré-requisitos                           | —                               |
+| 2   | instalar                                 | `pnpm install`                  |
+| 3   | ver o site a correr, sem configurar nada | `pnpm dev:mock`                 |
+| 4   | escolher o tipo de projecto              | `pnpm setup:provider`           |
+| 5   | preencher as variáveis de ambiente       | `.env.example` → `.env.local`   |
+| 6   | arrancar com o provider escolhido        | `pnpm dev` / `pnpm dev:payload` |
+| 7   | dar conteúdo ao site                     | no admin, ou no mapper          |
+| 8   | fechar o portão                          | `pnpm build`                    |
+
+### 1. Pré-requisitos
+
+| O quê        | Versão                   | Porquê                                                                                   |
+| ------------ | ------------------------ | ---------------------------------------------------------------------------------------- |
+| **Node**     | `>= 20.9`                | é o que o Next 16 declara em `engines`                                                   |
+| **pnpm**     | `10.7.1`                 | está fixado no `packageManager`; `corepack enable` põe o Node a usar essa versão sozinho |
+| **git**      | qualquer                 | o passo 4 recusa arrancar com alterações não commitadas, portanto precisa de repositório |
+| **Postgres** | só no provider `payload` | e quem o fornece está em [Quem fornece a base de dados](#quem-fornece-a-base-de-dados)   |
+
+**Não precisas de Docker**, e não é esquecimento — a razão está na mesma secção.
+
+### 2. `pnpm install`
+
+```bash
+pnpm install
+```
+
+Instala e, no `prepare`, arma o hook de pre-commit. É o único passo que corre uma vez e não se repete.
+
+### 3. Ver o site a correr, sem configurar nada
+
+A forma mais rápida de ver o site a funcionar **não precisa de base de dados nem de `.env.local`**:
+
+```bash
+pnpm dev:mock
+```
+
+**O que devias ver:** o site em `/` e em `/en`, servido por páginas escritas à mão em [src/providers/mocks/pages/](src/providers/mocks/pages) — o provider `mocks` não tem configuração nenhuma para preencher.
+
+Faz este passo antes de escolher: é o que te mostra o que o renderer faz, sem nada por montar. O `dev:mock` existe porque `PROVIDER=mock pnpm dev` **não corre no PowerShell** — prefixar variáveis é sintaxe de shell POSIX. O script usa o `cross-env` que já estava aqui, e o passo 4 remove-o depois: experimentar antes de escolher deixa de fazer sentido quando já se escolheu.
+
+### 4. Escolher o tipo de projecto
+
+Esta foundation traz **três** providers montados, e um projecto real usa um. O primeiro passo num projecto novo é dizer qual:
+
+```bash
+pnpm setup:provider --dry-run   # imprime o plano, não toca em nada
+pnpm setup:provider             # pergunta, e aplica
+```
+
+Pergunta qual dos três é (`payload`, `api` ou `mock`) e **apaga o que não é preciso**: os outros dois providers, e — se o Payload sair — o `payload.config.ts`, o `src/app/(payload)/`, as rotas de preview, as oito dependências, os scripts `payload:*`, o `withPayload`, os caminhos `@payload-*` e o documento do provider removido. Com um provider só, a variável `PROVIDER` e o `createProvider` deixam de fazer sentido e saem também.
+
+Chama-se `setup:provider` e não `setup` porque **`pnpm setup` é um comando do próprio pnpm** — um script com esse nome ficaria à sombra dele.
+
+Três coisas que vale saber antes de correr:
+
+- **recusa arrancar com alterações não commitadas**, para tudo o que ele faz caber num só `git diff` legível;
+- **para quando não reconhece um ficheiro.** Cada operação falha em voz alta se a âncora que espera não estiver lá, em vez de editar à sorte. Se personalizaste algum destes ficheiros, o comando pára e diz qual;
+- **apaga-se a si mesmo no fim.** Um comando destes esquecido dentro de um projecto de cliente é uma armadilha. `--keep` para o manter.
+
+No fim lista as referências em prosa que ficaram a apontar para o documento apagado. São frases, não linhas de tabela, portanto quem as lê é uma pessoa e não um script.
+
+**Se ele recusar por árvore suja e não tiveres mexido em nada:** o `next dev` do passo 3 escreveu um `AGENTS.md` e um `CLAUDE.md` na raiz, com um aviso para agentes de IA sobre as suas próprias mudanças. Estão commitados de propósito — é o que a nota dentro do ficheiro recomenda, porque o `next dev` reescreve-os sempre. Commita-os, ou dispensa-os com `agentRules: false` no `next.config.ts`.
+
+### 5. Preencher as variáveis de ambiente
+
+```bash
+cp .env.example .env.local
+```
+
+O [.env.example](.env.example) que copias já é o do provider escolhido — o passo 4 reescreveu-o. **O ficheiro só divide por provider e por obrigatoriedade**: o que cada variável faz está aqui, e não em comentários que envelhecem ao lado do valor.
+
+Configuração em falta ou mal formada **derruba o arranque**, com o nome de cada variável e quem precisa dela. Não degrada em silêncio, e valida formato e não só presença — o schema está no [apiEnv](src/providers/api/apiEnv.ts) e no [payloadEnv](src/providers/payload/payloadEnv.ts).
+
+#### Com o provider `payload`
+
+| Variável                 |             | O que é, e o que acontece sem ela                                                                                                                                                                                                                        |
+| ------------------------ | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | obrigatória | a ligação ao Postgres. Tem de começar por `postgres://` ou `postgresql://` — o Supabase entrega ambos                                                                                                                                                    |
+| `PAYLOAD_SECRET`         | obrigatória | assina os tokens de sessão do admin. Gera um valor longo e aleatório, **distinto por ambiente**                                                                                                                                                          |
+| `NEXT_PUBLIC_SERVER_URL` | obrigatória | o URL público, **sem barra final**. Ver a nota abaixo: é a que se paga mais caro                                                                                                                                                                         |
+| `BLOB_READ_WRITE_TOKEN`  | no Vercel   | onde vivem os ficheiros carregados. O Vercel injecta-a sozinho; em desenvolvimento podes deixá-la vazia e os ficheiros ficam em `./media`, com aviso no log. Em produção a sua falta derruba o arranque, porque o disco não sobrevive ao deploy seguinte |
+| `PREVIEW_SECRET`         | opcional    | assina os links de pré-visualização. **Não viaja no URL**: o que viaja é um token de uma hora preso ao caminho da página. Sem ela o Live Preview fica desligado, com erro no log                                                                         |
+
+#### Com o provider `api`
+
+| Variável         |             | O que é, e o que acontece sem ela                                                                                |
+| ---------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
+| `API_URL`        | obrigatória | a base da API externa, absoluta e **sem barra final** — o endpoint é acrescentado a ela                          |
+| `API_TOKEN`      | opcional    | enviado como `Authorization: Bearer …`. Um valor em branco conta como ausente, para não enviar um `Bearer` vazio |
+| `API_REVALIDATE` | opcional    | segundos de revalidação do cache, **60** por omissão. Inteiro não negativo, ou o arranque falha                  |
+
+#### Com o provider `mock`
+
+Nenhuma — não há passo 5. As páginas estão em [src/providers/mocks/pages/](src/providers/mocks/pages/), e o `.env.example` que o passo 4 escreve para este provider diz exactamente isso.
+
+#### A barra final que não se vê
+
+O `NEXT_PUBLIC_SERVER_URL` **não pode terminar em `/`**. O Live Preview compara-o com a origem do browser por **igualdade de string**, portanto uma barra a mais quebra-o sem erro nenhum: o iframe abre, o conteúdo nunca actualiza, e não há nada no log. O schema recusa-a no arranque, o que transforma uma tarde de procura numa mensagem.
+
+O prefixo `NEXT_PUBLIC_` põe o valor no browser — **nunca lá ponhas segredos.** E não há default: o anterior era `http://localhost:3000`, e como o Payload usa este valor na allowlist de CSRF, um deploy sem a variável passava a rejeitar o host verdadeiro em vez de o aceitar.
+
+#### Quem fornece a base de dados
+
+**A foundation não traz `Dockerfile` nem `docker-compose.yml`, e é decisão e não esquecimento.**
+
+Num projecto `payload`, o Postgres é do **Supabase** e quem monta o projecto configura-o junto com o Payload — é a equipa interna, e a montagem faz parte do que ela já sabe fazer. Um `docker-compose` local seria um segundo caminho a manter, com um Postgres de versão diferente da que serve o site, e a divergir do primeiro em silêncio.
+
+Num projecto `api`, não há base de dados nenhuma deste lado: o conteúdo vem de uma API que **outra equipa entrega**. O que este repositório precisa de saber está no `API_URL`, e o que precisa de traduzir está no [mapApiPage](docs/reference/api.md#o-que-entra-mapapipage).
+
+Num projecto `mock` não há nada a configurar: as páginas estão no repositório.
+
+Portanto os pré-requisitos por escolha são estes, e só estes:
+
+| Provider  | Precisa de                                  |
+| --------- | ------------------------------------------- |
+| `payload` | um Postgres (Supabase) e as variáveis acima |
+| `api`     | um `API_URL` que responda                   |
+| `mock`    | nada                                        |
+
+### 6. Arrancar com o provider escolhido
+
+#### `payload`
+
+```bash
+pnpm dev:payload     # primeira vez, ou depois de mexer na config do Payload
+pnpm dev             # nas restantes
+```
+
+Há dois pontos de entrada, e a diferença importa:
+
+- **`pnpm dev`** corre `lint` e `typecheck` antes do `next dev`. Falha cedo se o código estiver quebrado, mas **não** regenera os artefactos do Payload;
+- **`pnpm dev:payload`** corre o `payload:generate` primeiro e só depois entra no `dev`. É o que precisas quando a config do Payload mudou.
+
+Se alterares uma collection e arrancares com `pnpm dev`, os tipos gerados ficam desactualizados e o `typecheck` pode passar sobre um `payload-types.ts` antigo.
+
+**A base de dados monta-se sozinha, e às vezes pergunta.** Fora de produção, o adaptador de Postgres empurra o schema da config para a base de dados no arranque — a primeira corrida cria as tabelas todas. Quando uma alteração não se aplica sem uma decisão (uma coluna nova obrigatória numa tabela que já tem linhas, por exemplo), **o Payload pergunta no terminal e espera**. Corre-o num terminal onde possas responder, e não num processo em segundo plano.
+
+#### `api`
+
+```bash
+pnpm dev
+```
+
+**O que devias ver da primeira vez:** um erro, e é de propósito. O [mapApiPage](src/providers/api/mappers/mapApiPage.ts) vem por escrever e atira uma `ApiContractError` que diz o que a API respondeu e onde se escreve a tradução. A forma dos dados é de cada API, portanto é a única peça que a foundation não pode adivinhar — os passos estão em [api.md § Ligar uma API nova](docs/reference/api.md#ligar-uma-api-nova-por-passos).
+
+#### `mock`
+
+```bash
+pnpm dev
+```
+
+O `dev:mock` e a variável `PROVIDER` já não existem: o passo 4 apagou-os, e o provider é o único que sobrou.
+
+### 7. Dar conteúdo ao site
+
+#### `payload` — quatro coisas no admin, por esta ordem
+
+Com o servidor a correr, abre `/admin`:
+
+| #   | No admin                                                                           | Sem isto                                                                         |
+| --- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 1   | **cria o primeiro utilizador** — o ecrã aparece sozinho enquanto não houver nenhum | não entras. É a única criação de conta que dispensa autorização, e dá-te `admin` |
+| 2   | **Website → Site Settings**: nome e idiomas (o primeiro é o default)               | o site responde, mas com dois avisos no log e sem template de título             |
+| 3   | **Pages**: cria a página de raiz e marca-a como **Root Page**                      | `/` responde «404 — Page not found»                                              |
+| 4   | **Pages**: cria a página de erro e marca-a como **Not Found Page**                 | um caminho inexistente cai no 404 genérico, sem conteúdo teu                     |
+
+Publica as duas — um rascunho não é conteúdo público.
+
+**O que devias ver antes disto, e não é uma avaria:** `/` responde com um «404 — Page not found» mínimo e o log diz `The content source answered "notFound" without a page.` Significa que a base de dados está de pé e vazia — é o passo 3 desta tabela que falta, não a ligação. As duas flags estão explicadas em [payload.md § isHome e is404](docs/reference/payload.md#ishome-e-is404), os papéis em [payload.md § Access control](docs/reference/payload.md#access-control).
+
+#### `api`
+
+Nada aqui: o conteúdo é de quem serve a API. O teu passo 7 foi escrever o mapper no passo 6.
+
+#### `mock`
+
+As páginas são ficheiros do repositório — [providers.md § Escrever uma página](docs/reference/providers.md#escrever-uma-página).
+
+### 8. Fechar o portão
+
+```bash
+pnpm build
+```
+
+Corre `lint`, `typecheck`, os testes e só depois o `next build`. **É o portão real** — não há CI neste repositório, e um `git commit --no-verify` contorna o hook por inteiro. Se isto passa, o projecto está de pé.
+
+Num projecto `api` ou `mock`, passa **sem base de dados nenhuma**: o passo 4 levou consigo as rotas que exigiam a config do Payload.
+
 ## Ordem para ler
 
 **Não há comentários no código deste projecto.** O raciocínio vive todo em [docs/](docs/README.md), e é por isso que a documentação é grande — ver [conventions.md § Comentários](docs/reference/conventions.md#comentários).
@@ -17,7 +213,7 @@ Três peças, por esta ordem, de seguida. **Duas horas**, e sais com o site a co
 | #   | Lê                                    | Sais com                                                         |
 | --- | ------------------------------------- | ---------------------------------------------------------------- |
 | 1   | [overview.md](docs/start/overview.md) | o que é isto, as peças, e o que te vai surpreender — dez minutos |
-| 2   | **este README**, até ao fim           | o tipo de projecto escolhido, o site de pé, e o mapa do `src/`   |
+| 2   | **este README**, os oito passos       | o tipo de projecto escolhido, o site de pé, e o mapa do `src/`   |
 | 3   | [flows.md](docs/start/flows.md)       | por onde passa um pedido, um 404, um redirect e uma publicação   |
 
 Se só tiveres dez minutos, faz o 1. Se tiveres uma tarde, faz os três.
@@ -51,109 +247,6 @@ E o [guide.md](docs/reference/guide.md): 3500 linhas, o projecto inteiro ficheir
 | mexer em collections ou campos | [payload.md](docs/reference/payload.md)                                               |
 | mexer em URLs ou idiomas       | [routing.md](docs/reference/routing.md)                                               |
 | páginas de teste sem CMS       | [providers.md § Escrever uma página](docs/reference/providers.md#escrever-uma-página) |
-
-## Arrancar
-
-### Experimentar, antes de escolher
-
-A forma mais rápida de ver o site a funcionar **não precisa de base de dados nenhuma**:
-
-```bash
-pnpm install
-pnpm dev:mock
-```
-
-O provider `mocks` serve páginas escritas à mão em [src/providers/mocks/pages/](src/providers/mocks/pages), em português e inglês. Abre `/` e `/en`.
-
-O `dev:mock` existe porque `PROVIDER=mock pnpm dev` **não corre no PowerShell** — prefixar variáveis é sintaxe de shell POSIX. O script usa o `cross-env` que já estava aqui, e o `setup:provider` remove-o depois: experimentar antes de escolher deixa de fazer sentido quando já se escolheu.
-
-**Uma coisa que o `next dev` faz e não é deste repositório:** o Next 16 escreve um `AGENTS.md` e um `CLAUDE.md` na raiz, com um aviso para agentes de IA sobre as suas próprias mudanças. Estão commitados de propósito — é o que a nota dentro do ficheiro recomenda, porque o `next dev` reescreve-os sempre e uma árvore suja **impediria o `pnpm setup:provider` de correr no passo seguinte**. Para os dispensar, `agentRules: false` no `next.config.ts`.
-
-### Escolher o tipo de projecto
-
-Esta foundation traz **três** providers montados, e um projecto real usa um. O primeiro passo num projecto novo é dizer qual:
-
-```bash
-pnpm setup:provider
-```
-
-Pergunta qual dos três é (`payload`, `api` ou `mock`) e **apaga o que não é preciso**: os outros dois providers, e — se o Payload sair — o `payload.config.ts`, o `src/app/(payload)/`, as rotas de preview, as oito dependências, os scripts `payload:*`, o `withPayload`, os caminhos `@payload-*` e o documento do provider removido. Com um provider só, a variável `PROVIDER` e o `createProvider` deixam de fazer sentido e saem também.
-
-Chama-se `setup:provider` e não `setup` porque **`pnpm setup` é um comando do próprio pnpm** — um script com esse nome ficaria à sombra dele.
-
-Três coisas que vale saber antes de correr:
-
-- **recusa arrancar com alterações não commitadas**, para tudo o que ele faz caber num só `git diff` legível. `pnpm setup:provider --dry-run` imprime o plano sem tocar em nada;
-- **para quando não reconhece um ficheiro.** Cada operação falha em voz alta se a âncora que espera não estiver lá, em vez de editar à sorte. Se personalizaste algum destes ficheiros, o comando pára e diz qual;
-- **apaga-se a si mesmo no fim.** Um comando destes esquecido dentro de um projecto de cliente é uma armadilha. `--keep` para o manter.
-
-No fim lista as referências em prosa que ficaram a apontar para o documento apagado. São frases, não linhas de tabela, portanto quem as lê é uma pessoa e não um script.
-
-Com o Payload e o Postgres:
-
-```bash
-pnpm dev:payload     # primeira vez, ou depois de mexer na config do Payload
-pnpm dev             # nas restantes
-```
-
-Há dois pontos de entrada, e a diferença importa:
-
-- **`pnpm dev`** corre `lint` e `typecheck` antes do `next dev`. Falha cedo se o código estiver quebrado, mas **não** regenera os artefactos do Payload.
-- **`pnpm dev:payload`** corre o `payload:generate` primeiro e só depois entra no `dev`. É o que precisas quando a config do Payload mudou.
-
-Se alterares uma collection e arrancares com `pnpm dev`, os tipos gerados ficam desactualizados e o `typecheck` pode passar sobre um `payload-types.ts` antigo.
-
-### Variáveis de ambiente
-
-Copia o [.env.example](.env.example) para `.env.local` e preenche. **O ficheiro só divide por provider e por obrigatoriedade** — o que cada variável faz está aqui, e não em comentários que envelhecem ao lado do valor.
-
-Configuração em falta ou mal formada **derruba o arranque**, com o nome de cada variável e quem precisa dela. Não degrada em silêncio, e valida formato e não só presença — o schema está no [apiEnv](src/providers/api/apiEnv.ts) e no [payloadEnv](src/providers/payload/payloadEnv.ts).
-
-#### Com o provider `payload`
-
-| Variável                 |             | O que é, e o que acontece sem ela                                                                                                                                                                                                                        |
-| ------------------------ | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`           | obrigatória | a ligação ao Postgres. Tem de começar por `postgres://` ou `postgresql://` — o Supabase entrega ambos                                                                                                                                                    |
-| `PAYLOAD_SECRET`         | obrigatória | assina os tokens de sessão do admin. Gera um valor longo e aleatório, **distinto por ambiente**                                                                                                                                                          |
-| `NEXT_PUBLIC_SERVER_URL` | obrigatória | o URL público, **sem barra final**. Ver a nota abaixo: é a que se paga mais caro                                                                                                                                                                         |
-| `BLOB_READ_WRITE_TOKEN`  | no Vercel   | onde vivem os ficheiros carregados. O Vercel injecta-a sozinho; em desenvolvimento podes deixá-la vazia e os ficheiros ficam em `./media`, com aviso no log. Em produção a sua falta derruba o arranque, porque o disco não sobrevive ao deploy seguinte |
-| `PREVIEW_SECRET`         | opcional    | assina os links de pré-visualização. **Não viaja no URL**: o que viaja é um token de uma hora preso ao caminho da página. Sem ela o Live Preview fica desligado, com erro no log                                                                         |
-
-#### Com o provider `api`
-
-| Variável         |             | O que é, e o que acontece sem ela                                                                                |
-| ---------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
-| `API_URL`        | obrigatória | a base da API externa, absoluta e **sem barra final** — o endpoint é acrescentado a ela                          |
-| `API_TOKEN`      | opcional    | enviado como `Authorization: Bearer …`. Um valor em branco conta como ausente, para não enviar um `Bearer` vazio |
-| `API_REVALIDATE` | opcional    | segundos de revalidação do cache, **60** por omissão. Inteiro não negativo, ou o arranque falha                  |
-
-#### Com o provider `mock`
-
-Nenhuma. As páginas estão em [src/providers/mocks/pages/](src/providers/mocks/pages/), e o `.env.example` que o `setup:provider` escreve para este provider diz exactamente isso.
-
-#### A barra final que não se vê
-
-O `NEXT_PUBLIC_SERVER_URL` **não pode terminar em `/`**. O Live Preview compara-o com a origem do browser por **igualdade de string**, portanto uma barra a mais quebra-o sem erro nenhum: o iframe abre, o conteúdo nunca actualiza, e não há nada no log. O schema recusa-a no arranque, o que transforma uma tarde de procura numa mensagem.
-
-O prefixo `NEXT_PUBLIC_` põe o valor no browser — **nunca lá ponhas segredos.** E não há default: o anterior era `http://localhost:3000`, e como o Payload usa este valor na allowlist de CSRF, um deploy sem a variável passava a rejeitar o host verdadeiro em vez de o aceitar.
-
-### Quem fornece a base de dados
-
-**A foundation não traz `Dockerfile` nem `docker-compose.yml`, e é decisão e não esquecimento.**
-
-Num projecto `payload`, o Postgres é do **Supabase** e quem monta o projecto configura-o junto com o Payload — é a equipa interna, e a montagem faz parte do que ela já sabe fazer. Um `docker-compose` local seria um segundo caminho a manter, com um Postgres de versão diferente da que serve o site, e a divergir do primeiro em silêncio.
-
-Num projecto `api`, não há base de dados nenhuma deste lado: o conteúdo vem de uma API que **outra equipa entrega**. O que este repositório precisa de saber está no `API_URL`, e o que precisa de traduzir está no [mapApiPage](docs/reference/api.md).
-
-Num projecto `mock` não há nada a configurar: as páginas estão no repositório.
-
-Portanto os pré-requisitos por escolha são estes, e só estes:
-
-| Provider  | Precisa de                                  |
-| --------- | ------------------------------------------- |
-| `payload` | um Postgres (Supabase) e as variáveis acima |
-| `api`     | um `API_URL` que responda                   |
-| `mock`    | nada                                        |
 
 ## O mapa do `src/`
 

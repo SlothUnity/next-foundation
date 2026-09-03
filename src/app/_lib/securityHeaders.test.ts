@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { remoteImageHosts } from './imageHosts';
 import { baselineSecurityHeaders, contentSecurityPolicy, PUBLIC_PATHS } from './securityHeaders';
 
-function directive(name: string): string | undefined {
-  return contentSecurityPolicy.split('; ').find((part) => part.startsWith(`${name} `));
+function directive(name: string, policy: string = contentSecurityPolicy()): string | undefined {
+  return policy.split('; ').find((part) => part.startsWith(`${name} `));
 }
 
 describe('the content security policy', () => {
@@ -13,7 +13,7 @@ describe('the content security policy', () => {
   });
 
   it('forbids plugins and object embeds outright', () => {
-    expect(contentSecurityPolicy).toContain("object-src 'none'");
+    expect(contentSecurityPolicy()).toContain("object-src 'none'");
   });
 
   it('pins the base URI and form targets, which is what stops injected redirects', () => {
@@ -38,7 +38,32 @@ describe('the content security policy', () => {
   });
 
   it('starts from default-src self, so anything unlisted is refused', () => {
-    expect(contentSecurityPolicy.startsWith("default-src 'self'")).toBe(true);
+    expect(contentSecurityPolicy().startsWith("default-src 'self'")).toBe(true);
+  });
+});
+
+describe('unsafe-eval', () => {
+  it('is absent by default, which is the policy production is served', () => {
+    expect(contentSecurityPolicy()).not.toContain('unsafe-eval');
+    expect(directive('script-src')).toBe("script-src 'self' 'unsafe-inline'");
+  });
+
+  it('is absent when the caller says no, and the caller is the one that reads NODE_ENV', () => {
+    expect(contentSecurityPolicy({ allowEval: false })).not.toContain('unsafe-eval');
+  });
+
+  it('is allowed only when asked, because React probes eval() in development', () => {
+    const policy = contentSecurityPolicy({ allowEval: true });
+
+    expect(directive('script-src', policy)).toBe("script-src 'self' 'unsafe-inline' 'unsafe-eval'");
+  });
+
+  it('changes nothing else when allowed, so the two policies differ in one directive', () => {
+    const relaxed = contentSecurityPolicy({ allowEval: true }).split('; ');
+    const strict = contentSecurityPolicy().split('; ');
+
+    expect(relaxed).toHaveLength(strict.length);
+    expect(relaxed.filter((part, index) => part !== strict[index])).toHaveLength(1);
   });
 });
 
