@@ -100,6 +100,8 @@ const PAYLOAD_DEPENDENCIES = [
 
 const PAYLOAD_SCRIPTS = ['dev:payload', 'payload:types', 'payload:importMap', 'payload:generate'];
 
+const PROVIDER_SCRIPTS = ['dev:mock'];
+
 function removePayload(): SetupOperation[] {
   const why = 'the payload provider was not chosen';
 
@@ -289,6 +291,13 @@ export function planRemoval(provider: SetupProvider): SetupPlan {
       kind: 'delete',
       path: 'src/providers/createProvider.test.ts',
       why: 'it tests the switch that was removed',
+    },
+    {
+      kind: 'removeJsonKeys',
+      path: 'package.json',
+      at: ['scripts'],
+      keys: PROVIDER_SCRIPTS,
+      why: 'dev:mock exists to try a provider before choosing one',
     },
     {
       kind: 'write',

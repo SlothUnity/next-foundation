@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm lint && pnpm typecheck && next dev",
+    "dev:mock": "cross-env PROVIDER=mock pnpm run dev",
     "dev:payload": "pnpm run payload:generate && pnpm run dev",
     "build": "pnpm lint && pnpm typecheck && pnpm test --run && next build",
     "start": "next start",

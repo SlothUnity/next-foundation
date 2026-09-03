@@ -60,10 +60,14 @@ A forma mais rápida de ver o site a funcionar **não precisa de base de dados n
 
 ```bash
 pnpm install
-PROVIDER=mock pnpm dev
+pnpm dev:mock
 ```
 
 O provider `mocks` serve páginas escritas à mão em [src/providers/mocks/pages/](src/providers/mocks/pages), em português e inglês. Abre `/` e `/en`.
+
+O `dev:mock` existe porque `PROVIDER=mock pnpm dev` **não corre no PowerShell** — prefixar variáveis é sintaxe de shell POSIX. O script usa o `cross-env` que já estava aqui, e o `setup:provider` remove-o depois: experimentar antes de escolher deixa de fazer sentido quando já se escolheu.
+
+**Uma coisa que o `next dev` faz e não é deste repositório:** o Next 16 escreve um `AGENTS.md` e um `CLAUDE.md` na raiz, com um aviso para agentes de IA sobre as suas próprias mudanças. Estão commitados de propósito — é o que a nota dentro do ficheiro recomenda, porque o `next dev` reescreve-os sempre e uma árvore suja **impediria o `pnpm setup:provider` de correr no passo seguinte**. Para os dispensar, `agentRules: false` no `next.config.ts`.
 
 ### Escolher o tipo de projecto
 
@@ -73,7 +77,7 @@ Esta foundation traz **três** providers montados, e um projecto real usa um. O 
 pnpm setup:provider
 ```
 
-Pergunta qual dos três é (`payload`, `api` ou `mock`) e **apaga o que não é preciso**: os outros dois providers, e — se o Payload sair — o `payload.config.ts`, o `src/app/(payload)/`, as rotas de preview, as sete dependências, os scripts `payload:*`, o `withPayload`, os caminhos `@payload-*` e o documento do provider removido. Com um provider só, a variável `PROVIDER` e o `createProvider` deixam de fazer sentido e saem também.
+Pergunta qual dos três é (`payload`, `api` ou `mock`) e **apaga o que não é preciso**: os outros dois providers, e — se o Payload sair — o `payload.config.ts`, o `src/app/(payload)/`, as rotas de preview, as oito dependências, os scripts `payload:*`, o `withPayload`, os caminhos `@payload-*` e o documento do provider removido. Com um provider só, a variável `PROVIDER` e o `createProvider` deixam de fazer sentido e saem também.
 
 Chama-se `setup:provider` e não `setup` porque **`pnpm setup` é um comando do próprio pnpm** — um script com esse nome ficaria à sombra dele.
 
@@ -95,7 +99,7 @@ pnpm dev             # nas restantes
 Há dois pontos de entrada, e a diferença importa:
 
 - **`pnpm dev`** corre `lint` e `typecheck` antes do `next dev`. Falha cedo se o código estiver quebrado, mas **não** regenera os artefactos do Payload.
-- **`pnpm dev:payload`** corre o `generate:payload` primeiro e só depois entra no `dev`. É o que precisas quando a config do Payload mudou.
+- **`pnpm dev:payload`** corre o `payload:generate` primeiro e só depois entra no `dev`. É o que precisas quando a config do Payload mudou.
 
 Se alterares uma collection e arrancares com `pnpm dev`, os tipos gerados ficam desactualizados e o `typecheck` pode passar sobre um `payload-types.ts` antigo.
 
@@ -151,23 +155,28 @@ Portanto os pré-requisitos por escolha são estes, e só estes:
 | `api`     | um `API_URL` que responda                   |
 | `mock`    | nada                                        |
 
-O `NEXT_PUBLIC_SERVER_URL` **não pode ter barra final** — é usado como `targetOrigin` de `postMessage` no Live Preview, e a comparação é de string exacta. Com `PROVIDER=payload` é **obrigatório**: o Payload valida com ele a origem dos pedidos ao admin, e o default anterior (`http://localhost:3000`) fazia um deploy sem a variável rejeitar o host verdadeiro em vez de o aceitar.
-
 ## O mapa do `src/`
 
 ```
 src/
 ├── proxy.ts          expõe o pathname num header, e mais nada
+├── instrumentation.ts  onRequestError: o sítio onde a telemetria entra
 ├── app/              Next: rotas, metadata, boundaries
 ├── core/             o domínio. Não conhece Next, nem CMS, nem módulos concretos
 ├── modules/          os componentes de conteúdo
-└── providers/        os adaptadores de CMS
+├── providers/        os adaptadores de CMS
+└── testing/          o que os testes de camadas diferentes partilham
 
 generator/            templates do `pnpm generate` (Plop)
-docs/                 a documentação
+scripts/setup/        o `pnpm setup:provider`, que se apaga a si mesmo
+scripts/links/        o `pnpm check:links`
+docs/                 a documentação, em duas vertentes
 ```
 
-A direcção das dependências é a regra mais importante do projeto:
+O `proxy.ts` e o `instrumentation.ts` estão na raiz do `src/` porque o Next os encontra **por caminho exacto** — não é escolha de organização.
+
+A direcção das dependências é a regra mais importante do projeto, e desde
+[7843e58](docs/reference/architecture.md#a-regra-é-imposta-não-revista) **é o lint que a impõe** — cada linha desta tabela é um bloco de `no-restricted-imports`:
 
 | Camada       | Conhece                      | Não pode conhecer                   |
 | ------------ | ---------------------------- | ----------------------------------- |
@@ -178,7 +187,7 @@ A direcção das dependências é a regra mais importante do projeto:
 
 Duas regras de pastas que evitam a maior parte das dúvidas:
 
-- **Dentro de `app/` só ficheiros de rota.** O resto vai para `_lib/`, que o prefixo `_` tira do router. O que é puro e não depende do Next sai de `app/` de vez.
+- **Dentro de `app/` só ficheiros de rota.** O resto vai para `_lib/` (funções) ou `_components/` (componentes), que o prefixo `_` tira do router. São duas pastas e não uma porque guardam coisas diferentes — com uma só, o segundo componente transforma-a numa gaveta. O que é puro e não depende do Next sai de `app/` de vez.
 - **Um módulo é uma pasta em `modules/`** com o componente, o schema, os tipos, os estilos, o teste e o registo. Acrescentar um não obriga a tocar no renderer — e o `pnpm generate` escreve-o todo, incluindo o bloco correspondente no Payload.
 
 ## Scripts
@@ -186,28 +195,30 @@ Duas regras de pastas que evitam a maior parte das dúvidas:
 | Script                      | O que faz                                                    |
 | --------------------------- | ------------------------------------------------------------ |
 | `pnpm dev`                  | `lint` + `typecheck` e arranca o Next                        |
-| `pnpm dev:payload`          | `generate:payload` e depois o `dev`                          |
+| `pnpm dev:payload`          | `payload:generate` e depois o `dev`                          |
 | `pnpm build` / `pnpm start` | `lint` + `typecheck` + testes + build / servidor de produção |
 | `pnpm typecheck`            | `tsc --noEmit`                                               |
-| `pnpm lint`                 | eslint                                                       |
+| `pnpm lint`                 | eslint, com `--max-warnings=0`: um aviso chumba              |
 | `pnpm test`                 | vitest (em watch; `pnpm test --run` corre uma vez)           |
 | `pnpm format`               | prettier em toda a árvore                                    |
 | `pnpm format:check`         | verifica sem escrever                                        |
 | `pnpm generate`             | gera um módulo novo, com bloco do Payload incluído (Plop)    |
+| `pnpm check:links`          | ligações e âncoras dos `.md`, e chumba se alguma apodreceu   |
+| `pnpm dev:mock`             | o `dev` com o provider `mocks`, sem base de dados            |
 | `pnpm setup:provider`       | escolhe o provider do projecto e apaga os outros dois        |
-| `pnpm generate:payload`     | `generate:types` + `generate:importMap`                      |
+| `pnpm payload:generate`     | `payload:types` + `payload:importMap`                        |
 
-Corre `pnpm generate:payload` (ou arranca com `pnpm dev:payload`) sempre que mudares collections, globals, campos ou o caminho de um componente de admin.
+Corre `pnpm payload:generate` (ou arranca com `pnpm dev:payload`) sempre que mudares collections, globals, campos ou o caminho de um componente de admin.
 
 ## Verificações automáticas
 
-| Momento                                             | O que corre                                                 |
-| --------------------------------------------------- | ----------------------------------------------------------- |
-| `pnpm dev`                                          | `lint`, `typecheck`                                         |
-| pre-commit ([.husky/pre-commit](.husky/pre-commit)) | `lint-staged` (prettier), `lint`, `typecheck`, `test --run` |
-| `pnpm build`                                        | `lint`, `typecheck`, `test --run`, e depois `next build`    |
+| Momento                                             | O que corre                                                                |
+| --------------------------------------------------- | -------------------------------------------------------------------------- |
+| `pnpm dev`                                          | `lint`, `typecheck`                                                        |
+| pre-commit ([.husky/pre-commit](.husky/pre-commit)) | `lint-staged` (prettier), `lint`, `typecheck`, `check:links`, `test --run` |
+| `pnpm build`                                        | `lint`, `typecheck`, `test --run`, e depois `next build`                   |
 
-O commit é a barreira completa: nada entra no histórico sem passar eslint, TypeScript e a suite de testes. O `pnpm dev` fica com a versão rápida — lint e typecheck, sem testes — para não atrasar o arranque do servidor.
+O commit é a barreira completa: nada entra no histórico sem passar eslint, TypeScript, o verificador de ligações e a suite de testes. O `pnpm dev` fica com a versão rápida — lint e typecheck, sem testes — para não atrasar o arranque do servidor.
 
 A ordem no hook é do mais barato para o mais caro, para falhar cedo:
 
@@ -215,6 +226,7 @@ A ordem no hook é do mais barato para o mais caro, para falhar cedo:
 pnpm lint-staged
 pnpm lint
 pnpm typecheck
+pnpm check:links
 pnpm test --run
 ```
 
@@ -222,20 +234,21 @@ pnpm test --run
 
 ## Todos os documentos
 
-| Documento                                         | Responde a                                                 |
-| ------------------------------------------------- | ---------------------------------------------------------- |
-| [overview.md](docs/start/overview.md)             | O projecto inteiro em dez minutos                          |
-| [flows.md](docs/start/flows.md)                   | Por onde passa cada pedido, ficheiro a ficheiro            |
-| [guide.md](docs/reference/guide.md)               | Porque é que cada peça está como está, ficheiro a ficheiro |
-| [architecture.md](docs/reference/architecture.md) | Como está organizado e porquê                              |
-| [conventions.md](docs/reference/conventions.md)   | Onde ponho um ficheiro novo e como o nomeio                |
-| [core.md](docs/reference/core.md)                 | Quais são os contratos internos                            |
-| [modules.md](docs/reference/modules.md)           | Como crio um módulo de conteúdo                            |
-| [renderer.md](docs/reference/renderer.md)         | Como funciona a renderização e os erros                    |
-| [providers.md](docs/reference/providers.md)       | Como ligo outro CMS                                        |
-| [payload.md](docs/reference/payload.md)           | Como está configurado o Payload                            |
-| [api.md](docs/reference/api.md)                   | Como ligo uma API externa                                  |
-| [routing.md](docs/reference/routing.md)           | Como funcionam URLs, locales e metadata                    |
+| Documento                                         | Responde a                                                  |
+| ------------------------------------------------- | ----------------------------------------------------------- |
+| [docs/README.md](docs/README.md)                  | O índice: qual das duas vertentes responde à minha pergunta |
+| [overview.md](docs/start/overview.md)             | O projecto inteiro em dez minutos                           |
+| [flows.md](docs/start/flows.md)                   | Por onde passa cada pedido, ficheiro a ficheiro             |
+| [guide.md](docs/reference/guide.md)               | Porque é que cada peça está como está, ficheiro a ficheiro  |
+| [architecture.md](docs/reference/architecture.md) | Como está organizado e porquê                               |
+| [conventions.md](docs/reference/conventions.md)   | Onde ponho um ficheiro novo e como o nomeio                 |
+| [core.md](docs/reference/core.md)                 | Quais são os contratos internos                             |
+| [modules.md](docs/reference/modules.md)           | Como crio um módulo de conteúdo                             |
+| [renderer.md](docs/reference/renderer.md)         | Como funciona a renderização e os erros                     |
+| [providers.md](docs/reference/providers.md)       | Como ligo outro CMS                                         |
+| [payload.md](docs/reference/payload.md)           | Como está configurado o Payload                             |
+| [api.md](docs/reference/api.md)                   | Como ligo uma API externa                                   |
+| [routing.md](docs/reference/routing.md)           | Como funcionam URLs, locales e metadata                     |
 
 ## Stack
 

@@ -85,13 +85,31 @@ describe('planRemoval', () => {
   });
 
   it('leaves the Payload wiring alone when payload is chosen', () => {
-    const paths = planRemoval('payload').operations.map(({ path }) => path);
+    const { operations } = planRemoval('payload');
 
-    expect(paths).not.toContain('package.json');
+    const paths = operations.map(({ path }) => path);
+
     expect(paths).not.toContain('tsconfig.json');
     expect(paths).not.toContain('next.config.ts');
     expect(paths).not.toContain('.prettierignore');
     expect(paths).not.toContain('payload.config.ts');
+  });
+
+  it.each(setupProviders)('touches package.json only to drop dev:mock, for %s', (provider) => {
+    const keys = planRemoval(provider)
+      .operations.filter(
+        (operation) => operation.kind === 'removeJsonKeys' && operation.path === 'package.json',
+      )
+      .flatMap((operation) => (operation.kind === 'removeJsonKeys' ? operation.keys : []));
+
+    expect(keys).toContain('dev:mock');
+
+    if (provider === 'payload') {
+      expect(keys).toEqual(['dev:mock']);
+    } else {
+      expect(keys).toContain('payload');
+      expect(keys).toContain('payload:generate');
+    }
   });
 
   it.each(['api', 'mock'] as const)(
