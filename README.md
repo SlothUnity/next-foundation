@@ -6,34 +6,55 @@ A consequência prática: **trocar de CMS não obriga a tocar no frontend**, e a
 
 ## Ordem para ler
 
-Se é a primeira vez que abres este repositório, segue esta ordem. Cada passo assume o anterior.
+**Não há comentários no código deste projecto.** O raciocínio vive todo em [docs/](docs/README.md), e é por isso que a documentação é grande — ver [conventions.md § Comentários](docs/reference/conventions.md#comentários).
 
-| #   | Lê                                                              | Para saíres com                                                                                                         |
-| --- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| 1   | **este README**, até ao fim                                     | o site a correr com `PROVIDER=mock`, e o mapa do `src/` na cabeça                                                       |
-| 2   | [guia.md](docs/guia.md), **Cap. 0 a 3**                         | o vocabulário (classes abstratas, generics, singletons, RSC) e o percurso de um pedido do URL até ao `{ locale, path }` |
-| 3   | [architecture.md](docs/architecture.md)                         | as camadas e a regra que as governa: tudo aponta para o `core`, e o `core` não aponta para ninguém                      |
-| 4   | [core.md](docs/core.md)                                         | os contratos — `PageSource`, `SiteSource`, `PageDefinition`, `Module`. É o vocabulário que o resto do projeto fala      |
-| 5   | [modules.md](docs/modules.md) + [renderer.md](docs/renderer.md) | como um bloco do CMS vira um componente React, e o que acontece quando corre mal                                        |
-| 6   | [providers.md](docs/providers.md)                               | como a fonte de conteúdo se troca, e porque é que o locale por omissão é uma resposta do provider                       |
-| 7   | [routing.md](docs/routing.md)                                   | URLs, locales, metadata, o `proxy`, e porque é que o frontend é SSR                                                     |
-| 8   | [conventions.md](docs/conventions.md)                           | onde pôr um ficheiro novo e como o nomear. **Lê antes de escreveres o primeiro**                                        |
-| 9   | [TODO.md](docs/TODO.md)                                         | o que está feito, o que falta, e o que está decidido mas por correr                                                     |
+Está em duas vertentes, e a diferença não é o assunto: é a pergunta que respondem.
 
-O [guia.md](docs/guia.md) tem 2900 linhas e percorre o projeto ficheiro a ficheiro, com o editor aberto ao lado. Os passos 3 a 8 são documentação de referência — cobrem o mesmo terreno em resumo, e são onde voltas depois. Se só tiveres uma tarde, faz 1, 2 e 3.
+### Vertente 1 — para começar
+
+Três peças, por esta ordem, de seguida. **Duas horas**, e sais com o site a correr e com o percurso de um pedido na cabeça.
+
+| #   | Lê                                    | Sais com                                                         |
+| --- | ------------------------------------- | ---------------------------------------------------------------- |
+| 1   | [overview.md](docs/start/overview.md) | o que é isto, as peças, e o que te vai surpreender — dez minutos |
+| 2   | **este README**, até ao fim           | o tipo de projecto escolhido, o site de pé, e o mapa do `src/`   |
+| 3   | [flows.md](docs/start/flows.md)       | por onde passa um pedido, um 404, um redirect e uma publicação   |
+
+Se só tiveres dez minutos, faz o 1. Se tiveres uma tarde, faz os três.
+
+### Vertente 2 — para consultar
+
+Não se lê de seguida. Cada documento cobre um assunto por inteiro, e é onde voltas quando vais mexer nele — o índice está em [docs/README.md](docs/README.md).
+
+| Vais mexer em                      | Vai a                                             |
+| ---------------------------------- | ------------------------------------------------- |
+| camadas e dependências             | [architecture.md](docs/reference/architecture.md) |
+| contratos entre camadas            | [core.md](docs/reference/core.md)                 |
+| módulos de conteúdo                | [modules.md](docs/reference/modules.md)           |
+| o que o renderer garante           | [renderer.md](docs/reference/renderer.md)         |
+| URLs, locales, metadata, SEO       | [routing.md](docs/reference/routing.md)           |
+| a origem do conteúdo               | [providers.md](docs/reference/providers.md)       |
+| o CMS                              | [payload.md](docs/reference/payload.md)           |
+| uma API externa                    | [api.md](docs/reference/api.md)                   |
+| onde pôr e como nomear um ficheiro | [conventions.md](docs/reference/conventions.md)   |
+
+E o [guide.md](docs/reference/guide.md): 3500 linhas, o projecto inteiro ficheiro a ficheiro, com o porquê de cada linha. É a versão completa de tudo o que está na tabela acima, e lê-se com o editor aberto ao lado.
 
 ### Atalhos, se já conheces o projeto
 
-| Vais fazer                     | Vai a                                                                       |
-| ------------------------------ | --------------------------------------------------------------------------- |
-| um módulo de conteúdo novo     | `pnpm generate` — e [modules.md](docs/modules.md) para perceber o que gerou |
-| ligar outro CMS                | [providers.md](docs/providers.md)                                           |
-| ligar uma API externa          | [api.md](docs/api.md)                                                       |
-| mexer em collections ou campos | [payload.md](docs/payload.md)                                               |
-| mexer em URLs ou idiomas       | [routing.md](docs/routing.md)                                               |
-| páginas de teste sem CMS       | [providers.md § Escrever uma página](docs/providers.md#escrever-uma-página) |
+| Vais fazer                     | Vai a                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------- |
+| perceber onde algo corre       | [flows.md](docs/start/flows.md)                                                       |
+| um módulo de conteúdo novo     | `pnpm generate` — e [modules.md](docs/reference/modules.md) para perceber o que gerou |
+| ligar outro CMS                | [providers.md](docs/reference/providers.md)                                           |
+| ligar uma API externa          | [api.md](docs/reference/api.md)                                                       |
+| mexer em collections ou campos | [payload.md](docs/reference/payload.md)                                               |
+| mexer em URLs ou idiomas       | [routing.md](docs/reference/routing.md)                                               |
+| páginas de teste sem CMS       | [providers.md § Escrever uma página](docs/reference/providers.md#escrever-uma-página) |
 
 ## Arrancar
+
+### Experimentar, antes de escolher
 
 A forma mais rápida de ver o site a funcionar **não precisa de base de dados nenhuma**:
 
@@ -42,7 +63,27 @@ pnpm install
 PROVIDER=mock pnpm dev
 ```
 
-O provider `mocks` serve páginas escritas à mão em [src/providers/mocks/pages/](src/providers/mocks/pages/), em português e inglês. Abre `/` e `/en`.
+O provider `mocks` serve páginas escritas à mão em [src/providers/mocks/pages/](src/providers/mocks/pages), em português e inglês. Abre `/` e `/en`.
+
+### Escolher o tipo de projecto
+
+Esta foundation traz **três** providers montados, e um projecto real usa um. O primeiro passo num projecto novo é dizer qual:
+
+```bash
+pnpm setup:provider
+```
+
+Pergunta qual dos três é (`payload`, `api` ou `mock`) e **apaga o que não é preciso**: os outros dois providers, e — se o Payload sair — o `payload.config.ts`, o `src/app/(payload)/`, as rotas de preview, as sete dependências, os scripts `payload:*`, o `withPayload`, os caminhos `@payload-*` e o documento do provider removido. Com um provider só, a variável `PROVIDER` e o `createProvider` deixam de fazer sentido e saem também.
+
+Chama-se `setup:provider` e não `setup` porque **`pnpm setup` é um comando do próprio pnpm** — um script com esse nome ficaria à sombra dele.
+
+Três coisas que vale saber antes de correr:
+
+- **recusa arrancar com alterações não commitadas**, para tudo o que ele faz caber num só `git diff` legível. `pnpm setup:provider --dry-run` imprime o plano sem tocar em nada;
+- **para quando não reconhece um ficheiro.** Cada operação falha em voz alta se a âncora que espera não estiver lá, em vez de editar à sorte. Se personalizaste algum destes ficheiros, o comando pára e diz qual;
+- **apaga-se a si mesmo no fim.** Um comando destes esquecido dentro de um projecto de cliente é uma armadilha. `--keep` para o manter.
+
+No fim lista as referências em prosa que ficaram a apontar para o documento apagado. São frases, não linhas de tabela, portanto quem as lê é uma pessoa e não um script.
 
 Com o Payload e o Postgres:
 
@@ -60,23 +101,57 @@ Se alterares uma collection e arrancares com `pnpm dev`, os tipos gerados ficam 
 
 ### Variáveis de ambiente
 
-Copia o [.env.example](.env.example) para `.env.local` e preenche. O `DATABASE_URL` e o `PAYLOAD_SECRET` são obrigatórios: em falta, a aplicação **não arranca** — configuração em falta deve falhar, não degradar em silêncio.
+Copia o [.env.example](.env.example) para `.env.local` e preenche. **O ficheiro só divide por provider e por obrigatoriedade** — o que cada variável faz está aqui, e não em comentários que envelhecem ao lado do valor.
 
-`.env.local`:
+Configuração em falta ou mal formada **derruba o arranque**, com o nome de cada variável e quem precisa dela. Não degrada em silêncio, e valida formato e não só presença — o schema está no [apiEnv](src/providers/api/apiEnv.ts) e no [payloadEnv](src/providers/payload/payloadEnv.ts).
 
-```
-PROVIDER=payload                            # payload | api | mock
-DATABASE_URL=postgres://…
-PAYLOAD_SECRET=…
-NEXT_PUBLIC_SERVER_URL=http://localhost:3000
-PREVIEW_SECRET=…
+#### Com o provider `payload`
 
-API_URL=https://cms.exemplo.pt/api          # só com PROVIDER=api
-API_TOKEN=…                                 # opcional
-API_REVALIDATE=60                           # opcional, segundos, 60 por omissão
-```
+| Variável                 |             | O que é, e o que acontece sem ela                                                                                                                                                                                                                        |
+| ------------------------ | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | obrigatória | a ligação ao Postgres. Tem de começar por `postgres://` ou `postgresql://` — o Supabase entrega ambos                                                                                                                                                    |
+| `PAYLOAD_SECRET`         | obrigatória | assina os tokens de sessão do admin. Gera um valor longo e aleatório, **distinto por ambiente**                                                                                                                                                          |
+| `NEXT_PUBLIC_SERVER_URL` | obrigatória | o URL público, **sem barra final**. Ver a nota abaixo: é a que se paga mais caro                                                                                                                                                                         |
+| `BLOB_READ_WRITE_TOKEN`  | no Vercel   | onde vivem os ficheiros carregados. O Vercel injecta-a sozinho; em desenvolvimento podes deixá-la vazia e os ficheiros ficam em `./media`, com aviso no log. Em produção a sua falta derruba o arranque, porque o disco não sobrevive ao deploy seguinte |
+| `PREVIEW_SECRET`         | opcional    | assina os links de pré-visualização. **Não viaja no URL**: o que viaja é um token de uma hora preso ao caminho da página. Sem ela o Live Preview fica desligado, com erro no log                                                                         |
 
-O `NEXT_PUBLIC_SERVER_URL` **não pode ter barra final** — é usado como `targetOrigin` de `postMessage` no Live Preview, e a comparação é de string exacta. É opcional no arranque, mas o componente de Live Preview atira se ele faltar: quem usa o preview tem de o definir.
+#### Com o provider `api`
+
+| Variável         |             | O que é, e o que acontece sem ela                                                                                |
+| ---------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
+| `API_URL`        | obrigatória | a base da API externa, absoluta e **sem barra final** — o endpoint é acrescentado a ela                          |
+| `API_TOKEN`      | opcional    | enviado como `Authorization: Bearer …`. Um valor em branco conta como ausente, para não enviar um `Bearer` vazio |
+| `API_REVALIDATE` | opcional    | segundos de revalidação do cache, **60** por omissão. Inteiro não negativo, ou o arranque falha                  |
+
+#### Com o provider `mock`
+
+Nenhuma. As páginas estão em [src/providers/mocks/pages/](src/providers/mocks/pages/), e o `.env.example` que o `setup:provider` escreve para este provider diz exactamente isso.
+
+#### A barra final que não se vê
+
+O `NEXT_PUBLIC_SERVER_URL` **não pode terminar em `/`**. O Live Preview compara-o com a origem do browser por **igualdade de string**, portanto uma barra a mais quebra-o sem erro nenhum: o iframe abre, o conteúdo nunca actualiza, e não há nada no log. O schema recusa-a no arranque, o que transforma uma tarde de procura numa mensagem.
+
+O prefixo `NEXT_PUBLIC_` põe o valor no browser — **nunca lá ponhas segredos.** E não há default: o anterior era `http://localhost:3000`, e como o Payload usa este valor na allowlist de CSRF, um deploy sem a variável passava a rejeitar o host verdadeiro em vez de o aceitar.
+
+### Quem fornece a base de dados
+
+**A foundation não traz `Dockerfile` nem `docker-compose.yml`, e é decisão e não esquecimento.**
+
+Num projecto `payload`, o Postgres é do **Supabase** e quem monta o projecto configura-o junto com o Payload — é a equipa interna, e a montagem faz parte do que ela já sabe fazer. Um `docker-compose` local seria um segundo caminho a manter, com um Postgres de versão diferente da que serve o site, e a divergir do primeiro em silêncio.
+
+Num projecto `api`, não há base de dados nenhuma deste lado: o conteúdo vem de uma API que **outra equipa entrega**. O que este repositório precisa de saber está no `API_URL`, e o que precisa de traduzir está no [mapApiPage](docs/reference/api.md).
+
+Num projecto `mock` não há nada a configurar: as páginas estão no repositório.
+
+Portanto os pré-requisitos por escolha são estes, e só estes:
+
+| Provider  | Precisa de                                  |
+| --------- | ------------------------------------------- |
+| `payload` | um Postgres (Supabase) e as variáveis acima |
+| `api`     | um `API_URL` que responda                   |
+| `mock`    | nada                                        |
+
+O `NEXT_PUBLIC_SERVER_URL` **não pode ter barra final** — é usado como `targetOrigin` de `postMessage` no Live Preview, e a comparação é de string exacta. Com `PROVIDER=payload` é **obrigatório**: o Payload valida com ele a origem dos pedidos ao admin, e o default anterior (`http://localhost:3000`) fazia um deploy sem a variável rejeitar o host verdadeiro em vez de o aceitar.
 
 ## O mapa do `src/`
 
@@ -119,6 +194,7 @@ Duas regras de pastas que evitam a maior parte das dúvidas:
 | `pnpm format`               | prettier em toda a árvore                                    |
 | `pnpm format:check`         | verifica sem escrever                                        |
 | `pnpm generate`             | gera um módulo novo, com bloco do Payload incluído (Plop)    |
+| `pnpm setup:provider`       | escolhe o provider do projecto e apaga os outros dois        |
 | `pnpm generate:payload`     | `generate:types` + `generate:importMap`                      |
 
 Corre `pnpm generate:payload` (ou arranca com `pnpm dev:payload`) sempre que mudares collections, globals, campos ou o caminho de um componente de admin.
@@ -146,19 +222,20 @@ pnpm test --run
 
 ## Todos os documentos
 
-| Documento                               | Responde a                                                 |
-| --------------------------------------- | ---------------------------------------------------------- |
-| [guia.md](docs/guia.md)                 | Porque é que cada peça está como está, ficheiro a ficheiro |
-| [architecture.md](docs/architecture.md) | Como está organizado e porquê                              |
-| [conventions.md](docs/conventions.md)   | Onde ponho um ficheiro novo e como o nomeio                |
-| [core.md](docs/core.md)                 | Quais são os contratos internos                            |
-| [modules.md](docs/modules.md)           | Como crio um módulo de conteúdo                            |
-| [renderer.md](docs/renderer.md)         | Como funciona a renderização e os erros                    |
-| [providers.md](docs/providers.md)       | Como ligo outro CMS                                        |
-| [payload.md](docs/payload.md)           | Como está configurado o Payload                            |
-| [api.md](docs/api.md)                   | Como ligo uma API externa                                  |
-| [routing.md](docs/routing.md)           | Como funcionam URLs, locales e metadata                    |
-| [TODO.md](docs/TODO.md)                 | Estado e próximos passos                                   |
+| Documento                                         | Responde a                                                 |
+| ------------------------------------------------- | ---------------------------------------------------------- |
+| [overview.md](docs/start/overview.md)             | O projecto inteiro em dez minutos                          |
+| [flows.md](docs/start/flows.md)                   | Por onde passa cada pedido, ficheiro a ficheiro            |
+| [guide.md](docs/reference/guide.md)               | Porque é que cada peça está como está, ficheiro a ficheiro |
+| [architecture.md](docs/reference/architecture.md) | Como está organizado e porquê                              |
+| [conventions.md](docs/reference/conventions.md)   | Onde ponho um ficheiro novo e como o nomeio                |
+| [core.md](docs/reference/core.md)                 | Quais são os contratos internos                            |
+| [modules.md](docs/reference/modules.md)           | Como crio um módulo de conteúdo                            |
+| [renderer.md](docs/reference/renderer.md)         | Como funciona a renderização e os erros                    |
+| [providers.md](docs/reference/providers.md)       | Como ligo outro CMS                                        |
+| [payload.md](docs/reference/payload.md)           | Como está configurado o Payload                            |
+| [api.md](docs/reference/api.md)                   | Como ligo uma API externa                                  |
+| [routing.md](docs/reference/routing.md)           | Como funcionam URLs, locales e metadata                    |
 
 ## Stack
 

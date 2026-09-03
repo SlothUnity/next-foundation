@@ -3,25 +3,39 @@ import { fileURLToPath } from 'node:url';
 
 import { buildConfig } from 'payload';
 import { postgresAdapter } from '@payloadcms/db-postgres';
+import sharp from 'sharp';
 
-import { requireEnv } from '@/providers/requireEnv';
+import { payloadEnv } from '@/providers/payload/payloadEnv';
 
-import { nestedDocs, seo } from '@/providers/payload/plugins';
+import { nestedDocs, seo, storage } from '@/providers/payload/plugins';
 
 import { payloadDefaultLocale, payloadLocales } from '@/providers/payload/locales';
 
 import { Site } from '@/providers/payload/globals/Site';
 import { Users } from '@/providers/payload/collections/Users';
 import { Pages } from '@/providers/payload/collections/Pages';
+import { Redirects } from '@/providers/payload/collections/Redirects';
 import { Media } from '@/providers/payload/collections/Media';
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
 
-export default buildConfig({
-  secret: requireEnv('PAYLOAD_SECRET', 'Payload to sign session tokens'),
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
-  serverURL: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
+const env = payloadEnv();
+
+export default buildConfig({
+  secret: env.PAYLOAD_SECRET,
+
+  sharp,
+
+  upload: {
+    limits: {
+      fileSize: MAX_UPLOAD_BYTES,
+    },
+  },
+
+  serverURL: env.NEXT_PUBLIC_SERVER_URL,
 
   localization: {
     locales: payloadLocales,
@@ -60,14 +74,14 @@ export default buildConfig({
     },
   },
 
-  collections: [Users, Pages, Media],
+  collections: [Users, Pages, Redirects, Media],
   globals: [Site],
 
   db: postgresAdapter({
     pool: {
-      connectionString: requireEnv('DATABASE_URL', 'the Postgres adapter'),
+      connectionString: env.DATABASE_URL,
     },
   }),
 
-  plugins: [nestedDocs, seo],
+  plugins: [nestedDocs, seo, storage],
 });

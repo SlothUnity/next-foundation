@@ -2,6 +2,8 @@ import { Page } from '@payload-types';
 import type { ModuleInstance } from '@/core/modules';
 import type { PageDefinition } from '@/core/pages';
 
+import { isPayloadUpload, mapPayloadImage } from './mapPayloadImage';
+
 type PayloadPageBlock = NonNullable<Page['main']>[number];
 
 function mapBlock(block: PayloadPageBlock): ModuleInstance {
@@ -25,6 +27,10 @@ function cleanValue(value: unknown): unknown {
     return value.filter((item) => item !== null).map(cleanValue);
   }
 
+  if (isPayloadUpload(value)) {
+    return mapPayloadImage(value);
+  }
+
   if (value && typeof value === 'object') {
     return removeNullValues(value as Record<string, unknown>);
   }
@@ -40,7 +46,13 @@ function removeNullValues(data: Record<string, unknown>): Record<string, unknown
   );
 }
 
-export function mapPayloadPage(page: Page, locale: string): PageDefinition {
+export function mapPayloadPage(
+  page: Page,
+  locale: string,
+  alternates?: Record<string, string>,
+): PageDefinition {
+  const image = page.meta?.image;
+
   return {
     meta: {
       locale,
@@ -48,6 +60,8 @@ export function mapPayloadPage(page: Page, locale: string): PageDefinition {
       description: page.meta?.description ?? undefined,
       ogTitle: page.meta?.ogTitle ?? undefined,
       ogDescription: page.meta?.ogDescription ?? undefined,
+      image: isPayloadUpload(image) ? mapPayloadImage(image) : undefined,
+      alternates,
       noIndex: page.meta?.noIndex ?? false,
       noFollow: page.meta?.noFollow ?? false,
     },

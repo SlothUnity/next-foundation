@@ -1,13 +1,22 @@
 import type { CollectionConfig } from 'payload';
 
+import { isEditor } from '@/providers/payload/access';
 import { pageBlocks } from '@/providers/payload/blocks';
 import { revalidatePagesOnChange, revalidatePagesOnDelete } from '@/providers/payload/cache';
+import { uniqueFlagField } from '@/providers/payload/fields';
 import { mapPayloadSite } from '@/providers/payload/mappers/mapPayloadSite';
 import { breadcrumbsField } from '@/providers/payload/plugins';
 import { getLivePreviewUrl } from '@/providers/payload/utils/getLivePreviewUrl';
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
+
+  access: {
+    read: isEditor,
+    create: isEditor,
+    update: isEditor,
+    delete: isEditor,
+  },
 
   hooks: {
     afterChange: [revalidatePagesOnChange],
@@ -35,9 +44,6 @@ export const Pages: CollectionConfig = {
       url: async ({ data, locale, req }) => {
         const previewSecret = process.env.PREVIEW_SECRET;
 
-        // Devolver `undefined` desliga o separador de pré-visualização. É a única
-        // das duas saídas honestas: com o segredo em falta, o link que se gerasse
-        // aqui respondia 403 dentro do iframe e não dizia a ninguém porquê.
         if (!previewSecret) {
           req.payload.logger.error(
             'PREVIEW_SECRET is not set: Live Preview is disabled. Add it to .env.local.',
@@ -52,9 +58,6 @@ export const Pages: CollectionConfig = {
           breadcrumbs: data?.breadcrumbs,
           locale: locale.code,
 
-          // Pelo `mapPayloadSite` e não por `enabledLocales?.[0]`: a regra do locale
-          // por omissão é dele, e ele resolve sempre. A leitura em duplicado que
-          // aqui estava desligava o preview em silêncio com o global por preencher.
           defaultLocale: mapPayloadSite(site).defaultLocale,
 
           previewSecret,
@@ -64,62 +67,29 @@ export const Pages: CollectionConfig = {
   },
 
   fields: [
-    // Tabs
     {
       type: 'tabs',
       tabs: [
-        // Configuration
         {
           label: 'Configuration',
           fields: [
-            // Root Page (isHome) field
-            {
+            uniqueFlagField({
               name: 'isHome',
-              type: 'checkbox',
               label: 'Root Page',
-              defaultValue: false,
+              description: 'Use this page as the homepage of the website.',
+              taken: 'A homepage already exists.',
+              collection: 'pages',
+            }),
 
-              admin: {
-                description: 'Use this page as the homepage of the website.',
-              },
+            uniqueFlagField({
+              name: 'is404',
+              label: 'Not Found Page',
+              description:
+                'Serve this page when no other page matches the URL. It is never indexed.',
+              taken: 'A not found page already exists.',
+              collection: 'pages',
+            }),
 
-              validate: async (value, { id, req }) => {
-                if (!value) {
-                  return true;
-                }
-
-                const existingHomepages = await req.payload.find({
-                  collection: 'pages',
-                  where: {
-                    and: [
-                      {
-                        isHome: {
-                          equals: true,
-                        },
-                      },
-                      ...(id
-                        ? [
-                            {
-                              id: {
-                                not_equals: id,
-                              },
-                            },
-                          ]
-                        : []),
-                    ],
-                  },
-                  limit: 1,
-                });
-
-                if (existingHomepages.docs.length > 0) {
-                  return 'A homepage already exists.';
-                }
-
-                return true;
-              },
-            },
-
-            // Title field
             {
               name: 'title',
               type: 'text',
@@ -128,7 +98,6 @@ export const Pages: CollectionConfig = {
               localized: true,
             },
 
-            // Page URL field
             breadcrumbsField,
             {
               name: 'pageUrl',
@@ -142,7 +111,6 @@ export const Pages: CollectionConfig = {
             },
           ],
         },
-        //Modules
         {
           label: 'Modules',
           fields: [

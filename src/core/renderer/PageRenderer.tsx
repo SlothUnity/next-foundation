@@ -3,6 +3,7 @@ import { Fragment } from 'react';
 import type { Foundation } from '@/core/foundation';
 import type { PageDefinition } from '@/core/pages';
 
+import { MAIN_LANDMARK_ID } from './landmarks';
 import { ModuleRenderer } from './ModuleRenderer';
 
 interface PageRendererProps {
@@ -19,7 +20,7 @@ export function PageRenderer({ page, foundation }: PageRendererProps) {
         </nav>
       )}
 
-      <main>
+      <main id={MAIN_LANDMARK_ID}>
         {page.main.map((module) => (
           <Fragment key={module.id}>
             <ModuleRenderer module={module} foundation={foundation} />

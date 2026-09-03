@@ -1,3 +1,5 @@
+import type { ErrorReporter } from '@/core/observability';
+import { logModuleError } from '@/core/observability';
 import { ModuleRegistry } from '@/core/registry';
 import { registerModules } from '@/core/setup';
 
@@ -8,13 +10,19 @@ import type { Foundation } from './Foundation.types';
 interface CreateFoundationOptions {
   page: PageSource;
   site: SiteSource;
+  reportError?: ErrorReporter;
 }
 
-export function createFoundation({ page, site }: CreateFoundationOptions): Foundation {
+export function createFoundation({
+  page,
+  site,
+  reportError = logModuleError,
+}: CreateFoundationOptions): Foundation {
   const foundation: Foundation = {
     modules: new ModuleRegistry(),
     page,
     site,
+    reportError,
   };
 
   registerModules(foundation);

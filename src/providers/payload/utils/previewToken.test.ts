@@ -11,7 +11,6 @@ afterEach(() => {
 
 describe('createPreviewToken', () => {
   it('does not contain the secret', () => {
-    // É o ponto todo: o que viaja no URL não é o PREVIEW_SECRET.
     expect(createPreviewToken(PATH, SECRET)).not.toContain(SECRET);
   });
 
@@ -34,7 +33,6 @@ describe('verifyPreviewToken', () => {
   });
 
   it('rejects a token made for another path', () => {
-    // Um token que escape para os logs pré-visualiza aquela página e mais nenhuma.
     const token = createPreviewToken('/privado', SECRET);
 
     expect(verifyPreviewToken(token, PATH, SECRET)).toBe('invalid');
@@ -61,8 +59,6 @@ describe('verifyPreviewToken', () => {
 
     vi.advanceTimersByTime(61 * 60 * 1000);
 
-    // A distinção existe para a rota poder dizer «recarrega o admin» em vez de
-    // acusar quem está do outro lado de forjar um link.
     expect(verifyPreviewToken(token, PATH, SECRET)).toBe('expired');
   });
 

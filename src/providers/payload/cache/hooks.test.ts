@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { revalidatePagesOnChange, revalidatePagesOnDelete, revalidateSiteOnChange } from './hooks';
-import { PAGES_TAG, SITE_TAG } from './tags';
+import {
+  revalidatePagesOnChange,
+  revalidatePagesOnDelete,
+  revalidateRedirectsOnChange,
+  revalidateRedirectsOnDelete,
+  revalidateSiteOnChange,
+} from './hooks';
+import { PAGES_TAG, REDIRECTS_TAG, SITE_TAG } from './tags';
 
 const revalidatePayloadTag = vi.hoisted(() => vi.fn());
 
@@ -29,6 +35,12 @@ describe('revalidatePagesOnChange', () => {
     expect(revalidatePayloadTag).toHaveBeenCalledWith(PAGES_TAG);
   });
 
+  it('invalidates the redirects too, because their targets are page URLs', () => {
+    change('published', 'published');
+
+    expect(revalidatePayloadTag).toHaveBeenCalledWith(REDIRECTS_TAG);
+  });
+
   it('invalidates the pages when a published one is unpublished', () => {
     change('draft', 'published');
 
@@ -36,8 +48,6 @@ describe('revalidatePagesOnChange', () => {
   });
 
   it('ignores a draft of a page that was never published', () => {
-    // O autosave grava de 375 em 375ms. Sem esta guarda, escrever um rascunho
-    // invalidava a cache do site inteiro a cada tecla.
     change('draft', 'draft');
 
     expect(revalidatePayloadTag).not.toHaveBeenCalled();
@@ -65,6 +75,30 @@ describe('revalidatePagesOnDelete', () => {
     revalidatePagesOnDelete({ doc: { _status: 'draft' } } as never);
 
     expect(revalidatePayloadTag).not.toHaveBeenCalled();
+  });
+});
+
+describe('revalidateRedirectsOnChange', () => {
+  beforeEach(() => {
+    revalidatePayloadTag.mockReset();
+  });
+
+  it('invalidates the redirects on any save, because they have no drafts', () => {
+    revalidateRedirectsOnChange({ doc: { from: '/a' } } as never);
+
+    expect(revalidatePayloadTag).toHaveBeenCalledWith(REDIRECTS_TAG);
+  });
+
+  it('leaves the pages alone, because the dependency only runs one way', () => {
+    revalidateRedirectsOnChange({ doc: { from: '/a' } } as never);
+
+    expect(revalidatePayloadTag).not.toHaveBeenCalledWith(PAGES_TAG);
+  });
+
+  it('invalidates them on delete too, or the old URL kept redirecting', () => {
+    revalidateRedirectsOnDelete({ doc: { from: '/a' } } as never);
+
+    expect(revalidatePayloadTag).toHaveBeenCalledWith(REDIRECTS_TAG);
   });
 });
 

@@ -20,6 +20,9 @@
 # production
 /build
 
+# uploads, when there is no BLOB_READ_WRITE_TOKEN and Payload falls back to disk
+/media
+
 # misc
 .DS_Store
 *.pem

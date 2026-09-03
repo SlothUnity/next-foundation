@@ -58,9 +58,6 @@ describe('resolveRoute', () => {
     });
   });
 
-  // Antes devolvia `undefined` neste caso, e o site inteiro respondia 404 de forma
-  // indistinguível de «esta página não existe». Agora resolve, e a falha aparece a
-  // seguir no `getPage`, onde se percebe o que correu mal.
   it('still resolves when the site declares no locales', () => {
     expect(
       resolveRoute({

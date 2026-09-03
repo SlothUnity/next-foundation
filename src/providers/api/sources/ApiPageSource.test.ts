@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 
-import type { ApiClient } from '../ApiClient';
+import { callArg } from '@/testing/callArg';
+
+import type { ApiClient } from '../client/ApiClient';
 
 import { ApiPageSource } from './ApiPageSource';
 
@@ -13,8 +16,12 @@ function createSource(body: unknown) {
   return { source, get };
 }
 
-function endpointOf(get: ReturnType<typeof vi.fn>): string {
-  return String(get.mock.calls[0][0]);
+function endpointOf(get: Mock): string {
+  return String(callArg(get));
+}
+
+function optionsOf(get: Mock) {
+  return callArg(get, 1);
 }
 
 describe('ApiPageSource', () => {
@@ -47,7 +54,7 @@ describe('ApiPageSource', () => {
 
     await source.getPage('sobre-nos', 'pt-PT').catch(() => undefined);
 
-    expect(get.mock.calls[0][1]).toMatchObject({
+    expect(optionsOf(get)).toMatchObject({
       tags: ['pages', 'page:/sobre-nos'],
     });
   });
@@ -57,13 +64,12 @@ describe('ApiPageSource', () => {
 
     await source.getPage('sobre-nos', 'pt-PT', { draft: true }).catch(() => undefined);
 
-    expect(get.mock.calls[0][1]).toMatchObject({ draft: true });
+    expect(optionsOf(get)).toMatchObject({ draft: true });
   });
 
   it('answers notFound when the api has no page', async () => {
     const { source } = createSource(undefined);
 
-    // Sem página de erro: onde vive a dela é uma característica da API que se ligar.
     await expect(source.getPage('nao-existe', 'pt-PT')).resolves.toEqual({ status: 'notFound' });
   });
 
@@ -77,5 +83,30 @@ describe('ApiPageSource', () => {
     const { source } = createSource({ metadata: {}, sections: [] });
 
     await expect(source.getPage('sobre-nos', 'pt-PT')).rejects.toThrow(/metadata, sections/);
+  });
+});
+
+describe('ApiPageSource, when asked to list its paths', () => {
+  it('asks one endpoint for every locale the site declares', async () => {
+    const { source, get } = createSource([{ path: '/' }]);
+
+    await source.listPaths().catch(() => undefined);
+
+    expect(endpointOf(get)).toBe('/paths');
+    expect(optionsOf(get)).toMatchObject({ params: { locales: 'pt-PT' } });
+  });
+
+  it('tags the response so a revalidation route can reach it', async () => {
+    const { source, get } = createSource([]);
+
+    await source.listPaths().catch(() => undefined);
+
+    expect(optionsOf(get)).toMatchObject({ tags: ['pages', 'paths'] });
+  });
+
+  it('hands the body to the mapper, which refuses to guess until someone writes it', async () => {
+    const { source } = createSource([{ path: '/sobre-nos' }]);
+
+    await expect(source.listPaths()).rejects.toThrow(/mapApiPaths\.ts/);
   });
 });

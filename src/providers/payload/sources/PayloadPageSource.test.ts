@@ -2,13 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PayloadPageSource } from './PayloadPageSource';
 
-const { getCachedPage, getCachedSite, loadPayloadPage } = vi.hoisted(() => ({
+const { getCachedPage, getCachedRedirects, getCachedSite, loadPayloadPage } = vi.hoisted(() => ({
   getCachedPage: vi.fn().mockResolvedValue(undefined),
-  getCachedSite: vi.fn().mockResolvedValue({ name: 'Foundation', locales: [], defaultLocale: '' }),
+  getCachedRedirects: vi.fn().mockResolvedValue({}),
+  getCachedSite: vi
+    .fn()
+    .mockResolvedValue({ name: 'Foundation', locales: ['pt-PT', 'en-GB'], defaultLocale: 'pt-PT' }),
   loadPayloadPage: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/providers/payload/cache/getCachedPage', () => ({ getCachedPage }));
+vi.mock('@/providers/payload/cache/getCachedRedirects', () => ({ getCachedRedirects }));
 vi.mock('@/providers/payload/cache/getCachedSite', () => ({ getCachedSite }));
 vi.mock('@/providers/payload/sources/loadPayloadPage', () => ({ loadPayloadPage }));
 
@@ -20,21 +24,32 @@ describe('PayloadPageSource', () => {
     getCachedPage.mockClear();
     loadPayloadPage.mockClear();
     getCachedSite.mockClear();
-    getCachedSite.mockResolvedValue({ name: 'Foundation', locales: [], defaultLocale: 'pt-PT' });
+    getCachedRedirects.mockClear();
+    getCachedRedirects.mockResolvedValue({});
+    getCachedSite.mockResolvedValue({
+      name: 'Foundation',
+      locales: ['pt-PT', 'en-GB'],
+      defaultLocale: 'pt-PT',
+    });
   });
 
   it('reads a public page through the cache', async () => {
     await source.getPage('sobre-nos', 'pt-PT');
 
-    expect(getCachedPage).toHaveBeenCalledWith('sobre-nos', 'pt-PT');
+    expect(getCachedPage).toHaveBeenCalledWith('sobre-nos', 'pt-PT', ['pt-PT', 'en-GB'], 'pt-PT');
     expect(loadPayloadPage).not.toHaveBeenCalled();
   });
 
   it('keeps a draft out of the cache', async () => {
-    // O que o editor vê é a versão dele. Guardá-la arriscava servi-la a um visitante.
     await source.getPage('sobre-nos', 'pt-PT', { draft: true });
 
-    expect(loadPayloadPage).toHaveBeenCalledWith('sobre-nos', 'pt-PT', true);
+    expect(loadPayloadPage).toHaveBeenCalledWith(
+      'sobre-nos',
+      'pt-PT',
+      true,
+      ['pt-PT', 'en-GB'],
+      'pt-PT',
+    );
     expect(getCachedPage).not.toHaveBeenCalled();
   });
 
@@ -42,7 +57,7 @@ describe('PayloadPageSource', () => {
     await source.getPage('sobre-nos');
 
     expect(getCachedSite).toHaveBeenCalled();
-    expect(getCachedPage).toHaveBeenCalledWith('sobre-nos', 'pt-PT');
+    expect(getCachedPage).toHaveBeenCalledWith('sobre-nos', 'pt-PT', ['pt-PT', 'en-GB'], 'pt-PT');
   });
 
   it('gives up on a locale this provider does not know', async () => {
@@ -53,13 +68,44 @@ describe('PayloadPageSource', () => {
     expect(getCachedPage).not.toHaveBeenCalled();
   });
 
+  it('answers a redirect before it looks for any page', async () => {
+    getCachedRedirects.mockResolvedValue({ 'pagina-antiga': { to: '/', permanent: true } });
+
+    await expect(source.getPage('pagina-antiga', 'pt-PT')).resolves.toEqual({
+      status: 'redirect',
+      to: '/',
+      permanent: true,
+    });
+
+    expect(getCachedPage).not.toHaveBeenCalled();
+  });
+
+  it('reads the redirects of the locale being served, against the site default', async () => {
+    await source.getPage('sobre-nos', 'en-GB');
+
+    expect(getCachedRedirects).toHaveBeenCalledWith('en-GB', 'pt-PT');
+  });
+
+  it('does not let a redirect hijack a preview', async () => {
+    getCachedRedirects.mockResolvedValue({ 'pagina-antiga': { to: '/', permanent: true } });
+
+    await source.getPage('pagina-antiga', 'pt-PT', { draft: true });
+
+    expect(loadPayloadPage).toHaveBeenCalledWith(
+      'pagina-antiga',
+      'pt-PT',
+      true,
+      ['pt-PT', 'en-GB'],
+      'pt-PT',
+    );
+    expect(getCachedRedirects).not.toHaveBeenCalled();
+  });
+
   it('says out loud that the locale is a configuration divergence', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    // Um visitante não chega aqui — o resolveRoute só devolve locales que o global
-    // declara. Sem o aviso, isto ficava indistinguível de uma página inexistente.
     await source.getPage('sobre-nos', 'fr-FR');
 
-    expect(String(warn.mock.calls[0][0])).toContain('fr-FR');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('fr-FR'));
   });
 });

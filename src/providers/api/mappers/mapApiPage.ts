@@ -10,7 +10,7 @@ export function mapApiPage(raw: unknown): PageDefinition {
       'mapApiPage() has no mapping yet, so the page cannot be built.',
       `The API returned ${describeBody(raw)}.`,
       'Write the translation in src/providers/api/mappers/mapApiPage.ts',
-      '— see docs/api.md.',
+      '— see docs/reference/api.md.',
     ].join(' '),
   );
 }

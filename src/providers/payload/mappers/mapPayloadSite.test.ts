@@ -16,7 +16,6 @@ describe('mapPayloadSite', () => {
   });
 
   it('takes the first enabled locale as the default', () => {
-    // O campo é ordenável no admin e a descrição promete que o primeiro é o default.
     expect(mapPayloadSite(site(['en-GB', 'pt-PT'])).defaultLocale).toBe('en-GB');
   });
 
@@ -31,9 +30,8 @@ describe('mapPayloadSite', () => {
 
     mapPayloadSite(site([]));
 
-    // Sem isto, a única pista era o PageUrl deixar de renderizar no admin.
     expect(warn).toHaveBeenCalledOnce();
-    expect(String(warn.mock.calls[0][0])).toContain('enabledLocales');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('enabledLocales'));
   });
 
   it('stays quiet when the global is filled in', () => {

@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createFoundation } from '@/core/foundation';
-import { MockPageSource, MockSiteSource } from '@/providers/mocks';
+import { TestPageSource, TestSiteSource } from '@/testing/testSources';
 
 import { ModuleRenderer } from './ModuleRenderer';
 
@@ -10,8 +10,8 @@ vi.stubEnv('NODE_ENV', 'development');
 
 function createTestFoundation() {
   return createFoundation({
-    page: new MockPageSource(),
-    site: new MockSiteSource(),
+    page: new TestPageSource(),
+    site: new TestSiteSource(),
   });
 }
 
@@ -79,5 +79,42 @@ describe('ModuleRenderer', () => {
         />,
       ),
     ).toThrow('Module "does-not-exist" is not registered.');
+  });
+});
+
+describe('ModuleRenderer, in production', () => {
+  beforeEach(() => {
+    vi.stubEnv('NODE_ENV', 'production');
+  });
+
+  afterEach(() => {
+    vi.stubEnv('NODE_ENV', 'development');
+  });
+
+  it('renders nothing when the alias is not registered, instead of throwing', () => {
+    const { container } = render(
+      <ModuleRenderer
+        foundation={createTestFoundation()}
+        module={{ id: 'unknown-1', alias: 'does-not-exist', name: 'Unknown', data: {} }}
+      />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('renders nothing when the data no longer matches the schema', () => {
+    const { container } = render(
+      <ModuleRenderer
+        foundation={createTestFoundation()}
+        module={{
+          id: 'hero-invalid-1',
+          alias: 'hero',
+          name: 'Hero',
+          data: { subtitle: 'Missing title' },
+        }}
+      />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
   });
 });

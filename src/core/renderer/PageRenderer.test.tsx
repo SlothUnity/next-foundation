@@ -5,6 +5,7 @@ import type { Foundation } from '@/core/foundation';
 import type { Module } from '@/core/modules';
 import type { PageDefinition } from '@/core/pages';
 
+import { MAIN_LANDMARK_ID } from './landmarks';
 import { PageRenderer } from './PageRenderer';
 
 afterEach(() => {
@@ -33,6 +34,8 @@ function createTestFoundation(): Foundation {
     } as Foundation['modules'],
 
     page: {} as Foundation['page'],
+
+    reportError: () => undefined,
 
     site: {
       async getSite() {
@@ -123,5 +126,20 @@ describe('PageRenderer', () => {
     expect(screen.queryByTestId('module-test-navigation')).not.toBeInTheDocument();
 
     expect(screen.queryByTestId('module-test-footer')).not.toBeInTheDocument();
+  });
+});
+
+describe('PageRenderer landmarks', () => {
+  it('gives main the id the skip link jumps to', () => {
+    const foundation = createTestFoundation();
+
+    const page: PageDefinition = {
+      meta: { locale: 'pt-PT' },
+      main: [{ id: 'a', alias: 'test-main-a', data: {} }],
+    };
+
+    render(<PageRenderer page={page} foundation={foundation} />);
+
+    expect(screen.getByRole('main')).toHaveAttribute('id', MAIN_LANDMARK_ID);
   });
 });

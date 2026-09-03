@@ -45,7 +45,6 @@ describe('Pages livePreview.url', () => {
 
     expect(String(url)).toContain('/next/preview?');
 
-    // O segredo assina o caminho, não viaja no URL.
     expect(String(url)).not.toContain('segredo');
     expect(String(url)).toContain('token=');
   });
@@ -53,8 +52,6 @@ describe('Pages livePreview.url', () => {
   it('keeps working when the site global has no locales', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    // Antes devolvia undefined e o preview desaparecia sem dizer porquê. O locale
-    // por omissão é resposta do mapPayloadSite, que resolve sempre.
     const url = await previewUrl(createReq({ enabledLocales: [] }));
 
     expect(String(url)).toContain('/next/preview?');
@@ -67,7 +64,7 @@ describe('Pages livePreview.url', () => {
 
     await expect(previewUrl(req)).resolves.toBeUndefined();
 
-    expect(String(req.error.mock.calls[0][0])).toContain('PREVIEW_SECRET');
+    expect(req.error).toHaveBeenCalledWith(expect.stringContaining('PREVIEW_SECRET'));
   });
 
   it('does not even ask the database when the secret is missing', async () => {

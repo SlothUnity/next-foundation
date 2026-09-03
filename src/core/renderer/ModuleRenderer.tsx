@@ -18,14 +18,14 @@ export function ModuleRenderer({ module, foundation }: ModuleRendererProps) {
       throw new ModuleRenderError(`Module "${module.alias}" is not registered.`);
     }
 
+    foundation.reportError({ alias: module.alias, failure: 'not-registered' });
+
     return <ModuleErrorFallback alias={module.alias} />;
   }
 
   let data = module.data;
 
   if (!definition.schema && process.env.NODE_ENV === 'development') {
-    // Sem schema não há validação nenhuma, e o cast `props as TProps` do
-    // createModuleComponent passa a ser uma afirmação sem nada por trás.
     console.warn(
       `Module "${module.alias}" has no schema: its data reaches the component unvalidated.`,
     );
@@ -40,6 +40,8 @@ export function ModuleRenderer({ module, foundation }: ModuleRendererProps) {
           cause: error,
         });
       }
+
+      foundation.reportError({ alias: module.alias, failure: 'invalid-data', cause: error });
 
       return <ModuleErrorFallback alias={module.alias} />;
     }

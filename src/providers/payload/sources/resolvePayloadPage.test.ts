@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 
-import type { Payload } from 'payload';
+import type { Payload, Where } from 'payload';
 
-import { resolvePayloadPage } from './resolvePayloadPage';
+import { callArg } from '@/testing/callArg';
+
+import { resolvePayloadNotFoundPage, resolvePayloadPage } from './resolvePayloadPage';
 
 const PAGE = { id: 1, title: 'Sobre nós' };
 
@@ -12,8 +15,15 @@ function createPayload(docs: unknown[] = [PAGE]) {
   return { payload: { find } as unknown as Payload, find };
 }
 
-function argsOf(find: ReturnType<typeof vi.fn>) {
-  return find.mock.calls[0][0];
+interface PageQuery {
+  where: Where;
+  draft: boolean;
+  collection: string;
+  locale: string;
+}
+
+function argsOf(find: Mock): PageQuery {
+  return callArg<PageQuery>(find);
 }
 
 describe('resolvePayloadPage', () => {
@@ -42,8 +52,6 @@ describe('resolvePayloadPage', () => {
 
     await resolvePayloadPage(payload, 'sobre-nos', 'pt-PT', false);
 
-    // Com overrideAccess: true o Payload não filtra nada por si. Este _status é
-    // a única coisa que impede um rascunho de aparecer a um visitante anónimo.
     expect(JSON.stringify(argsOf(find).where)).toContain('published');
   });
 
@@ -97,5 +105,53 @@ describe('resolvePayloadPage', () => {
     const { payload } = createPayload([]);
 
     await expect(resolvePayloadPage(payload, 'nao-existe', 'pt-PT')).resolves.toBeUndefined();
+  });
+});
+
+describe('resolvePayloadNotFoundPage', () => {
+  it('looks the error page up by the is404 flag', async () => {
+    const { payload, find } = createPayload();
+
+    await resolvePayloadNotFoundPage(payload, 'pt-PT');
+
+    expect(argsOf(find).where).toMatchObject({
+      and: [{ is404: { equals: true } }, { _status: { equals: 'published' } }],
+    });
+  });
+
+  it('keeps an unpublished error page off the public site', async () => {
+    const { payload, find } = createPayload();
+
+    await resolvePayloadNotFoundPage(payload, 'pt-PT');
+
+    expect(JSON.stringify(argsOf(find).where)).toContain('published');
+  });
+
+  it('shows the draft error page in preview', async () => {
+    const { payload, find } = createPayload();
+
+    await resolvePayloadNotFoundPage(payload, 'pt-PT', true);
+
+    expect(argsOf(find).where).toEqual({ is404: { equals: true } });
+    expect(argsOf(find).draft).toBe(true);
+  });
+
+  it('reads it in the requested locale, without falling back', async () => {
+    const { payload, find } = createPayload();
+
+    await resolvePayloadNotFoundPage(payload, 'en-GB');
+
+    expect(argsOf(find)).toMatchObject({
+      collection: 'pages',
+      locale: 'en-GB',
+      fallbackLocale: false,
+      limit: 1,
+    });
+  });
+
+  it('returns undefined when nobody marked a page as the error page', async () => {
+    const { payload } = createPayload([]);
+
+    await expect(resolvePayloadNotFoundPage(payload, 'pt-PT')).resolves.toBeUndefined();
   });
 });

@@ -1,12 +1,14 @@
-import type { PageResponse } from '@/core/pages';
+import type { PagePath, PageResponse } from '@/core/pages';
 
 import type { GetPageOptions } from '@/core/pages/PageSource';
 import { PageSource } from '@/core/pages/PageSource';
 
-import type { ApiClient } from '../ApiClient';
-import { createApiClient } from '../createApiClient';
-import { createPageRequest } from '../createPageRequest';
+import type { ApiClient } from '../client/ApiClient';
+import { createApiClient } from '../client/createApiClient';
+import { createPageRequest } from '../requests/createPageRequest';
+import { createPathsRequest } from '../requests/createPathsRequest';
 import { mapApiPage } from '../mappers/mapApiPage';
+import { mapApiPaths } from '../mappers/mapApiPaths';
 import { ApiSiteSource } from './ApiSiteSource';
 
 export class ApiPageSource extends PageSource {
@@ -16,12 +18,6 @@ export class ApiPageSource extends PageSource {
     super();
   }
 
-  /**
-   * ⚠️ Como o `mapApiPage`, há aqui duas costuras por ligar, e são de projecto: um
-   * `404` da API responde `notFound` **sem página**, e nunca se devolve um redirect.
-   * Que URL serve a página de erro, e onde vive a tabela de redirects, é uma
-   * característica da API que se vai ligar — ver [api.md](../../../../docs/api.md).
-   */
   async getPage(path: string, locale?: string, options?: GetPageOptions): Promise<PageResponse> {
     const resolvedLocale = locale ?? (await this.site.getSite()).defaultLocale;
 
@@ -41,5 +37,21 @@ export class ApiPageSource extends PageSource {
     }
 
     return { status: 'ok', page: mapApiPage(raw) };
+  }
+
+  async listPaths(): Promise<PagePath[]> {
+    const { locales, defaultLocale } = await this.site.getSite();
+
+    const request = createPathsRequest({ locales, defaultLocale });
+
+    const client = this.client ?? createApiClient();
+
+    const raw = await client.get(request.endpoint, {
+      params: request.params,
+      headers: request.headers,
+      tags: ['pages', 'paths'],
+    });
+
+    return mapApiPaths(raw);
   }
 }
