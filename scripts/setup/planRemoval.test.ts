@@ -173,6 +173,42 @@ describe('planRemoval', () => {
     }
   });
 
+  it('lists NEXT_PUBLIC_SERVER_URL only where something reads it', () => {
+    const contentsFor = (provider: SetupProvider) => {
+      const write = planRemoval(provider).operations.find(
+        (operation) => operation.kind === 'write' && operation.path === '.env.example',
+      );
+
+      if (!write || write.kind !== 'write') {
+        throw new Error(`No .env.example write planned for ${provider}.`);
+      }
+
+      return write.contents;
+    };
+
+    expect(contentsFor('payload')).toContain('NEXT_PUBLIC_SERVER_URL');
+
+    expect(contentsFor('api')).not.toContain('NEXT_PUBLIC_SERVER_URL');
+    expect(contentsFor('mock')).not.toContain('NEXT_PUBLIC_SERVER_URL');
+  });
+
+  it('divides by required and optional, and explains nothing in place', () => {
+    const write = planRemoval('payload').operations.find(
+      (operation) => operation.kind === 'write' && operation.path === '.env.example',
+    );
+
+    const contents = write && write.kind === 'write' ? write.contents : '';
+
+    expect(contents).toContain('# ---- required ----');
+    expect(contents).toContain('# ---- optional ----');
+
+    const comments = contents.split('\n').filter((line) => line.startsWith('#'));
+
+    for (const comment of comments) {
+      expect(comment.length).toBeLessThan(70);
+    }
+  });
+
   it('declares the image hosts that provider actually serves images from', () => {
     const written = (provider: SetupProvider) => {
       const write = planRemoval(provider).operations.find(

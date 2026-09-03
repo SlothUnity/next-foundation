@@ -101,21 +101,37 @@ Se alterares uma collection e arrancares com `pnpm dev`, os tipos gerados ficam 
 
 ### Variáveis de ambiente
 
-Copia o [.env.example](.env.example) para `.env.local` e preenche. O `DATABASE_URL` e o `PAYLOAD_SECRET` são obrigatórios: em falta, a aplicação **não arranca** — configuração em falta deve falhar, não degradar em silêncio.
+Copia o [.env.example](.env.example) para `.env.local` e preenche. **O ficheiro só divide por provider e por obrigatoriedade** — o que cada variável faz está aqui, e não em comentários que envelhecem ao lado do valor.
 
-`.env.local`:
+Configuração em falta ou mal formada **derruba o arranque**, com o nome de cada variável e quem precisa dela. Não degrada em silêncio, e valida formato e não só presença — o schema está no [apiEnv](src/providers/api/apiEnv.ts) e no [payloadEnv](src/providers/payload/payloadEnv.ts).
 
-```
-PROVIDER=payload                            # payload | api | mock
-DATABASE_URL=postgres://…
-PAYLOAD_SECRET=…
-NEXT_PUBLIC_SERVER_URL=http://localhost:3000
-PREVIEW_SECRET=…
+#### Com o provider `payload`
 
-API_URL=https://cms.exemplo.pt/api          # só com PROVIDER=api
-API_TOKEN=…                                 # opcional
-API_REVALIDATE=60                           # opcional, segundos, 60 por omissão
-```
+| Variável                 |             | O que é, e o que acontece sem ela                                                                                                                                                                                                                        |
+| ------------------------ | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`           | obrigatória | a ligação ao Postgres. Tem de começar por `postgres://` ou `postgresql://` — o Supabase entrega ambos                                                                                                                                                    |
+| `PAYLOAD_SECRET`         | obrigatória | assina os tokens de sessão do admin. Gera um valor longo e aleatório, **distinto por ambiente**                                                                                                                                                          |
+| `NEXT_PUBLIC_SERVER_URL` | obrigatória | o URL público, **sem barra final**. Ver a nota abaixo: é a que se paga mais caro                                                                                                                                                                         |
+| `BLOB_READ_WRITE_TOKEN`  | no Vercel   | onde vivem os ficheiros carregados. O Vercel injecta-a sozinho; em desenvolvimento podes deixá-la vazia e os ficheiros ficam em `./media`, com aviso no log. Em produção a sua falta derruba o arranque, porque o disco não sobrevive ao deploy seguinte |
+| `PREVIEW_SECRET`         | opcional    | assina os links de pré-visualização. **Não viaja no URL**: o que viaja é um token de uma hora preso ao caminho da página. Sem ela o Live Preview fica desligado, com erro no log                                                                         |
+
+#### Com o provider `api`
+
+| Variável         |             | O que é, e o que acontece sem ela                                                                                |
+| ---------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
+| `API_URL`        | obrigatória | a base da API externa, absoluta e **sem barra final** — o endpoint é acrescentado a ela                          |
+| `API_TOKEN`      | opcional    | enviado como `Authorization: Bearer …`. Um valor em branco conta como ausente, para não enviar um `Bearer` vazio |
+| `API_REVALIDATE` | opcional    | segundos de revalidação do cache, **60** por omissão. Inteiro não negativo, ou o arranque falha                  |
+
+#### Com o provider `mock`
+
+Nenhuma. As páginas estão em [src/providers/mocks/pages/](src/providers/mocks/pages/), e o `.env.example` que o `setup:provider` escreve para este provider diz exactamente isso.
+
+#### A barra final que não se vê
+
+O `NEXT_PUBLIC_SERVER_URL` **não pode terminar em `/`**. O Live Preview compara-o com a origem do browser por **igualdade de string**, portanto uma barra a mais quebra-o sem erro nenhum: o iframe abre, o conteúdo nunca actualiza, e não há nada no log. O schema recusa-a no arranque, o que transforma uma tarde de procura numa mensagem.
+
+O prefixo `NEXT_PUBLIC_` põe o valor no browser — **nunca lá ponhas segredos.** E não há default: o anterior era `http://localhost:3000`, e como o Payload usa este valor na allowlist de CSRF, um deploy sem a variável passava a rejeitar o host verdadeiro em vez de o aceitar.
 
 ### Quem fornece a base de dados
 
