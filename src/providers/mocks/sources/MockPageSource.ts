@@ -40,6 +40,7 @@ export class MockPageSource extends PageSource {
       }),
 
       locale: mockPage.locale,
+      noIndex: mockPage.page.meta.noIndex ?? false,
     }));
   }
 }

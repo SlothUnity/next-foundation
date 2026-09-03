@@ -35,6 +35,21 @@ describe('sitemap', () => {
     ]);
   });
 
+  it('leaves out a page the CMS marked as not indexable, which the meta tag also refuses', async () => {
+    listPaths.mockResolvedValue([
+      { path: '/', locale: 'pt-PT' },
+      { path: '/obrigado', locale: 'pt-PT', noIndex: true },
+      { path: '/contactos', locale: 'pt-PT', noIndex: false },
+    ]);
+
+    const entries = await sitemap();
+
+    expect(entries.map((entry) => entry.url)).toEqual([
+      'https://exemplo.pt/',
+      'https://exemplo.pt/contactos',
+    ]);
+  });
+
   it('refuses to answer at all when the source cannot list, instead of serving an empty urlset', async () => {
     delete page.listPaths;
 

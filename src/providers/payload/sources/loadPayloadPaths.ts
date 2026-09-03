@@ -23,7 +23,7 @@ async function loadLocale(
     overrideAccess: true,
     limit: PATH_LIMIT,
     depth: 0,
-    select: { breadcrumbs: true, updatedAt: true },
+    select: { breadcrumbs: true, updatedAt: true, meta: { noIndex: true } },
 
     where: {
       and: [{ _status: { equals: 'published' } }, { is404: { not_equals: true } }],
@@ -49,6 +49,7 @@ async function loadLocale(
       path: createPagePath({ path: url, locale, defaultLocale }),
       locale,
       updatedAt: page.updatedAt,
+      noIndex: page.meta?.noIndex ?? false,
     });
   }
 

@@ -12,8 +12,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const [origin, paths] = await Promise.all([requestOrigin(), foundation.page.listPaths()]);
 
-  return paths.map((entry) => ({
-    url: `${origin}${entry.path}`,
-    lastModified: entry.updatedAt,
-  }));
+  return paths
+    .filter((entry) => entry.noIndex !== true)
+    .map((entry) => ({
+      url: `${origin}${entry.path}`,
+      lastModified: entry.updatedAt,
+    }));
 }

@@ -30,6 +30,7 @@ export interface PagePath {
   path: string;
   locale: string;
   updatedAt?: string;
+  noIndex?: boolean;
 }
 
 export type PageResponse =

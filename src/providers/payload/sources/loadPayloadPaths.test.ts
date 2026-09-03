@@ -10,10 +10,11 @@ vi.mock('@/providers/payload/getPayloadClient', () => ({
 
 const { loadPayloadPaths } = await import('./loadPayloadPaths');
 
-function page(url: string | null, updatedAt = '2026-01-01T00:00:00.000Z') {
+function page(url: string | null, updatedAt = '2026-01-01T00:00:00.000Z', noIndex = false) {
   return {
     breadcrumbs: url === null ? [] : [{ url }],
     updatedAt,
+    meta: { noIndex },
   };
 }
 
@@ -33,8 +34,18 @@ describe('loadPayloadPaths', () => {
     const paths = await loadPayloadPaths(['pt-PT', 'en-GB'], 'pt-PT');
 
     expect(paths).toEqual([
-      { path: '/sobre-nos', locale: 'pt-PT', updatedAt: '2026-01-01T00:00:00.000Z' },
-      { path: '/en/about-us', locale: 'en-GB', updatedAt: '2026-01-01T00:00:00.000Z' },
+      {
+        path: '/sobre-nos',
+        locale: 'pt-PT',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        noIndex: false,
+      },
+      {
+        path: '/en/about-us',
+        locale: 'en-GB',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        noIndex: false,
+      },
     ]);
   });
 
@@ -49,15 +60,28 @@ describe('loadPayloadPaths', () => {
     ]);
   });
 
-  it('reads only the two fields it needs', async () => {
+  it('reads only the three fields it needs', async () => {
     find.mockResolvedValue(answer([]));
 
     await loadPayloadPaths(['pt-PT'], 'pt-PT');
 
     const { select, depth } = callArg<{ select: unknown; depth: number }>(find);
 
-    expect(select).toEqual({ breadcrumbs: true, updatedAt: true });
+    expect(select).toEqual({ breadcrumbs: true, updatedAt: true, meta: { noIndex: true } });
     expect(depth).toBe(0);
+  });
+
+  it('reports a page the editor marked as not indexable, and leaves the policy to the sitemap', async () => {
+    find.mockResolvedValue(
+      answer([page('/obrigado', '2026-01-01T00:00:00.000Z', true), page('/sobre-nos')]),
+    );
+
+    const paths = await loadPayloadPaths(['pt-PT'], 'pt-PT');
+
+    expect(paths.map(({ path, noIndex }) => ({ path, noIndex }))).toEqual([
+      { path: '/obrigado', noIndex: true },
+      { path: '/sobre-nos', noIndex: false },
+    ]);
   });
 
   it('skips a page with no breadcrumb, which has no URL to list', async () => {

@@ -194,6 +194,10 @@ O prefixo `next/` isola as rotas de framework do namespace de conteúdo — é a
 
 O [sitemap.ts](<../src/app/(frontend)/sitemap.ts>) pergunta os caminhos à origem — o `listPaths` do [core.md](core.md#listar-caminhos) — e torna-os absolutos. O [robots.ts](../src/app/robots.ts) desautoriza `/admin`, `/api` e `/next/`.
 
+Uma página marcada como **`noIndex` no admin não entra no sitemap**. Os dois sinais teriam de se contradizer — o sitemap a dizer «indexa isto», a `<meta robots>` a dizer o contrário — e é o sitemap que cede, porque o `noIndex` é uma escolha explícita de quem edita.
+
+O `listPaths` **devolve a página de qualquer maneira**, com a marca. Não filtra na origem de propósito: o contrato é «os caminhos que esta origem serve», e uma página `noIndex` é servida — só não é anunciada. Quem decide a política é a rota do sitemap, e é lá que se acrescenta a próxima.
+
 ### Quem serve o sitemap não é sempre este projecto
 
 Um sitemap com zero URLs **não é um default neutro**: é uma afirmação de que o site não tem páginas. E há três estados, não dois — nós geramos, alguém serve, ou não existe. Quem os distingue é [sitemapLocation.ts](../src/app/_lib/sitemapLocation.ts), pela mesma razão que o [imageHosts.ts](../src/app/_lib/imageHosts.ts) existe: é uma verdade do projecto, não do framework.
