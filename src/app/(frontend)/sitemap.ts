@@ -5,11 +5,9 @@ import { foundation } from '@/core/foundation/foundation';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!foundation.page.listPaths) {
-    console.warn(
-      'The content source cannot list its paths, so the sitemap is empty. Implement listPaths on your PageSource.',
+    throw new Error(
+      'This route builds the sitemap from the content source, and the source cannot list its paths. Either implement listPaths on your PageSource, or say where the sitemap lives in src/app/_lib/sitemapLocation.ts and delete this route.',
     );
-
-    return [];
   }
 
   const [origin, paths] = await Promise.all([requestOrigin(), foundation.page.listPaths()]);

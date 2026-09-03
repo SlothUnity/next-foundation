@@ -197,6 +197,50 @@ describe('planRemoval', () => {
     }
   });
 
+  it('says who serves the sitemap, per provider', () => {
+    const declared = (provider: SetupProvider) => {
+      const write = planRemoval(provider).operations.find(
+        (operation) =>
+          operation.kind === 'write' && operation.path === 'src/app/_lib/sitemapLocation.ts',
+      );
+
+      if (!write || write.kind !== 'write') {
+        throw new Error(`No sitemapLocation write planned for ${provider}.`);
+      }
+
+      return write.contents;
+    };
+
+    expect(declared('payload')).toContain("{ kind: 'app' }");
+    expect(declared('mock')).toContain("{ kind: 'app' }");
+
+    expect(declared('api')).toContain("{ kind: 'none' }");
+  });
+
+  it('drops the route that builds a sitemap only where nothing can build one', () => {
+    const routes = (provider: SetupProvider) =>
+      deletedPaths(planRemoval(provider).operations).filter((path) => path.includes('sitemap'));
+
+    expect(routes('api')).toEqual([
+      'src/app/(frontend)/sitemap.ts',
+      'src/app/(frontend)/sitemap.test.ts',
+    ]);
+
+    expect(routes('payload')).toEqual([]);
+    expect(routes('mock')).toEqual([]);
+  });
+
+  it('tells an api project both ways out of having no sitemap', () => {
+    const note = planRemoval('api').notes.find((entry) => entry.startsWith('Sitemap:')) ?? '';
+
+    expect(note).toContain('sitemapLocation.ts');
+    expect(note).toContain('listPaths');
+
+    for (const provider of ['payload', 'mock'] as const) {
+      expect(planRemoval(provider).notes.join('\n')).not.toContain('Sitemap:');
+    }
+  });
+
   it('tells an api project where to declare its image host', () => {
     expect(planRemoval('api').notes.join('\n')).toContain('imageHosts.ts');
 

@@ -1,10 +1,21 @@
 import type { MetadataRoute } from 'next';
 
 import { requestOrigin } from '@/app/_lib/requestOrigin';
+import { sitemapLocation } from '@/app/_lib/sitemapLocation';
+
+async function sitemapReference(): Promise<string | undefined> {
+  if (sitemapLocation.kind === 'none') {
+    return undefined;
+  }
+
+  if (sitemapLocation.kind === 'external') {
+    return sitemapLocation.url.trim() || undefined;
+  }
+
+  return `${await requestOrigin()}/sitemap.xml`;
+}
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
-  const origin = await requestOrigin();
-
   return {
     rules: {
       userAgent: '*',
@@ -12,6 +23,6 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       disallow: ['/admin', '/api', '/next/'],
     },
 
-    sitemap: `${origin}/sitemap.xml`,
+    sitemap: await sitemapReference(),
   };
 }

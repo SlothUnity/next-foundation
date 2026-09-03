@@ -35,14 +35,9 @@ describe('sitemap', () => {
     ]);
   });
 
-  it('answers empty and says so when the provider cannot list, instead of throwing', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-
+  it('refuses to answer at all when the source cannot list, instead of serving an empty urlset', async () => {
     delete page.listPaths;
 
-    await expect(sitemap()).resolves.toEqual([]);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('listPaths'));
-
-    warn.mockRestore();
+    await expect(sitemap()).rejects.toThrow(/listPaths|sitemapLocation/);
   });
 });

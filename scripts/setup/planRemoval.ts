@@ -98,6 +98,24 @@ const imageHosts: Record<SetupProvider, string> = {
   mock: imageHostsFile([]),
 };
 
+function sitemapLocationFile(value: string): string {
+  return [
+    'export type SitemapLocation =',
+    "  | { kind: 'app' }",
+    "  | { kind: 'external'; url: string }",
+    "  | { kind: 'none' };",
+    '',
+    `export const sitemapLocation: SitemapLocation = ${value};`,
+    '',
+  ].join('\n');
+}
+
+const sitemapLocations: Record<SetupProvider, string> = {
+  payload: sitemapLocationFile("{ kind: 'app' }"),
+  api: sitemapLocationFile("{ kind: 'none' }"),
+  mock: sitemapLocationFile("{ kind: 'app' }"),
+};
+
 const providerExport: Record<SetupProvider, string> = {
   payload: "export { payloadProvider as provider } from './payload/provider';\n",
   api: "export { apiProvider as provider } from './api/provider';\n",
@@ -238,9 +256,18 @@ function removeMocks(): SetupOperation[] {
   ];
 }
 
+function dropGeneratedSitemap(): SetupOperation[] {
+  const why = 'an api project does not enumerate its own pages, so it cannot build a sitemap';
+
+  return [
+    { kind: 'delete', path: 'src/app/(frontend)/sitemap.ts', why },
+    { kind: 'delete', path: 'src/app/(frontend)/sitemap.test.ts', why },
+  ];
+}
+
 const removals: Record<SetupProvider, () => SetupOperation[]> = {
   payload: () => [...removeApi(), ...removeMocks()],
-  api: () => [...removePayload(), ...removeMocks()],
+  api: () => [...removePayload(), ...removeMocks(), ...dropGeneratedSitemap()],
   mock: () => [...removePayload(), ...removeApi()],
 };
 
@@ -264,6 +291,12 @@ function notesFor(provider: SetupProvider): string[] {
   if (provider === 'api') {
     notes.push(
       'Images: declare the host your API serves them from in src/app/_lib/imageHosts.ts. Until you do, next/image refuses remote images and the CSP blocks them — both on purpose, because a wildcard there is a hole.',
+    );
+  }
+
+  if (provider === 'api') {
+    notes.push(
+      "Sitemap: this project ships without one, and robots.txt says nothing about it. If your API serves a sitemap, point at it with { kind: 'external', url: ... } in src/app/_lib/sitemapLocation.ts. If it can enumerate paths instead, implement listPaths on ApiPageSource, restore src/app/(frontend)/sitemap.ts and set { kind: 'app' }.",
     );
   }
 
@@ -305,6 +338,12 @@ export function planRemoval(provider: SetupProvider): SetupPlan {
       path: 'src/app/_lib/imageHosts.ts',
       contents: imageHosts[provider],
       why: 'where images come from follows the provider',
+    },
+    {
+      kind: 'write',
+      path: 'src/app/_lib/sitemapLocation.ts',
+      contents: sitemapLocations[provider],
+      why: 'who serves the sitemap follows the provider',
     },
   ];
 

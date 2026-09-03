@@ -95,6 +95,24 @@ Enquanto estiver vazia, o `next/image` recusa qualquer imagem remota e o CSP blo
 
 Não é ambiente porque as duas leituras acontecem em build — o `remotePatterns` do `next.config.ts` e a directiva `img-src` — e porque é uma decisão do projecto e não do deploy.
 
+### O sitemap também não é nosso
+
+Pela mesma razão, e com uma consequência maior. Um projecto `api` sai **sem `sitemap.ts`** e com o [sitemapLocation.ts](../src/app/_lib/sitemapLocation.ts) em `{ kind: 'none' }`: a origem não sabe enumerar-se — o `listPaths` é opcional no contrato e o `ApiPageSource` não o implementa — e uma rota que constrói um sitemap a partir de uma origem que não lista serviria um `<urlset>` vazio. Um sitemap vazio é pior do que nenhum: afirma que o site não tem páginas.
+
+Das duas uma, e a escolha é tua:
+
+```ts
+// a tua API serve o sitemap — o caso normal, porque é ela que sabe o que está publicado
+export const sitemapLocation: SitemapLocation = {
+  kind: 'external',
+  url: 'https://cms.exemplo.pt/sitemap.xml',
+};
+```
+
+O `robots.txt` passa a nomear esse URL. Isso não é só conveniência: um sitemap noutro host que liste URLs deste site é uma _cross-submission_, e a referência no `robots.txt` do próprio site é o que a torna aceitável para os motores de busca.
+
+A outra saída é a API expor os caminhos publicados. Nesse caso implementa o `listPaths` no `ApiPageSource`, repõe o `sitemap.ts` — [routing.md](routing.md#sitemap-e-robots) tem o corpo dele, são dez linhas — e passa a `{ kind: 'app' }`.
+
 ## O que sai: createPageRequest
 
 Por omissão o pedido é o caminho, e mais nada:
