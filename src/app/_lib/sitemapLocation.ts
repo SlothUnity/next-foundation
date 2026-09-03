@@ -1,4 +1,4 @@
 export type SitemapLocation =
-  { kind: 'app' } | { kind: 'external'; url: string } | { kind: 'none' };
+  { kind: 'app' } | { kind: 'source' } | { kind: 'external'; url: string } | { kind: 'none' };
 
 export const sitemapLocation: SitemapLocation = { kind: 'app' };

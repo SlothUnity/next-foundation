@@ -102,6 +102,7 @@ function sitemapLocationFile(value: string): string {
   return [
     'export type SitemapLocation =',
     "  | { kind: 'app' }",
+    "  | { kind: 'source' }",
     "  | { kind: 'external'; url: string }",
     "  | { kind: 'none' };",
     '',

@@ -111,6 +111,8 @@ export const sitemapLocation: SitemapLocation = {
 
 O `robots.txt` passa a nomear esse URL. Isso não é só conveniência: um sitemap noutro host que liste URLs deste site é uma _cross-submission_, e a referência no `robots.txt` do próprio site é o que a torna aceitável para os motores de busca.
 
+Se o URL **variar** — por ambiente, ou por tenant — não o fixes aqui: passa a `{ kind: 'source' }` e devolve-o no `getSite()` do [ApiSiteSource](../src/providers/api/sources/ApiSiteSource.ts), no campo `sitemapUrl` do `SiteDefinition`. É o mesmo sítio onde o `name` e os `locales` deixam de ser os valores fixos com que este provider sai da caixa.
+
 A outra saída é a API expor os caminhos publicados. Nesse caso implementa o `listPaths` no `ApiPageSource` e passa a `{ kind: 'app' }` — a rota já está lá, só está a recusar-se a responder.
 
 ## O que sai: createPageRequest

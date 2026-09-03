@@ -200,19 +200,22 @@ O `listPaths` **devolve a página de qualquer maneira**, com a marca. Não filtr
 
 ### Quem serve o sitemap não é sempre este projecto
 
-Um sitemap com zero URLs **não é um default neutro**: é uma afirmação de que o site não tem páginas. E há três estados, não dois — nós geramos, alguém serve, ou não existe. Quem os distingue é [sitemapLocation.ts](../src/app/_lib/sitemapLocation.ts), pela mesma razão que o [imageHosts.ts](../src/app/_lib/imageHosts.ts) existe: é uma verdade do projecto, não do framework.
+Um sitemap com zero URLs **não é um default neutro**: é uma afirmação de que o site não tem páginas. E há mais do que dois estados — nós geramos, alguém serve num sítio fixo, alguém serve num sítio que só a origem sabe, ou não existe. Quem os distingue é [sitemapLocation.ts](../src/app/_lib/sitemapLocation.ts), pela mesma razão que o [imageHosts.ts](../src/app/_lib/imageHosts.ts) existe: é uma verdade do projecto, não do framework.
 
-| `sitemapLocation`           | O `/sitemap.xml`                            | O `robots.txt`                   |
-| --------------------------- | ------------------------------------------- | -------------------------------- |
-| `{ kind: 'app' }`           | esta app constrói-o a partir do `listPaths` | aponta para o nosso              |
-| `{ kind: 'external', url }` | não existe aqui                             | **nomeia o URL de quem o serve** |
-| `{ kind: 'none' }`          | não existe                                  | não diz nada sobre sitemaps      |
+| `sitemapLocation`           | O `/sitemap.xml`                            | O `robots.txt`                                    |
+| --------------------------- | ------------------------------------------- | ------------------------------------------------- |
+| `{ kind: 'app' }`           | esta app constrói-o a partir do `listPaths` | aponta para o nosso                               |
+| `{ kind: 'source' }`        | 404                                         | o URL que o `SiteSource` devolver em `sitemapUrl` |
+| `{ kind: 'external', url }` | 404                                         | **nomeia esse URL**, fixo                         |
+| `{ kind: 'none' }`          | 404                                         | não diz nada sobre sitemaps                       |
+
+O `source` e o `external` respondem à mesma pergunta e diferem em **quando** se sabe a resposta. Se o URL é fixo, é `external` e não custa um pedido. Se varia — por ambiente, ou por tenant — é `source`, e o [SiteDefinition](../src/core/site/Site.types.ts) leva um `sitemapUrl?` opcional para a origem o reportar. O `robots.ts` só chama o `getSite()` nesse caso; nos outros três não toca na origem.
 
 O `pnpm setup:provider` escreve o estado certo: `app` para o `payload` e para os `mocks`, que sabem enumerar-se; `none` para o `api`, que ainda não sabe.
 
 **A rota fica em todos os três.** Quando a declaração não é `app`, o `sitemap.ts` chama `notFound()` e o `/sitemap.xml` responde **404** — verificado com o servidor a correr, porque uma rota de metadata a recusar-se a existir não é comportamento documentado. Isso é melhor do que apagar o ficheiro: mudar de ideias passa a ser uma linha na declaração e não um ficheiro para recriar.
 
-Num projecto `api`, das duas uma. Se a tua API serve o sitemap — o caso normal, porque é ela que sabe o que está publicado — passa a `{ kind: 'external', url: 'https://…' }`. Não é só conveniência que o `robots.txt` o nomeie: um sitemap alojado noutro host que liste URLs deste site é uma _cross-submission_, e a referência no `robots.txt` do próprio site é o que a autoriza. Se em vez disso a API souber enumerar caminhos, implementa o `listPaths` no `ApiPageSource`, repõe o `sitemap.ts` e passa a `{ kind: 'app' }`.
+Num projecto `api`, das duas uma. Se a tua API serve o sitemap — o caso normal, porque é ela que sabe o que está publicado — passa a `{ kind: 'external', url: 'https://…' }`. Não é só conveniência que o `robots.txt` o nomeie: um sitemap alojado noutro host que liste URLs deste site é uma _cross-submission_, e a referência no `robots.txt` do próprio site é o que a autoriza. Se em vez disso a API souber enumerar caminhos, implementa o `listPaths` no `ApiPageSource` e passa a `{ kind: 'app' }` — a rota já lá está, só está a recusar-se a responder.
 
 **O `robots.ts` está na raiz do `app/` e o `sitemap.ts` dentro do grupo. Isso não é preferência.** O Next casa a convenção do sitemap com um padrão não ancorado, portanto ela resolve dentro de um route group; casa a do robots com `/^[\\/]robots/`, **ancorado**. Um `robots.ts` dentro do `(frontend)` é descartado sem rota, sem output e sem aviso nenhum — só se percebe a ler o `is-metadata-route.js` do Next. Se algum dia o `/robots.txt` desaparecer da tabela de rotas do build, é aqui que se olha.
 
