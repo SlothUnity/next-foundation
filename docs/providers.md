@@ -227,6 +227,21 @@ como um re-export directo do provider escolhido. O contrato em
 [Provider.types.ts](../src/providers/Provider.types.ts) fica intacto — é ele que permite
 voltar a acrescentar um provider mais tarde.
 
+Além de apagar, o comando **reescreve quatro ficheiros**, porque há verdades que mudam com
+a escolha e não podem ficar a afirmar o que era verdade noutro projecto:
+
+| Ficheiro                                                 | O que passa a dizer                                                          |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [provider.ts](../src/providers/provider.ts)              | um re-export directo do provider escolhido                                   |
+| `.env.example`                                           | só as variáveis que este provider lê                                         |
+| [imageHosts.ts](../src/app/_lib/imageHosts.ts)           | de onde vêm as imagens — o Blob no `payload`, nada nos outros dois           |
+| [sitemapLocation.ts](../src/app/_lib/sitemapLocation.ts) | quem serve o sitemap — esta app no `payload` e nos `mocks`, ninguém no `api` |
+
+Os quatro já existem na foundation: o comando substitui-lhes o conteúdo, não os cria. As
+duas últimas estão explicadas em [routing.md](routing.md#sitemap-e-robots) — e no fim o
+comando **diz-te o que ficou por decidir**, em vez de deixar um default a parecer uma
+escolha.
+
 Fica o `core`, os `modules`, o `app/(frontend)` e os providers `api` e `mocks`. O
 [gerador](modules.md) já conta com isto: sem `src/providers/payload/blocks/index.ts` não
 escreve bloco nenhum, escreve só o módulo.

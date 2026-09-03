@@ -66,12 +66,15 @@ export interface PagePath {
   path: string;
   locale: string;
   updatedAt?: string;
+  noIndex?: boolean;
 }
 ```
 
-O `path` é o caminho final do site, já com o prefixo de locale quando há um — é o que um sitemap precisa.
+O `path` é o caminho final do site, já com o prefixo de locale quando há um — é o que um sitemap precisa. O `updatedAt` é o `lastmod`.
 
-É **opcional** no contrato, e não abstracto, para o provider `api` poder continuar a não responder: o formato do índice de um CMS remoto é de quem desenhou a API, exactamente como o `mapApiPage`. Quem não implementa não quebra; quem consome verifica antes de chamar.
+O `noIndex` **viaja mas não filtra**. O contrato é «os caminhos que esta origem serve», e uma página marcada como não-indexável é servida — só não é anunciada. Filtrar na origem era mais barato e apagava informação: quem decide a política é [a rota do sitemap](routing.md#quem-serve-o-sitemap-não-é-sempre-este-projecto), que deixa a página de fora porque a `<meta robots>` já a recusa, e é lá que se acrescenta a próxima decisão do género sem voltar a mexer nas origens.
+
+É **opcional** no contrato, e não abstracto, porque enumerar-se não é uma capacidade que toda a origem tenha — e uma origem que não a tenha não deve ser obrigada a fingir. Os três providers implementam-no hoje, mas de formas diferentes: o `payload` e os `mocks` respondem, e o `api` leva o caminho montado com o `mapApiPaths` por escrever, porque o formato do índice de um CMS remoto é de quem desenhou a API — exactamente como o `mapApiPage`. Quem não implementa não quebra; quem consome verifica antes de chamar.
 
 Isto abria dois buracos ao mesmo tempo — sem forma de enumerar os próprios URLs não havia sitemap nem paginação. Ver [routing.md](routing.md#sitemap-e-robots).
 
@@ -156,8 +159,11 @@ export interface SiteDefinition {
   name: string;
   locales: string[];
   defaultLocale: string;
+  sitemapUrl?: string;
 }
 ```
+
+O `sitemapUrl` é opcional e existe para uma origem que **serve o seu próprio sitemap num endereço que só ela sabe** — por ambiente, ou por tenant. Quando o endereço é fixo não vem por aqui: declara-se no projecto, e o `robots.txt` nem chega a chamar o `getSite()`. Ver [routing.md](routing.md#quem-serve-o-sitemap-não-é-sempre-este-projecto).
 
 **O locale por omissão é declarado, não inferido.** Era `locales[0]` por convenção não escrita, lida em quatro sítios que podiam divergir entre si; agora é a origem que responde qual é. É ele que não recebe prefixo nas URLs, e é contra ele que o `resolveRoute` decide.
 
