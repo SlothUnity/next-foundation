@@ -45,6 +45,16 @@ Este documento diz **como as camadas se relacionam**. Para **o que acontece em e
 
 Se um dia `core/` precisar de importar de `providers/`, é sinal de que um conceito está na camada errada.
 
+### A regra é imposta, não revista
+
+Cada linha da tabela acima é um bloco de `no-restricted-imports` no [eslint.config.mjs](../eslint.config.mjs), e cada mensagem diz o que fazer em vez de só recusar. As regras cobrem as duas formas de atravessar uma camada: o alias (`@/providers/…`) e o relativo que o contornaria (`../../providers/…`), porque uma regra que só olha para a primeira é uma regra que se contorna sem dar por isso.
+
+Junto com elas, o `pnpm lint` corre com `--max-warnings=0`. O `no-unused-vars` é um aviso por omissão, portanto código morto não chumbava o lint, nem o hook, nem o build — agora chumba os três.
+
+**Duas excepções, nomeadas em vez de escondidas.** O [foundation.ts](../src/core/foundation/foundation.ts) importa `@/providers/provider` e o [registerModules.ts](../src/core/setup/registerModules.ts) importa `@/modules`. São a **raiz de composição**: o sítio onde as peças abstractas se ligam às concretas, e esse sítio tem por definição de conhecer as duas. Estão listadas nos `ignores` do bloco do core, o que as torna visíveis a quem ler a config.
+
+Isso não as absolve. Pela tabela, quem compõe é o `app`, e é lá que estes dois ficheiros pertencem — mover o singleton `foundation` mexe em todos os seus consumidores, portanto é uma mudança de arquitectura e não um ajuste de lint. Fica escrito aqui para não ser esquecido: **duas excepções são o preço de a regra valer para tudo o resto, não uma decisão fechada.**
+
 ## Fluxo de um pedido
 
 A versão curta. Os dez fluxos — pedido, 404, redirect, pré-visualização, publicação, arranque, render de um módulo, gerador — estão em [fluxos.md](fluxos.md).
