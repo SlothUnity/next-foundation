@@ -65,6 +65,8 @@ Num projecto `mock`, há um quarto: as páginas de fixture em [src/providers/moc
 
 Depois de o apagar, corre `pnpm payload:generate`: os tipos gerados ainda declaram o bloco, e é o `payload-types.ts` que o mapper usa.
 
+O `pageBlocks` está declarado como `Block[]` e não deixado à inferência, para um registo **vazio** continuar a compilar: sem o tipo, apagar o último bloco fazia o array virar `never[]` e o teste dos blocos deixava de compilar — um projecto que apagasse a demonstração antes de escrever o seu módulo ficava com o portão vermelho sem razão.
+
 **Nenhum teste do `core` depende dele**, e isso é verificado: apagar o Hero e correr `pnpm exec vitest run src/core src/app` dá verde. Não era assim — dois testes do renderer renderizavam o alias `hero` contra o `createFoundation` verdadeiro, e o teste do `createFoundation` afirmava que `getByAlias('hero')` existia. Hoje o renderer usa o [testModule](../../src/testing/testModule.tsx), que vive no `src/testing/` ao lado dos outros utilitários de teste, e o do `createFoundation` afirma a **propriedade** — que cada módulo que o projecto exporta está registado —, o que continua verdadeiro com um módulo, com vinte ou com nenhum.
 
 A ordem que poupa trabalho é a inversa: `pnpm generate` primeiro, o teu módulo a funcionar, e o Hero fora depois.

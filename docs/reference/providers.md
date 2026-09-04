@@ -346,4 +346,25 @@ Três decisões que fazem esta forma valer a pena:
 
 O que o compilador passa a apanhar: uma chave de locale que não existe (`mockLocales` é um tuplo `as const`, como o `availableLocales` do provider payload), um `path` esquecido, um campo mal escrito no `data`, e um `locale` escrito na `meta` — esse já é a chave, e não se escreve duas vezes.
 
-Os `id` das `ModuleInstance` são derivados do alias e da posição (`hero-1`, `hero-2`) em vez de escritos à mão: o `ModuleRenderer` exige-os únicos dentro da página, e dois `hero-1` colados por copy-paste davam uma key repetida em React, que falha em silêncio.
+Os `id` das `ModuleInstance` são derivados da **região**, do alias e da posição (`main-hero-1`, `main-hero-2`) em vez de escritos à mão: o `ModuleRenderer` exige-os únicos dentro da página, e dois `hero-1` colados por copy-paste davam uma key repetida em React, que falha em silêncio.
+
+O prefixo da região não é decoração. Sem ele, o mesmo módulo no cabeçalho e no corpo produzia `hero-1` duas vezes na mesma página — que é precisamente a colisão que os `id` existem para evitar.
+
+### As três regiões
+
+O `main` é obrigatório; a `navigation` e o `footer` são opcionais, e **as três são listas**:
+
+```ts
+export const home = definePage({
+  'pt-PT': {
+    path: '',
+    navigation: [block(siteHeaderModule, { … })],
+    main: [block(heroModule, { title: 'Next Foundation' })],
+    footer: [block(siteFooterModule, { … })],
+  },
+});
+```
+
+Uma região que não esteja lá simplesmente não é desenhada — o renderer não emite o landmark vazio ([renderer.md](renderer.md)). E como são listas, uma barra de anúncios acima do menu são dois blocos na `navigation`, e não um módulo composto inventado para os agrupar.
+
+**Nenhuma página de fixture as usa hoje**, e é deliberado: as fixtures são conteúdo de demonstração, e acrescentar-lhes um cabeçalho era acrescentar mais demonstração para um projecto apagar. No provider `payload` o equivalente são dois globals — ver [payload.md § Navigation e Footer](payload.md#navigation-e-footer).

@@ -14,6 +14,7 @@ Cada entrada diz se **exige trabalho manual** no projecto. As que não dizem nad
 - **`vercel.json`** a fixar `pnpm build` como comando de deploy.
 - **Migrações do Postgres ligadas** — `payload:migrate`, `payload:migrate:create` e `payload:migrate:status`. A primeira migração tem de ser criada no projecto, contra a sua base de dados.
 - **`docs/reference/upgrading.md`** e este ficheiro.
+- **`docs/reference/deploy.md`** — o portão, o workflow do CI decisão por decisão, o comando de deploy, e a lista honesta do que falta a um site em produção (email, telemetria, backups, purga de cache, tecto de tempo, o limite real de upload).
 
 ### Corrigido
 

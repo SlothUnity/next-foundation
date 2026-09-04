@@ -31,6 +31,7 @@ Não se lê de seguida. Cada documento cobre um assunto por inteiro e é onde vo
 | [api.md](reference/api.md)                   | o provider de API externa e o que fica por escrever                               |
 | [conventions.md](reference/conventions.md)   | onde pôr um ficheiro novo e como o nomear                                         |
 | [upgrading.md](reference/upgrading.md)       | como um projecto traz para si o que a base mudou depois de ele nascer             |
+| [deploy.md](reference/deploy.md)             | o portão, o CI linha a linha, e o que falta a um site em produção                 |
 | [guide.md](reference/guide.md)               | o projecto inteiro, ficheiro a ficheiro, com o porquê de cada linha — 3500 linhas |
 
 O [guide.md](reference/guide.md) é a versão completa de tudo o que está acima. Lê-se com o editor aberto ao lado, e não numa tarde.

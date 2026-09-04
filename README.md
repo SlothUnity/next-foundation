@@ -237,6 +237,7 @@ Não se lê de seguida. Cada documento cobre um assunto por inteiro, e é onde v
 | uma API externa                    | [api.md](docs/reference/api.md)                   |
 | onde pôr e como nomear um ficheiro | [conventions.md](docs/reference/conventions.md)   |
 | trazer o que a base mudou          | [upgrading.md](docs/reference/upgrading.md)       |
+| o CI, o deploy e a produção        | [deploy.md](docs/reference/deploy.md)             |
 
 E o [guide.md](docs/reference/guide.md): 3500 linhas, o projecto inteiro ficheiro a ficheiro, com o porquê de cada linha. É a versão completa de tudo o que está na tabela acima, e lê-se com o editor aberto ao lado.
 
@@ -333,6 +334,8 @@ pnpm test --run
 
 O passo de build no CI corre com credenciais fictícias: o build precisa que a config do Payload **carregue**, não que a base de dados responda. Loga um `ECONNREFUSED` porque a página de not-found estática pergunta à origem de conteúdo, e termina a zero — esse log é o error reporter a fazer o trabalho dele, não um passo a falhar.
 
+Cada decisão dentro do workflow — porque a versão do pnpm não está lá escrita, porque a ordem dos dois primeiros passos importa, porque o `format:check` está no CI e não no hook — está em [deploy.md](docs/reference/deploy.md), com o que falta a um site em produção.
+
 ## Todos os documentos
 
 | Documento                                         | Responde a                                                  |
@@ -351,6 +354,7 @@ O passo de build no CI corre com credenciais fictícias: o build precisa que a c
 | [api.md](docs/reference/api.md)                   | Como ligo uma API externa                                   |
 | [routing.md](docs/reference/routing.md)           | Como funcionam URLs, locales e metadata                     |
 | [upgrading.md](docs/reference/upgrading.md)       | Como traço para o meu projecto o que a base mudou           |
+| [deploy.md](docs/reference/deploy.md)             | Porque é que o CI está assim, e o que falta em produção     |
 | [CHANGELOG.md](CHANGELOG.md)                      | O que mudou na base, e o que exige trabalho manual          |
 
 ## Stack

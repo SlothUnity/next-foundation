@@ -282,9 +282,9 @@ A decisão que importa é essa: não há registo de blocos separado para o cabe�
 
 **São conteúdo, não configuração**, e por isso a escrita é de `isEditor` e não de `isAdmin` — ao contrário do `Site`, que muda idiomas e derruba URLs.
 
-O `afterChange` invalida a tag **das páginas** e não uma tag própria: o layout viaja dentro de cada `PageResponse`, portanto mudar o rodapé torna velha a resposta cacheada de todas as páginas. Uma tag só para o layout obrigaria a invalidar as duas em conjunto, o que é a mesma coisa com mais peças.
+O `afterChange` é o [revalidateLayoutOnChange](../../src/providers/payload/cache/hooks.ts), e invalida a tag **das páginas** e não uma tag própria: o layout viaja dentro de cada `PageResponse`, portanto mudar o rodapé torna velha a resposta cacheada de todas as páginas. Uma tag só para o layout obrigaria a invalidar as duas em conjunto, o que é a mesma coisa com mais peças.
 
-O carregamento está em [loadPayloadLayout.ts](../../src/providers/payload/sources/loadPayloadLayout.ts): lê os dois globals **em paralelo** com o `Promise.all`, com `fallbackLocale: false` pela mesma razão que as páginas — um menu que ninguém traduziu deve vir vazio e não em português no site inglês. Uma região sem módulos é omitida em vez de vir como lista vazia, e é isso que faz o renderer não desenhar o landmark.
+O carregamento está em [loadPayloadLayout.ts](../../src/providers/payload/sources/loadPayloadLayout.ts), e reutiliza o `mapPayloadBlocks` do mapper das páginas — os blocos são os mesmos, portanto a tradução para `ModuleInstance` também tem de ser. Lê os dois globals **em paralelo** com o `Promise.all`, com `fallbackLocale: false` pela mesma razão que as páginas — um menu que ninguém traduziu deve vir vazio e não em português no site inglês. Uma região sem módulos é omitida em vez de vir como lista vazia, e é isso que faz o renderer não desenhar o landmark.
 
 **O menu tem de ser traduzido, e até o ser o outro idioma não tem menu.** O campo `modules` não é localizado — as **linhas** dos blocos são partilhadas pelos idiomas — mas os campos de dentro são (`title` do `HeroBlock` é `required` e `localized`). É o mesmo modelo do `main` de uma página, e é o idiomático: a estrutura do menu é a mesma em todas as línguas, só as etiquetas mudam, portanto o editor troca de idioma no admin e preenche os textos das mesmas linhas.
 
