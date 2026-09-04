@@ -161,3 +161,37 @@ describe('ApiClient', () => {
     await expect(createClient().get('/pages')).rejects.toThrow(ApiRequestError);
   });
 });
+
+describe('the path never leaves the API base', () => {
+  it.each(['../../admin', '/../admin', '../', 'sobre-nos/../../../secrets'])(
+    'refuses %s instead of sending it with the bearer token',
+    async (path) => {
+      const fetch = mockFetch(jsonResponse({}));
+
+      await expect(createClient('t0ken').get(path)).rejects.toThrow(ApiRequestError);
+
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it('names the base in the error, because that is what the reader needs', async () => {
+    mockFetch(jsonResponse({}));
+
+    await expect(createClient().get('../../admin')).rejects.toThrow(
+      'escapes https://cms.example.com/api/',
+    );
+  });
+
+  it.each([
+    ['sobre-nos', 'https://cms.example.com/api/sobre-nos'],
+    ['/sobre-nos', 'https://cms.example.com/api/sobre-nos'],
+    ['en/about-us', 'https://cms.example.com/api/en/about-us'],
+    ['a.b/c-d_e', 'https://cms.example.com/api/a.b/c-d_e'],
+  ])('still sends %s', async (path, expected) => {
+    const fetch = mockFetch(jsonResponse({}));
+
+    await createClient().get(path);
+
+    expect(requestUrl(fetch)).toBe(expected);
+  });
+});

@@ -304,6 +304,26 @@ Quando o mapper estiver escrito, [mapApiPage.test.ts](../../src/providers/api/ma
 
 É o teste que mais vale a pena ter neste provider. O mapper é a fronteira onde os dados mudam de forma, e é onde um bug passa sem dar erro.
 
+### O caminho não sai da base
+
+O `createUrl` do [ApiClient](../../src/providers/api/client/ApiClient.ts) resolve o caminho **contra**
+a base (`new URL(path, base)`) e depois **confirma que o resultado ainda começa por ela**. Se não
+começar, atira um `ApiRequestError` e não chega a haver pedido.
+
+A razão é concreta e foi medida. A versão anterior concatenava as duas strings e passava o resultado
+ao `new URL`, que resolve `..`:
+
+```
+base = https://cms.exemplo.pt/api/v1/
+'sobre-nos'    -> https://cms.exemplo.pt/api/v1/sobre-nos    ok
+'../../admin'  -> https://cms.exemplo.pt/admin               saiu da base
+```
+
+O caminho vem do URL do visitante, e o pedido leva o `API_TOKEN` no cabeçalho `Authorization`.
+Bastava um caminho com `..` para o token ser enviado a outro sítio do mesmo host — o admin do CMS, por
+exemplo. Quatro testes fixam a recusa e quatro fixam que os caminhos legítimos, com pontos e barras,
+continuam a passar.
+
 ## Erros
 
 | Erro                                                                   | Quando                                               |

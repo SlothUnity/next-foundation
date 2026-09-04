@@ -46,7 +46,13 @@ export class ApiClient {
   }
 
   private createUrl(path: string, params: Record<string, ApiParamValue> = {}): string {
-    const url = new URL(`${this.config.url.replace(/\/$/, '')}/${path.replace(/^\//, '')}`);
+    const base = `${this.config.url.replace(/\/$/, '')}/`;
+
+    const url = new URL(path.replace(/^\//, ''), base);
+
+    if (!url.href.startsWith(base)) {
+      throw new ApiRequestError(`The path "${path}" escapes ${base}.`, { url: url.href });
+    }
 
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
