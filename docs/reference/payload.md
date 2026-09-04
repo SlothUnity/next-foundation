@@ -164,7 +164,7 @@ A página com `is404` continua a ter URL próprio e a responder nele. O que a ma
 
 ### Hooks de cache
 
-```ts
+```ts src/providers/payload/collections/Pages.ts
 hooks: {
   afterChange: [revalidatePagesOnChange],
   afterDelete: [revalidatePagesOnDelete],

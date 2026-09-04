@@ -33,6 +33,8 @@ jobs:
 
       - run: pnpm check:links
 
+      - run: pnpm check:quotes
+
       # verbose prints per-test durations: a timeout on a slower runner names
       # itself here instead of needing the raw log.
       - run: pnpm test --run --reporter=verbose

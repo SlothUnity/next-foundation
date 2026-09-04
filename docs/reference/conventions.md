@@ -217,6 +217,30 @@ Nos documentos o mesmo raciocínio é revisível, pesquisável, e liga-se ao res
 
 Esta última frase esteve muito tempo a ser falsa em todos os clones menos um: o verificador existia como script solto **fora** do repositório, portanto era verdade na máquina de quem o escreveu e mentira em qualquer cópia. Agora é o [`pnpm check:links`](../../scripts/links/run.ts), corre no hook de pre-commit, e chumba: percorre os `.md` do repositório, confirma que cada ficheiro referenciado existe e que cada âncora corresponde a um título real.
 
+### O que o `check:links` não consegue ver, e o `check:quotes` vê
+
+O verificador de ligações confirma que **cada ligação e cada âncora resolvem**. Não consegue ver que
+um bloco de código citado deixou de corresponder ao ficheiro que nomeia — e foi nesse cego que se
+acumularam 82 derivas entre prosa e código, dois terços no documento que cita ficheiros linha a
+linha.
+
+O [`pnpm check:quotes`](../../scripts/docs/run.ts) fecha-o, com uma regra exacta: **um bloco cercado
+cujo _info string_ nomeia um ficheiro do repositório é um bloco citado**, e cada uma das suas linhas
+não elididas tem de existir nesse ficheiro, **na mesma ordem**.
+
+- **É opt-in.** Um bloco sem caminho é ilustrativo e não é verificado, portanto o portão nunca
+  exagera a cobertura que tem. Um `…` numa linha própria elide, porque quase todos os blocos são
+  parciais.
+- **A indentação e as linhas em branco são ignoradas** — um documento reflui código; o que não pode
+  mudar é o conteúdo e a ordem.
+- **Reporta cobertura.** «74 de 276 blocos verificados» é o número a subir, e torna visível o que
+  ainda não está garantido.
+- **Uma citação `ficheiro:linha` na prosa** tem de apontar para uma linha que existe. Não verifica o
+  conteúdo, mas apanha as citações que deslocaram quando o ficheiro cresceu.
+
+Porque não algo mais esperto: um heurístico que adivinhe que bloco cita que ficheiro produz falsos
+positivos, e **um portão com falsos positivos é um portão que alguém desliga**.
+
 **O verificador salta código.** Um `[label](caminho)` dentro de backticks ou de um bloco cercado é um
 **exemplo**, não uma ligação — e antes chumbava o portão, o que impedia qualquer documento de mostrar
 a sintaxe de que fala. Descobriu-se da pior maneira: a frase que documenta o achatamento de ligações

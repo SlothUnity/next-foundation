@@ -6,7 +6,7 @@ Um provider é um adaptador entre uma fonte de conteúdo e os contratos do `core
 
 [providers/Provider.types.ts](../../src/providers/Provider.types.ts)
 
-```ts
+```ts src/providers/Provider.types.ts
 export interface Provider {
   page: PageSource;
   site: SiteSource;
@@ -30,7 +30,7 @@ Duas regras atravessam todos os providers, e vale a pena lê-las juntas porque s
 
 **O `SiteDefinition` declara o locale por omissão.**
 
-```ts
+```ts src/core/site/Site.types.ts
 export interface SiteDefinition {
   name: string;
   locales: string[];
@@ -76,7 +76,7 @@ A consequência prática está no [routing.md](routing.md): como o default vive 
 
 [providers/createProvider.ts](../../src/providers/createProvider.ts) escolhe pela variável `PROVIDER`:
 
-```ts
+```ts src/providers/createProvider.ts
 export function createProvider(): Provider {
   const name = process.env.PROVIDER ?? 'payload';
 

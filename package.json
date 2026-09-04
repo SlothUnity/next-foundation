@@ -27,7 +27,8 @@
     "payload:migrate": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload migrate",
     "payload:migrate:create": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload migrate:create",
     "payload:migrate:status": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload migrate:status",
-    "check:links": "tsx scripts/links/run.ts"
+    "check:links": "tsx scripts/links/run.ts",
+    "check:quotes": "tsx scripts/docs/run.ts"
   },
   "lint-staged": {
     "*.{js,jsx,mjs,ts,tsx,json,md,yml,yaml,scss}": [

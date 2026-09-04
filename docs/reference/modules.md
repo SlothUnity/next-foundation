@@ -180,7 +180,7 @@ Ver [providers.md](providers.md#escrever-uma-página).
 
 ## defineModule e createModuleComponent
 
-```ts
+```ts src/core/modules/defineModule.ts
 export function defineModule<TProps extends ModuleProps>(module: Module<TProps>): Module<TProps> {
   return module;
 }
@@ -188,7 +188,7 @@ export function defineModule<TProps extends ModuleProps>(module: Module<TProps>)
 
 Não faz nada em runtime — existe para a inferência de tipos e para haver um sítio óbvio onde acrescentar comportamento no futuro sem mexer em todos os módulos.
 
-```tsx
+```tsx src/core/modules/createModuleComponent.tsx
 export function createModuleComponent<TProps extends ModuleProps>(
   Component: ModuleComponent<TProps>,
 ): RuntimeModuleComponent {

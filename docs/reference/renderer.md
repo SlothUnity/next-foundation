@@ -6,7 +6,7 @@ Duas responsabilidades separadas: o `PageRenderer` organiza a página, o `Module
 
 [core/renderer/PageRenderer.tsx](../../src/core/renderer/PageRenderer.tsx)
 
-```ts
+```ts src/core/renderer/PageRenderer.tsx
 interface PageRendererProps {
   page: PageDefinition;
   foundation: Foundation;
@@ -15,7 +15,7 @@ interface PageRendererProps {
 
 Organiza as três regiões e delega tudo o resto:
 
-```tsx
+```tsx src/core/renderer/PageRenderer.tsx
 <>
   {navigation.length > 0 && (
     <nav>
@@ -113,7 +113,7 @@ A razão da assimetria: em desenvolvimento um bloco mal ligado é um bug e quere
 
 O `ModuleValidationError` guarda o erro original em `cause`, por isso o detalhe do zod não se perde:
 
-```ts
+```ts src/core/renderer/ModuleRenderer.tsx
 throw new ModuleValidationError(`Module "${module.alias}" data validation failed.`, {
   cause: error,
 });

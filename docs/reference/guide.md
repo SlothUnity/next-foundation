@@ -183,7 +183,7 @@ A regra que daí sai, e que deves aplicar quando acrescentares código:
 
 **Como aparece.** `src/core/pages/PageSource.ts:7`:
 
-```ts
+```ts src/core/pages/PageSource.ts
 export abstract class PageSource {
   abstract getPage(path: string, locale?: string, options?: GetPageOptions): Promise<PageResponse>;
 }
@@ -191,7 +191,7 @@ export abstract class PageSource {
 
 É o ficheiro inteiro. Não tem implementação nenhuma — é só a promessa. O irmão dele, `src/core/site/SiteSource.ts:3`, é ainda mais curto:
 
-```ts
+```ts src/core/site/SiteSource.ts
 export abstract class SiteSource {
   abstract getSite(): Promise<SiteDefinition>;
 }
@@ -207,7 +207,7 @@ export abstract class SiteSource {
 
 O `PageResponse` merece um parágrafo, porque a forma dele foi discutida:
 
-```ts
+```ts src/core/pages/Page.types.ts
 export type PageResponse =
   | { status: 'ok'; page: PageDefinition }
   | { status: 'notFound'; page?: PageDefinition }
@@ -264,7 +264,7 @@ O resultado é a propriedade que o projeto anda a perseguir: trocar de CMS é tr
 
 **Como aparece.** `src/core/registry/Registry.ts:1`:
 
-```ts
+```ts src/core/registry/Registry.ts
 export class Registry<TKey, TValue> {
   protected readonly items = new Map<TKey, TValue>();
 ```
@@ -287,7 +287,7 @@ A alternativa era escrever `Registry` com `Map<string, unknown>` e andar a fazer
 
 **Como aparece.** Os dois primeiros membros do `Registry` (`src/core/registry/Registry.ts:2` e `:4`):
 
-```ts
+```ts src/core/registry/Registry.ts
 protected readonly items = new Map<TKey, TValue>();
 
 protected add(key: TKey, value: TValue): void {
@@ -295,7 +295,7 @@ protected add(key: TKey, value: TValue): void {
 
 E o método público que os usa, em `ModuleRegistry.ts:6`:
 
-```ts
+```ts src/core/registry/ModuleRegistry.ts
 register<TProps extends ModuleProps>(module: Module<TProps>): void {
   this.add(module.alias, module);
 }
@@ -347,7 +347,7 @@ Repara também no `= ModuleProps` em `Module<TProps extends ModuleProps = Module
 
 **Como aparece.** Por todo o lado, e de forma disciplinada. `src/core/renderer/PageRenderer.tsx:1-6`:
 
-```ts
+```ts src/core/renderer/PageRenderer.tsx
 import { Fragment } from 'react';
 
 import type { Foundation } from '@/core/foundation';
@@ -373,7 +373,7 @@ Daí sai o padrão _singleton_: uma instância única, partilhada por toda a apl
 
 **Como aparece.** Duas vezes, e são os dois pontos mais importantes do arranque. `src/core/foundation/foundation.ts` (o ficheiro inteiro):
 
-```ts
+```ts src/core/foundation/foundation.ts
 import { provider } from '@/providers/provider';
 
 import { createFoundation } from './createFoundation';
@@ -405,7 +405,7 @@ O reverso também é verdade e é onde isto morde: **importar `foundation.ts` p�
 
 **Como aparece.** `src/core/foundation/index.ts` — e o que interessa aqui é o que **não** está lá:
 
-```ts
+```ts src/core/foundation/index.ts
 export * from './createFoundation';
 export * from './Foundation.types';
 ```
@@ -432,7 +432,7 @@ A outra metade da regra: **nunca há barrel na raiz de uma camada**. Não existe
 
 **Como aparece.** `src/core/renderer/PageRenderer.tsx:8-13`:
 
-```ts
+```ts src/core/renderer/PageRenderer.tsx
 interface PageRendererProps {
   page: PageDefinition;
   foundation: Foundation;
@@ -491,7 +491,7 @@ E os dados deste projeto **vêm todos de fora**: de uma base de dados que um edi
 
 **O zod verifica em execução.** `src/modules/hero/Hero.schema.ts` (o ficheiro inteiro):
 
-```ts
+```ts src/modules/Hero/Hero.schema.ts
 import { z } from 'zod';
 
 export const heroSchema = z.object({
@@ -521,7 +521,7 @@ O `.parse()` corre de verdade, com os dados reais na mão. Se o `title` não for
 
 Há uma peça engenhosa nisto, e vale a pena vê-la agora. O `core` **não conhece o zod**. Olha para `src/core/modules/Module.types.ts:11`:
 
-```ts
+```ts src/core/modules/Module.types.ts
 export interface ModuleSchema<TData extends ModuleProps = ModuleProps> {
   parse(data: unknown): TData;
 }
@@ -637,7 +637,7 @@ A saída está em 1.6, e é um `proxy` que põe o caminho num header.
 
 ### O ficheiro
 
-```tsx
+```tsx src/app/(frontend)/layout.tsx
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -648,7 +648,7 @@ interface LayoutProps {
 
 Agora o corpo:
 
-```tsx
+```tsx src/app/(frontend)/layout.tsx
 export default async function RootLayout({ children }: LayoutProps) {
   const { isEnabled: isDraft } = await draftMode();
 
@@ -668,7 +668,7 @@ export default async function RootLayout({ children }: LayoutProps) {
 
 E o que sai:
 
-```tsx
+```tsx src/app/(frontend)/layout.tsx
 const { locale } = resolveRoute({
   segments: pathname.split('/').filter(Boolean),
   locales: site.locales,
@@ -828,7 +828,7 @@ Repara no que acabámos de ver: **`resolvePage(segments)` foi chamado duas vezes
 >
 > Em Next 16 a convenção `middleware` está **depreciada**. O ficheiro chama-se `proxy` e exporta uma função `proxy`. O Next avisa no arranque e oferece um codemod.
 
-```ts
+```ts src/proxy.ts
 export const PATHNAME_HEADER = 'x-pathname';
 
 export function proxy(request: NextRequest) {
@@ -974,7 +974,7 @@ Ficheiro: `src/core/routing/resolveRoute.ts`. Repara na pasta: estamos no **`cor
 
 O que entra e o que sai:
 
-```ts
+```ts src/core/routing/resolveRoute.ts
 interface ResolveRouteOptions {
   segments: string[];
   locales: string[];
@@ -991,7 +991,7 @@ Um único parâmetro em forma de objeto, em vez de três soltos. É o mesmo raci
 
 O corpo:
 
-```ts
+```ts src/core/routing/resolveRoute.ts
 const [firstSegment, ...rest] = segments;
 
 const requestedLocale = locales.find(
@@ -1063,7 +1063,7 @@ O `resolvePage` chamou `foundation.site.getSite()` e `foundation.page.getPage(..
 
 `src/core/foundation/Foundation.types.ts` — o ficheiro inteiro:
 
-```ts
+```ts src/core/foundation/Foundation.types.ts
 export interface Foundation {
   modules: ModuleRegistry;
   page: PageSource;
@@ -1108,7 +1108,7 @@ Repara na assimetria: **`page` e `site` são recebidos; `modules` é criado aqui
 
 A seguir, `src/core/foundation/foundation.ts` — quatro linhas de código:
 
-```ts
+```ts src/core/foundation/foundation.ts
 import { provider } from '@/providers/provider';
 
 import { createFoundation } from './createFoundation';
@@ -1143,7 +1143,7 @@ E é por causa desta cascata que o `foundation.ts` está **fora do barrel** ([0.
 
 `src/core/setup/registerModules.ts` — nove linhas, e é uma das partes mais engenhosas do projeto:
 
-```ts
+```ts src/core/setup/registerModules.ts
 import * as modules from '@/modules';
 
 export function registerModules(foundation: Foundation): void {
@@ -1189,7 +1189,7 @@ Duas classes, 48 linhas ao todo, e são o motor do sistema de módulos. Já usá
 
 `src/core/registry/Registry.ts`:
 
-```ts
+```ts src/core/registry/Registry.ts
 export class Registry<TKey, TValue> {
   protected readonly items = new Map<TKey, TValue>();
 ```
@@ -1198,7 +1198,7 @@ export class Registry<TKey, TValue> {
 
 O `protected readonly` está explicado em [0.5](#05-protected-private-readonly).
 
-```ts
+```ts src/core/registry/Registry.ts
   protected add(key: TKey, value: TValue): void {
     if (this.items.has(key)) {
       throw new Error(`Registry already contains key "${String(key)}".`);
@@ -1238,7 +1238,7 @@ Volta à linha do `throw` no `add`. Havia três hipóteses:
 
 `src/core/registry/ModuleRegistry.ts` — treze linhas:
 
-```ts
+```ts src/core/registry/ModuleRegistry.ts
 export class ModuleRegistry extends Registry<string, Module> {
   register<TProps extends ModuleProps>(module: Module<TProps>): void {
     this.add(module.alias, module);
@@ -1299,7 +1299,7 @@ Um alias para «qualquer coisa que não seja um primitivo». É o mínimo que se
 
 É também **o ponto mais fraco da tipagem do projeto**, e mais vale saberes já: `object` aceita praticamente tudo. Não há aqui nenhuma garantia de que os dados que chegam correspondem ao que o componente espera. Quem dá essa garantia é o zod, em execução ([0.12](#012-se-o-typescript-já-valida-tipos-para-que-serve-o-zod)). Guarda a ideia para [6.4](#64-createmodulecomponent-o-adaptador-e-onde-ele-mente).
 
-```ts
+```ts src/core/modules/Module.types.ts
 export type ModuleComponent<TProps extends ModuleProps = ModuleProps> = (
   props: TProps,
 ) => ReactNode;
@@ -1314,7 +1314,7 @@ Duas assinaturas de componente, e a diferença entre elas é a razão de existir
 
 Tem de ser assim porque o registo guarda módulos de tipos diferentes na mesma estrutura. Um `Map<string, Module<HeroProps>>` não podia guardar um `Module<CarouselProps>`. Ao nível do registo, as props têm de ser genéricas.
 
-```ts
+```ts src/core/modules/Module.types.ts
 export interface ModuleSchema<TData extends ModuleProps = ModuleProps> {
   parse(data: unknown): TData;
 }
@@ -1322,7 +1322,7 @@ export interface ModuleSchema<TData extends ModuleProps = ModuleProps> {
 
 O contrato mínimo de um validador — já discutido em [0.12](#012-se-o-typescript-já-valida-tipos-para-que-serve-o-zod). O `core` não importa o zod; descreve a forma de que precisa e deixa o zod encaixar sozinho. Repara no `data: unknown`: **não** é `any`. `unknown` obriga quem recebe a verificar antes de usar; `any` desliga o TypeScript. Aqui é exatamente o que se quer, porque nesta fronteira não se sabe mesmo o que vem.
 
-```ts
+```ts src/core/modules/Module.types.ts
 export interface Module<TProps extends ModuleProps = ModuleProps> {
   alias: string;
   name: string;
@@ -1338,7 +1338,7 @@ Campo a campo:
 - **`component`** — a versão de runtime, já adaptada.
 - **`schema?`** — **opcional**. Este `?` merece atenção: um módulo sem schema é registado na mesma e os dados chegam-lhe **sem validação nenhuma**. O `ModuleRenderer` só valida se houver schema (`ModuleRenderer.tsx:26`). Na prática o hero tem schema e a convenção é tê-lo sempre; mas nada o obriga, e um módulo distraído passa sem rede.
 
-```ts
+```ts src/core/modules/Module.types.ts
 export interface ModuleInstance<TData extends ModuleProps = ModuleProps> {
   id: string;
   name?: string;
@@ -1356,7 +1356,7 @@ export interface ModuleInstance<TData extends ModuleProps = ModuleProps> {
 
 `src/core/modules/defineModule.ts` — o ficheiro inteiro:
 
-```ts
+```ts src/core/modules/defineModule.ts
 export function defineModule<TProps extends ModuleProps>(module: Module<TProps>): Module<TProps> {
   return module;
 }
@@ -1398,7 +1398,7 @@ E há um segundo benefício, mais subtil: a **inferência**. Como `TProps` é in
 
 `src/core/modules/createModuleComponent.tsx`:
 
-```tsx
+```tsx src/core/modules/createModuleComponent.tsx
 export function createModuleComponent<TProps extends ModuleProps>(
   Component: ModuleComponent<TProps>,
 ): RuntimeModuleComponent {
@@ -1424,7 +1424,7 @@ Nota de detalhe: a função devolvida tem nome (`ModuleComponentAdapter`) em vez
 
 **`Hero.schema.ts`** — a forma dos dados, validável em execução:
 
-```ts
+```ts src/modules/Hero/Hero.schema.ts
 export const heroSchema = z.object({
   title: z.string(),
   subtitle: z.string().optional(),
@@ -1478,7 +1478,7 @@ O `{subtitle && <p>...</p>}` é o padrão normal de renderização condicional. 
 }
 ```
 
-```tsx
+```tsx src/modules/Hero/Hero.tsx
 import styles from './Hero.module.scss';
 …
 <section className={styles.hero}>
@@ -1496,7 +1496,7 @@ O `sass` é uma devDependency declarada. Chegou a compilar sem estar no `package
 
 **`Hero.definition.ts`** — a definição, a juntar as peças:
 
-```ts
+```ts src/modules/Hero/Hero.definition.ts
 export const heroModule = defineModule({
   alias: 'hero',
   name: 'Hero',
@@ -1560,7 +1560,7 @@ Até aqui esteve tudo dentro do `core` — sem CMS, sem base de dados, sem Next.
 
 `src/providers/Provider.types.ts` — o ficheiro inteiro:
 
-```ts
+```ts src/providers/Provider.types.ts
 export interface Provider {
   page: PageSource;
   site: SiteSource;
@@ -1579,7 +1579,7 @@ Compara com a `Foundation` ([4.1](#41-o-objeto-de-três-campos)): esta tem `modu
 
 `src/providers/createProvider.ts`:
 
-```ts
+```ts src/providers/createProvider.ts
 export function createProvider(): Provider {
   const name = process.env.PROVIDER ?? 'payload';
 
@@ -1617,7 +1617,7 @@ E ao lado, `src/providers/provider.ts` — uma linha: `export const provider = c
 
 Os três ficheiros têm a mesma forma. `src/providers/payload/provider.ts`:
 
-```ts
+```ts src/providers/payload/provider.ts
 export const payloadProvider: Provider = {
   page: new PayloadPageSource(),
   site: new PayloadSiteSource(),
@@ -1690,7 +1690,7 @@ Lê-se de dentro para fora: `typeof availableLocales` é o tipo do array; `[numb
 >
 > A união de locales é **derivada** da lista, não escrita à mão. Acrescentar `'fr-FR'` ao array atualiza o tipo sozinho, e todos os sítios que fazem `switch` sobre locales passam a acusar o caso em falta. É exatamente o mesmo princípio do `z.infer` no hero ([6.5](#65-o-hero-ficheiro-a-ficheiro)): uma fonte de verdade, tudo o resto derivado.
 
-```ts
+```ts src/providers/payload/locales.ts
 export const payloadLocales = availableLocales.map(({ label, value }) => ({
   label,
   code: value,
@@ -1699,7 +1699,7 @@ export const payloadLocales = availableLocales.map(({ label, value }) => ({
 
 Uma adaptação de forma: o campo `select` do global `Site` quer `{ label, value }`, e o `localization` do Payload quer `{ label, code }`. Mesma informação, dois consumidores com vocabulários diferentes. Em vez de manter duas listas que podem divergir, mantém-se uma e converte-se.
 
-```ts
+```ts src/providers/payload/locales.ts
 export function isSupportedLocale(locale: string): locale is SupportedLocale {
   return availableLocales.some(({ value }) => value === locale);
 }
@@ -1713,7 +1713,7 @@ Sem ele, a função devolvia `boolean` e o compilador não aprendia nada — den
 
 `src/providers/payload/sources/PayloadSiteSource.ts` hoje é uma linha:
 
-```ts
+```ts src/providers/payload/sources/PayloadSiteSource.ts
 export class PayloadSiteSource extends SiteSource {
   async getSite(): Promise<SiteDefinition> {
     return getCachedSite();
@@ -1723,7 +1723,7 @@ export class PayloadSiteSource extends SiteSource {
 
 A consulta em si mudou-se para `loadPayloadSite.ts`, para que a versão com cache e a versão sem cache partilhem o mesmo código — voltamos a isso em [8.6](#86-a-cache-o-que-sobrevive-ao-pedido). É essa a leitura que interessa aqui:
 
-```ts
+```ts src/providers/payload/sources/loadPayloadSite.ts
 export async function loadPayloadSite(): Promise<SiteDefinition> {
   const payload = await getPayloadClient();
 
@@ -1979,7 +1979,7 @@ O `throw` quando falta `id` é defensável — sem `id` não há `key` estável 
 
 Por fim:
 
-```ts
+```ts src/providers/payload/mappers/mapPayloadPage.ts
 function cleanValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.filter((item) => item !== null).map(cleanValue);
@@ -2080,7 +2080,7 @@ Os redirects têm tag própria porque apagar um redirect não tem que deitar for
 
 Por isso o hook das páginas invalida **as duas**:
 
-```ts
+```ts src/providers/payload/cache/hooks.ts
 function revalidatePages(): void {
   revalidatePayloadTag(PAGES_TAG);
   revalidatePayloadTag(REDIRECTS_TAG);
@@ -2093,7 +2093,7 @@ O contrário não é verdade: gravar um redirect não toca em página nenhuma. �
 
 Os hooks do Payload, em `cache/hooks.ts`, ligados na collection `Pages` e no global `Site`:
 
-```ts
+```ts src/providers/payload/collections/Pages.ts
 hooks: {
   afterChange: [revalidatePagesOnChange],
   afterDelete: [revalidatePagesOnDelete],
@@ -2134,7 +2134,7 @@ Os capítulos anteriores viram o Payload como fonte de dados. Este vê-o como ap
 
 Está na **raiz** do projeto, não no `src/`, porque o Payload e o Next esperam-no aí (é o que o alias `@payload-config` do `tsconfig` aponta).
 
-```ts
+```ts payload.config.ts
 export default buildConfig({
   secret: env.PAYLOAD_SECRET,
 ```
@@ -2179,7 +2179,7 @@ export default buildConfig({
 
   Repara no `req` passado ao `findGlobal`: reutiliza o contexto do pedido em curso (transação, utilizador), em vez de abrir um novo.
 
-```ts
+```ts payload.config.ts
   admin: {
     user: Users.slug,
 
@@ -2244,7 +2244,7 @@ export const Pages: CollectionConfig = {
 
   E é aqui que as duas opções se cruzam: **cada autosave dispara o `afterChange`**. Sem a guarda de `_status` que o hook tem, escrever um parágrafo neste editor invalidava a cache do site inteiro umas dezenas de vezes.
 
-```ts
+```ts src/providers/payload/collections/Pages.ts
   admin: {
     group: 'Content',
     useAsTitle: 'title',
@@ -2549,7 +2549,7 @@ O frontend não é «autorizado»; **passa ao lado** do sistema de acesso, porqu
 
 O global tem também um hook, pela mesma razão que a collection `Pages`:
 
-```ts
+```ts src/providers/payload/globals/Site.ts
 hooks: {
   afterChange: [revalidateSiteOnChange],
 },
@@ -2641,7 +2641,7 @@ O live preview é a funcionalidade que atravessa mais camadas do projeto. Vale a
 
 **`getLivePreviewUrl`** (passo 3):
 
-```ts
+```ts src/providers/payload/utils/getLivePreviewUrl.ts
 const lastBreadcrumb = breadcrumbs?.[breadcrumbs.length - 1];
 
 const path = typeof lastBreadcrumb?.url !== 'string' ? '/' : lastBreadcrumb.url;
@@ -2779,7 +2779,7 @@ Nota sobre o `NEXT_PUBLIC_SERVER_URL`: o prefixo é obrigatório porque este có
 
 **A saída** — `next/exit-preview/route.ts` é curta:
 
-```ts
+```ts src/app/(frontend)/next/exit-preview/route.ts
 export async function POST(): Promise<Response> {
   const draft = await draftMode();
   draft.disable();
@@ -2847,7 +2847,7 @@ Voltemos ao percurso. O `page.tsx` tem um `PageDefinition` e chamou `<PageRender
 
 `src/core/renderer/PageRenderer.tsx`:
 
-```tsx
+```tsx src/core/renderer/PageRenderer.tsx
 export function PageRenderer({ page, foundation }: PageRendererProps) {
   return (
     <>
@@ -2888,7 +2888,7 @@ O componente **não sabe o que é um hero**. Sabe que uma página tem três regi
 
 `src/core/renderer/ModuleRenderer.tsx` — 43 linhas, e é o coração do sistema.
 
-```tsx
+```tsx src/core/renderer/ModuleRenderer.tsx
 const definition = foundation.modules.getByAlias(module.alias);
 
 if (!definition) {
@@ -2904,7 +2904,7 @@ if (!definition) {
 
 Falhar aqui quer dizer que o CMS tem um bloco que o código não conhece — tipicamente, o `alias` e o `slug` não batem certo ([6.6](#66-o-alias-é-a-cola)), ou alguém se esqueceu de exportar o módulo no barrel.
 
-```tsx
+```tsx src/core/renderer/ModuleRenderer.tsx
 let data = module.data;
 
 if (!definition.schema && process.env.NODE_ENV === 'development') {
@@ -2940,7 +2940,7 @@ E repara no `if (definition.schema)`: **sem schema, não há validação nenhuma
 >
 > Repara que este `console.warn` é intencional e diz alguma coisa — ao contrário do `console.error(process.env.NODE_ENV === 'development')` que existiu no `ModuleErrorFallback` e imprimia um booleano solto. A diferença entre um log útil e lixo esquecido é exatamente esta.
 
-```tsx
+```tsx src/core/renderer/ModuleRenderer.tsx
 const Component = definition.component;
 
 return <Component {...data} />;
@@ -2994,7 +2994,7 @@ Continua a não haver uso de `<Suspense>` nem `loading.tsx`: cada pedido bloquei
 
 `src/core/errors/ModuleRenderError.ts`:
 
-```ts
+```ts src/core/errors/ModuleRenderError.ts
 export class ModuleRenderError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
@@ -3009,7 +3009,7 @@ O `this.name` é o que faz a consola escrever `ModuleValidationError: ...` em ve
 
 O **`options`** é `ErrorOptions`, o tipo padrão do JavaScript, e o que interessa lá dentro é o `cause` — usado em `ModuleRenderer.tsx:31`:
 
-```ts
+```ts src/core/renderer/ModuleRenderer.tsx
 throw new ModuleValidationError(`Module "${module.alias}" data validation failed.`, {
   cause: error,
 });
@@ -3101,7 +3101,7 @@ Uma flag que só se pagasse em `!` não valeria a pena. Esta pagou-se em mensage
 
 Oito linhas:
 
-```ts
+```ts next.config.ts
 const nextConfig: NextConfig = {
   reactCompiler: true,
 };
@@ -3262,7 +3262,7 @@ Um caminho alternativo, para quando os dados vêm de uma API externa em vez de u
 
 **`ApiClient`** (`src/providers/api/client/ApiClient.ts`) — uma classe com um método público:
 
-```ts
+```ts src/providers/api/client/ApiClient.ts
 export class ApiClient {
   constructor(private readonly config: ApiConfig) {}
 

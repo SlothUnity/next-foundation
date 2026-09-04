@@ -6,7 +6,7 @@ O `core/` define o vocabulário do projecto. Não conhece Next.js, não conhece 
 
 Abstracção de obtenção de páginas. [core/pages/PageSource.ts](../../src/core/pages/PageSource.ts)
 
-```ts
+```ts src/core/pages/PageSource.ts
 export interface GetPageOptions {
   draft?: boolean;
   query?: PageQuery;
@@ -61,7 +61,7 @@ O `width` e o `height` são opcionais porque um PDF não os tem, e o `next/image
 
 ### Listar caminhos
 
-```ts
+```ts src/core/pages/Page.types.ts
 export interface PagePath {
   path: string;
   locale: string;
@@ -80,7 +80,7 @@ Isto abria dois buracos ao mesmo tempo — sem forma de enumerar os próprios UR
 
 ### PageResponse
 
-```ts
+```ts src/core/pages/Page.types.ts
 export type PageResponse =
   | { status: 'ok'; page: PageDefinition }
   | { status: 'notFound'; page?: PageDefinition }
@@ -103,7 +103,7 @@ O `permanent` mapeia para os helpers do Next: `redirect` dá 307, `permanentRedi
 
 Configuração global do site. [core/site/SiteSource.ts](../../src/core/site/SiteSource.ts)
 
-```ts
+```ts src/core/site/SiteSource.ts
 export abstract class SiteSource {
   abstract getSite(): Promise<SiteDefinition>;
 }
@@ -113,7 +113,7 @@ export abstract class SiteSource {
 
 O contrato interno de página. [core/pages/Page.types.ts](../../src/core/pages/Page.types.ts)
 
-```ts
+```ts src/core/pages/Page.types.ts
 export interface PageDefinition {
   meta: Meta;
   navigation?: ModuleInstance[];
@@ -128,7 +128,7 @@ Serem listas e não um módulo só é uma correcção: com um `ModuleInstance` s
 
 ## Meta
 
-```ts
+```ts src/core/pages/Page.types.ts
 export interface Meta {
   locale: string;
 
@@ -156,7 +156,7 @@ O `alternates` é o caminho desta página em cada idioma, para o `hreflang`. É 
 
 [core/site/Site.types.ts](../../src/core/site/Site.types.ts)
 
-```ts
+```ts src/core/site/Site.types.ts
 export interface SiteDefinition {
   name: string;
   locales: string[];
@@ -175,7 +175,7 @@ A ordem de `locales` continua a ser a que a origem declara, e o provider payload
 
 [core/modules/Module.types.ts](../../src/core/modules/Module.types.ts)
 
-```ts
+```ts src/core/modules/Module.types.ts
 export type ModuleProps = object;
 
 export type ModuleComponent<TProps extends ModuleProps = ModuleProps> = (
@@ -241,7 +241,7 @@ Documentadas em [routing.md](routing.md).
 
 ## Foundation
 
-```ts
+```ts src/core/foundation/Foundation.types.ts
 export interface Foundation {
   modules: ModuleRegistry;
   page: PageSource;

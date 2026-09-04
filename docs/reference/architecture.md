@@ -169,7 +169,7 @@ Isto não é cosmética. Enquanto o singleton estava no barrel, os testes unitá
 
 A `Foundation` agrega o que a aplicação precisa para renderizar:
 
-```ts
+```ts src/core/foundation/Foundation.types.ts
 export interface Foundation {
   modules: ModuleRegistry;
   page: PageSource;

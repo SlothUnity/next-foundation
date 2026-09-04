@@ -2,4 +2,5 @@ pnpm lint-staged
 pnpm lint
 pnpm typecheck
 pnpm check:links
+pnpm check:quotes
 pnpm test --run

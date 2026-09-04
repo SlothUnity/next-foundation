@@ -353,7 +353,7 @@ Rascunhos (`draft: true`) passam a `cache: 'no-store'`. Quem grava precisa de ve
 
 O que mudou: o `locale` já **não** é ignorado pelo `ApiPageSource`. Ele resolve-o — usando o default da sua `SiteSource` quando ninguém o indica — e passa-o ao `createPageRequest`:
 
-```ts
+```ts src/providers/api/sources/ApiPageSource.ts
 const resolvedLocale = locale ?? (await this.site.getSite()).defaultLocale;
 
 const request = createPageRequest({ path, locale: resolvedLocale, draft: options?.draft });
