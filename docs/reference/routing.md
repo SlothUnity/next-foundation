@@ -87,6 +87,17 @@ where: !path
 
 O `generateURL` do plugin constrói o `breadcrumbs.url` a partir dos títulos dos ancestrais, passados por `createSlug`, **excluindo** documentos com `isHome`. É por isso que os filhos da homepage não herdam o slug dela.
 
+**Essa consulta não basta, e a razão é a forma dos breadcrumbs.** O plugin guarda **um registo por ancestral mais o próprio documento** — uma página em `/servicos/consultoria` tem dois, `/servicos` e `/servicos/consultoria`. Como `breadcrumbs` é um array, `breadcrumbs.url equals '/servicos'` casa com a página `/servicos` **e com todos os seus descendentes**. Com `limit: 1` e sem `sort`, qual deles vinha era o que a base de dados desse primeiro: bastava a secção ter uma página filha publicada para o pai poder servir o conteúdo do filho.
+
+O [resolvePayloadPage](../../src/providers/payload/sources/resolvePayloadPage.ts) resolve em dois passos, e não em um:
+
+1. a consulta pelo crumb, mas com `depth: 0`, `select: { breadcrumbs: true }` e **sem limite** — traz os candidatos, e nada mais do que os breadcrumbs de cada um;
+2. dos candidatos, fica o que tem esse URL como **último** crumb, ou seja o seu próprio; e só esse é lido por `findByID` com `depth: 2`.
+
+O custo é uma ida a mais à base de dados por página, dentro da mesma entrada de cache. O preço da alternativa era pior: um único `find` com `depth: 2` e sem limite traria todos os descendentes com os seus uploads populados — numa secção com muitas páginas, isso é a consulta a crescer com o tamanho do site.
+
+A correcção definitiva é outra: um campo `url` indexado, escrito por hook, em vez de resolver contra um array. Isso muda a collection e exige migração e backfill, portanto fica para quem tiver o problema à escala. Os testes em [resolvePayloadPage.test.ts](../../src/providers/payload/sources/resolvePayloadPage.test.ts) fixam o comportamento com pai, filho e neto.
+
 Nota: o `breadcrumbs.url` só é recalculado quando o documento é gravado. Um título alterado e ainda não gravado não muda o URL.
 
 ## Metadata

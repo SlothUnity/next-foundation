@@ -67,9 +67,15 @@ Em produção esse push não corre, de propósito: um deploy não tem onde pergu
 | `pnpm payload:migrate:status` | para ver o que já correu e o que falta                          |
 | `pnpm payload:migrate`        | no ambiente de destino, antes de o código novo começar a servir |
 
-**A primeira migração tem de ser criada por ti, e não pode vir no repositório.** O `migrate:create` liga-se à base de dados para comparar o schema actual com a config e gerar a diferença — logo o ficheiro depende do estado do teu Postgres, e um ficheiro escrito às cegas descrevia uma base de dados que não existe. Corre-o contra uma base de dados de desenvolvimento com o schema já em dia, commita o resultado em `src/migrations/`, e a partir daí cada alteração de modelo passa a ter um ficheiro.
+**A primeira migração já vem no repositório**, em [src/migrations/](../../src/migrations/): cria as 31 tabelas do schema actual, `navigation` e `footer` incluídos.
 
-O passo de deploy não está no [vercel.json](../../vercel.json), e é uma decisão. Pôr `payload migrate` no `buildCommand` obriga a base de dados de produção a estar acessível de cada build — inclusive de um build que só mexeu em texto — e faz uma migração falhada derrubar deploys que nada tinham a ver com o modelo. Enquanto o projecto vive de push em desenvolvimento, o comando não tem nada a correr; quando passar a migrações, o sítio para o acrescentar é o `buildCommand` ou um passo próprio do pipeline, e a escolha é de quem opera.
+Vale explicar como ela pôde ser escrita, porque este documento já disse o contrário e estava errado. O `migrate:create` **não liga à base de dados**: gera um snapshot JSON a partir da **config**, compara-o com o **último snapshot em disco** — o `.json` ao lado de cada migração — e escreve o SQL da diferença. Sem migrações, compara com um snapshot vazio e produz o schema inteiro. É por isso que os dois ficheiros são commitados: o `.ts` é o que corre, o `.json` é a memória contra a qual a próxima diferença é calculada.
+
+A consequência prática é a que interessa: **cada alteração de modelo é uma migração criada offline e revista em code review**, como qualquer outro ficheiro. Os dois são gerados, portanto estão fora do Prettier e do eslint, ao lado do `payload-types.ts`.
+
+**A armadilha é a transição.** Uma base de dados construída pelo push de desenvolvimento **já tem as tabelas** e não tem registo nenhum em `payload_migrations`, portanto correr `pnpm payload:migrate` contra ela falha no primeiro `CREATE TABLE`. A migração inicial é para uma base de dados **vazia** — produção, ou um ambiente novo. Em desenvolvimento continua a valer o push, e não há nada a reconciliar.
+
+**O passo de deploy fica fora do [vercel.json](../../vercel.json)**, e agora por uma razão diferente da que aqui estava: esse ficheiro é partilhado pelos três providers, e num projecto `api` ou `mock` o comando `payload` não existe. Num projecto `payload`, o `buildCommand` a usar é `pnpm payload:migrate && pnpm build` — no `vercel.json` do projecto ou nas settings do Vercel. O custo é o que se ganha: uma migração falhada chumba o deploy, em vez de deixar código novo a servir contra um schema velho.
 
 ## Localização
 

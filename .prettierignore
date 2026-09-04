@@ -15,4 +15,5 @@ generator/templates
 # só cobre quem corre o script à mão. Ficam de fora, e o `pnpm format:check` volta a
 # dizer a verdade sobre os ficheiros que alguém escreve.
 payload-types.ts
+src/migrations/
 src/app/(payload)/admin/importMap.js

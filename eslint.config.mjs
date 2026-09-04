@@ -29,7 +29,7 @@ const eslintConfig = defineConfig([
   ...nextTs,
 
   // Default ignores of eslint-config-next, repeated because overriding them drops them.
-  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts']),
+  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'src/migrations/**']),
 
   {
     // O core é a camada de baixo: não conhece o framework, o CMS, nem quem o consome.

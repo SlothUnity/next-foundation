@@ -98,7 +98,15 @@ const PAYLOAD_DEPENDENCIES = [
   'payload',
 ];
 
-const PAYLOAD_SCRIPTS = ['dev:payload', 'payload:types', 'payload:importMap', 'payload:generate'];
+const PAYLOAD_SCRIPTS = [
+  'dev:payload',
+  'payload:types',
+  'payload:importMap',
+  'payload:generate',
+  'payload:migrate',
+  'payload:migrate:create',
+  'payload:migrate:status',
+];
 
 const PROVIDER_SCRIPTS = ['dev:mock'];
 
@@ -111,6 +119,7 @@ function removePayload(): SetupOperation[] {
     { kind: 'delete', path: 'src/app/(frontend)/next', why },
     { kind: 'delete', path: 'payload.config.ts', why },
     { kind: 'delete', path: 'payload-types.ts', why },
+    { kind: 'delete', path: 'src/migrations', why },
     { kind: 'delete', path: 'generator/templates/module/block.hbs', why },
     { kind: 'delete', path: 'docs/reference/payload.md', why },
 
