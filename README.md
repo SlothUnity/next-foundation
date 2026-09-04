@@ -67,6 +67,12 @@ Pergunta qual dos três é (`payload`, `api` ou `mock`) e **apaga o que não é 
 
 Chama-se `setup:provider` e não `setup` porque **`pnpm setup` é um comando do próprio pnpm** — um script com esse nome ficaria à sombra dele.
 
+**Há um segundo caminho, e a escolha entre os dois não é de gosto.** O `setup:provider` muta **este**
+repositório: serve quando tu _és_ o projecto. O `pnpm create:foundation <pasta>` **gera** um projecto
+novo e deixa esta foundation intacta: serve quando queres tirar vários projectos dela. Corre o mesmo
+plano, com a mesma verificação — só muda a raiz a que se aplica. A tabela dos dois está em
+[providers.md § Dois caminhos](docs/reference/providers.md#dois-caminhos-mutar-aqui-ou-gerar-ao-lado).
+
 Três coisas que vale saber antes de correr:
 
 - **recusa arrancar com alterações não commitadas**, para tudo o que ele faz caber num só `git diff` legível;
@@ -304,6 +310,7 @@ Duas regras de pastas que evitam a maior parte das dúvidas:
 | `pnpm check:links`          | ligações e âncoras dos `.md`, e chumba se alguma apodreceu   |
 | `pnpm dev:mock`             | o `dev` com o provider `mocks`, sem base de dados            |
 | `pnpm setup:provider`       | escolhe o provider do projecto e apaga os outros dois        |
+| `pnpm create:foundation`    | gera um projecto novo numa pasta, e deixa esta intacta       |
 | `pnpm payload:generate`     | `payload:types` + `payload:importMap`                        |
 | `pnpm payload:migrate*`     | `create`, `status` e a aplicação das migrações do Postgres   |
 

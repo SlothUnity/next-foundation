@@ -180,6 +180,52 @@ Cada bloco tem de produzir uma `ModuleInstance` com `alias` igual ao `alias` de 
 
 O core não muda. O renderer não muda. Os módulos não mudam.
 
+## Dois caminhos: mutar aqui, ou gerar ao lado
+
+Há duas formas de sair da foundation com um provider só, e a diferença não é de gosto: é de
+onde fica o resultado.
+
+|              | `pnpm setup:provider`                               | `pnpm create:foundation <pasta>`                    |
+| ------------ | --------------------------------------------------- | --------------------------------------------------- |
+| Onde escreve | **neste** repositório                               | numa pasta nova                                     |
+| A foundation | fica mutada                                         | **fica intacta**                                    |
+| Histórico    | o teu, mais um commit de subtracção                 | novo, com um commit inicial                         |
+| Reverter     | `git checkout .`                                    | apagar a pasta                                      |
+| Quando serve | tu **és** o projecto: clonaste para começar um site | queres tirar projectos desta foundation, mantendo-a |
+
+O `create:foundation` é o que faz a subtracção parecer adição, sem deixar de ser verificada:
+copia os ficheiros seguidos pelo git para a pasta nova e **corre lá dentro o mesmo plano** que
+o `setup:provider` corre aqui. O plano é o mesmo objecto, com os mesmos 39 testes, incluindo o
+que confirma que cada âncora existe na árvore real — o que muda é a `root` a que se aplica.
+
+Três coisas que só ele faz, porque só fazem sentido num projecto novo:
+
+- **o `package.json` passa a ser do projecto:** o `name` vem do nome da pasta, a `version` volta
+  a `0.1.0`, e os comandos da foundation — o `setup:provider` e o próprio `create:foundation` —
+  saem;
+- **as ferramentas da foundation não viajam.** O `scripts/setup/` e o `scripts/create/` ficam
+  para trás; o `scripts/links/` vai, porque um projecto continua a ter documentos para manter
+  honestos;
+- **o `.env.local` nunca é copiado.** A lista vem do `git ls-files`, que não o vê — e há um
+  teste a fixar isso, porque é o ficheiro que guarda segredos reais.
+
+**Copia a árvore de trabalho, não o `HEAD`.** É escolha: o que estás a ver é o que o projecto
+leva, incluindo alterações que ainda não commitaste. A lista vem do `git ls-files`, portanto
+ficheiros não seguidos ficam de fora — o que é como o `.env.local` escapa. Se preferires que um
+projecto só possa nascer de um estado commitado, é um `git stash` antes, ou uma guarda de árvore
+limpa como a do `setup:provider`.
+
+O commit inicial do projecto novo é feito com `--no-verify`, e tem de ser: o hook de pre-commit
+corre o `lint`, o `typecheck` e os testes, e nesse instante a pasta ainda não tem `node_modules`.
+
+No fim corre o verificador de ligações **contra o projecto novo** e mostra a lista exacta de
+prosa que ficou a apontar para o que este provider não tem. É a mesma lista que o
+`pnpm check:links` dá lá dentro a qualquer momento.
+
+E chama-se `create:foundation` e não `create` pela mesma razão que o outro se chama
+`setup:provider`: **o `pnpm create` é um comando do próprio pnpm**, e um script com esse nome
+ficaria à sombra dele.
+
 ## Remover o Payload
 
 Esta foundation traz o Payload montado, mas ele é **um** provider e não a fundação. Se o
