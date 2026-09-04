@@ -258,6 +258,26 @@ Precisas de escrever um comentário quando o código faz uma coisa que parece er
 
 [.gitattributes](../../.gitattributes) declara `* text=auto eol=lf`, e as duas metades fazem coisas diferentes: o `text=auto` normaliza para LF **no que o Git guarda**, e o `eol=lf` força LF **no disco**.
 
+### O hook cobre o que o CI cobre
+
+O `lint-staged` formatava `js,jsx,ts,tsx,json,md,yml,yaml` e **deixava de fora o `.scss` e o `.mjs`** —
+enquanto o `format:check` do CI os apanha. Era o único ponto em que o hook era **mais estreito do que
+o portão que ele existe para antecipar**: um `.scss` mal formatado ou uma mudança no
+`eslint.config.mjs` commitavam-se localmente e chumbavam no CI. Passaram os dois a estar na lista.
+
+### As versões do mesmo componente não podem discordar
+
+O `@types/node` estava em `^20` enquanto o `.nvmrc` fixa `22.23.2` e o `engines` pede `>=22.22.2` —
+os tipos descreviam a superfície de um runtime que o projecto já não usa. É a mesma classe de
+divergência que fez a primeira corrida do CI chumbar, e estava latente: nada no repositório usava
+ainda uma API só do Node 22, portanto o `typecheck` não tinha como avisar. Passou a `^22`.
+
+### O `.vscode` recomenda o que o `settings.json` pressupõe
+
+O `settings.json` declara o `esbenp.prettier-vscode` como formatador e liga o `formatOnSave`, e não
+havia `extensions.json`. Quem clonasse sem a extensão instalada tinha o `formatOnSave` a **não fazer
+nada, em silêncio** — e descobria-o quando o `format:check` do CI chumbasse.
+
 É a segunda que resolve o problema real. O repositório já guardava LF, mas com `core.autocrlf=true` — o default de muitas instalações do Git em Windows — o checkout escrevia CRLF, e o Prettier (que corre com `endOfLine: "lf"`) reprovava seis ficheiros que ninguém tinha editado. A única forma de os «corrigir» era um commit de ruído que o próximo checkout desfazia.
 
 Com isto no repositório, a decisão deixa de depender da configuração de cada máquina.

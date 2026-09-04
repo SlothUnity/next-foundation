@@ -43,3 +43,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ferramentas locais de quem desenvolve
+.claude/settings.local.json
+Thumbs.db
+desktop.ini
