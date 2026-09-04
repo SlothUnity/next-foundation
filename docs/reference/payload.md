@@ -35,7 +35,7 @@ export default buildConfig({
   admin: { … },
 
   collections: [Users, Pages, Redirects, Media],
-  globals: [Site],
+  globals: [Site, Navigation, Footer],
 
   db: postgresAdapter({ pool: { connectionString: env.DATABASE_URL } }),
   plugins: [nestedDocs, seo, storage],
@@ -52,6 +52,24 @@ Uma leitura em vez de três chamadas tem duas consequências práticas. As mensa
 | `NEXT_PUBLIC_SERVER_URL` | ser URL absoluto e **não terminar em barra**                            |
 
 A segunda linha não é preciosismo. O Live Preview compara este valor com a origem do browser por **igualdade de string**, portanto uma barra final quebra-o sem erro nenhum: o iframe abre, o conteúdo nunca actualiza, e não há nada no log. É o género de defeito que se procura durante uma tarde.
+
+## O schema da base de dados
+
+Há **dois caminhos**, e a diferença entre eles é a razão pela qual um deles não pode ficar por ligar.
+
+Em desenvolvimento o adaptador empurra o schema da config para a base de dados no arranque — `pushDevSchema`, e o guarda é `NODE_ENV !== 'production'`. Cria as tabelas na primeira corrida e ajusta-as depois; quando uma alteração não se aplica sem uma decisão (uma coluna nova obrigatória numa tabela que já tem linhas), **pergunta no terminal e espera**. É por isso que o arranque quer um terminal onde se possa responder.
+
+Em produção esse push não corre, de propósito: um deploy não tem onde perguntar, e uma coluna a menos é preferível a uma tabela reescrita sem ninguém a ver. O caminho de produção são migrações, e são estes três comandos:
+
+| Comando                       | Quando                                                          |
+| ----------------------------- | --------------------------------------------------------------- |
+| `pnpm payload:migrate:create` | depois de mexer em collections, globals ou campos               |
+| `pnpm payload:migrate:status` | para ver o que já correu e o que falta                          |
+| `pnpm payload:migrate`        | no ambiente de destino, antes de o código novo começar a servir |
+
+**A primeira migração tem de ser criada por ti, e não pode vir no repositório.** O `migrate:create` liga-se à base de dados para comparar o schema actual com a config e gerar a diferença — logo o ficheiro depende do estado do teu Postgres, e um ficheiro escrito às cegas descrevia uma base de dados que não existe. Corre-o contra uma base de dados de desenvolvimento com o schema já em dia, commita o resultado em `src/migrations/`, e a partir daí cada alteração de modelo passa a ter um ficheiro.
+
+O passo de deploy não está no [vercel.json](../../vercel.json), e é uma decisão. Pôr `payload migrate` no `buildCommand` obriga a base de dados de produção a estar acessível de cada build — inclusive de um build que só mexeu em texto — e faz uma migração falhada derrubar deploys que nada tinham a ver com o modelo. Enquanto o projecto vive de push em desenvolvimento, o comando não tem nada a correr; quando passar a migrações, o sítio para o acrescentar é o `buildCommand` ou um passo próprio do pipeline, e a escolha é de quem opera.
 
 ## Localização
 

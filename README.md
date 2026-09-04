@@ -301,6 +301,7 @@ Duas regras de pastas que evitam a maior parte das dúvidas:
 | `pnpm dev:mock`             | o `dev` com o provider `mocks`, sem base de dados            |
 | `pnpm setup:provider`       | escolhe o provider do projecto e apaga os outros dois        |
 | `pnpm payload:generate`     | `payload:types` + `payload:importMap`                        |
+| `pnpm payload:migrate*`     | `create`, `status` e a aplicação das migrações do Postgres   |
 
 Corre `pnpm payload:generate` (ou arranca com `pnpm dev:payload`) sempre que mudares collections, globals, campos ou o caminho de um componente de admin.
 
