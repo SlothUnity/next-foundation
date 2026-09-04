@@ -48,3 +48,47 @@ jobs:
           DATABASE_URL: postgres://user:pass@localhost:5432/placeholder
           PAYLOAD_SECRET: placeholder-secret-for-the-build
           NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+
+  # The gate above verifies the foundation, which is a shape nobody ships. This
+  # verifies the ones that do: a generated project per provider. It is the net
+  # that was missing - every provider-shaped defect was invisible until someone
+  # ran the loop by hand.
+  shapes:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        provider: [payload, api, mock]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate a ${{ matrix.provider }} project
+        run: pnpm exec tsx scripts/create/Create.cli.ts ../shape --provider=${{ matrix.provider }} --yes
+
+      # Not --frozen-lockfile: the generated package.json declares fewer
+      # dependencies than the copied lockfile describes.
+      - run: pnpm install --no-frozen-lockfile
+        working-directory: ../shape
+
+      - run: pnpm lint
+        working-directory: ../shape
+
+      - run: pnpm typecheck
+        working-directory: ../shape
+
+      - run: pnpm check:links
+        working-directory: ../shape
+
+      - run: pnpm check:quotes
+        working-directory: ../shape

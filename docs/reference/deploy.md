@@ -56,6 +56,34 @@ O `test --run` corre com **`--reporter=verbose`**, e a razão é operacional: im
 
 Loga um `ECONNREFUSED` e termina a zero. Não é um passo a falhar: a página de not-found é pré-renderizada, pergunta à origem de conteúdo, e o erro é apanhado e reportado — é o [error reporter](renderer.md) a fazer o trabalho dele. Se algum dia esse log desaparecer, é sinal de que a página deixou de ser estática, não de que ficou melhor.
 
+## O segundo job: as formas que se entregam
+
+O job acima verifica **a foundation** — que é uma forma que ninguém entrega. As que se entregam são
+`base+payload`, `base+api`, `base+mock` e um projecto gerado, e durante muito tempo o portão testou
+**zero** delas.
+
+Isso não era um descuido de configuração: era a razão pela qual defeitos apareciam sempre depois de
+uma correcção. O `sharp` a sobreviver sem quem o importe, o `create:foundation` com sete erros de
+TypeScript depois do eject, 24 a 57 ligações mortas por provider, o `env.ts` órfão — **nenhum deles
+era visível ao portão**, porque nenhum existe antes de um provider ser removido. Cada um foi
+encontrado por alguém correr o ciclo à mão.
+
+O job `shapes` põe esse ciclo na máquina. Para cada provider: gera um projecto com o
+`create:foundation`, instala, e corre `lint`, `typecheck`, `check:links` e `check:quotes` **lá
+dentro**. Localmente é o `pnpm verify:shapes`, e faz o mesmo.
+
+| Decisão                                            | Porquê                                                                                                                                                                           |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| usa o `create:foundation` e não o `setup:provider` | não muta o repositório, e testa o gerador de graça. As três formas do `setup:provider` ficam cobertas porque os dois correm o mesmo `planRemoval`                                |
+| `fail-fast: false`                                 | quer-se saber **quais** formas quebraram, não a primeira                                                                                                                         |
+| sem `--frozen-lockfile` no projecto gerado         | o `package.json` podado declara menos dependências do que o lockfile copiado descreve. Um `--frozen-lockfile` lá dentro chumba, e por uma razão que não é a que se está a testar |
+| sem testes nem `build` na matriz                   | são os passos caros. O `check:links` fica, porque custa **1,3 s** contra 7,1 do `lint` — é o mais barato da matriz e é o que guarda a documentação de um projecto novo           |
+
+**Na primeira corrida encontrou um defeito real:** as três formas chumbavam no `check:quotes`, porque
+havia blocos citados a nomear ficheiros que o provider removeu. Os dois comandos passaram a
+**desanotar** esses blocos — o código continua lá para ler, deixa de ser verificado contra um ficheiro
+que já não existe — exactamente como já achatavam as ligações mortas.
+
 ## O deploy
 
 O [vercel.json](../../vercel.json) fixa duas coisas, e nenhuma é o default:

@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 import { format, getFileInfo, resolveConfig } from 'prettier';
 
-import { flattenDeadLinks } from '../links/flattenDeadLinks';
+import { deannotateMissingQuotes, flattenDeadLinks } from '../links/flattenDeadLinks';
 
 import { applyPlan } from '../setup/applyPlan';
 import { planRemoval } from '../setup/planRemoval';
@@ -182,7 +182,16 @@ function initGit(target: string, provider: SetupProvider): void {
 }
 
 function reportBrokenLinks(target: string): void {
+  const deannotated = deannotateMissingQuotes(target);
+
   const { flattened, remaining } = flattenDeadLinks(target);
+
+  if (deannotated > 0) {
+    console.log(
+      `
+Unpinned ${deannotated} quoted block(s) from files this provider does not have. The code is still there to read; it is no longer checked against a file that is gone.`,
+    );
+  }
 
   if (flattened > 0) {
     console.log(

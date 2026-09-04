@@ -1,6 +1,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { checkQuotes } from '../docs/checkQuotes';
+
 import { checkLinks } from './checkLinks';
 
 function escapeForRegExp(value: string): string {
@@ -55,4 +57,44 @@ export function flattenDeadLinks(root: string): FlattenReport {
   }
 
   return { flattened, remaining: checkLinks(root).failures };
+}
+
+export function deannotateMissingQuotes(root: string): number {
+  const { failures } = checkQuotes(root);
+
+  const missing = failures.filter((failure) => failure.reason.includes('não existe'));
+
+  const byFile = new Map<string, number[]>();
+
+  for (const { file, line } of missing) {
+    byFile.set(file, [...(byFile.get(file) ?? []), line]);
+  }
+
+  let deannotated = 0;
+
+  for (const [file, lines] of byFile) {
+    const full = path.join(root, file);
+
+    const text = readFileSync(full, 'utf8').split('\n');
+
+    for (const line of lines) {
+      const at = line - 1;
+
+      const fence = text[at];
+
+      if (fence === undefined) {
+        continue;
+      }
+
+      const tokens = fence.trim().split(/\s+/);
+
+      text[at] = tokens.filter((token) => !token.includes('/')).join(' ') || tokens[0] || '';
+
+      deannotated += 1;
+    }
+
+    writeFileSync(full, text.join('\n'));
+  }
+
+  return deannotated;
 }
