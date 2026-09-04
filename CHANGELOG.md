@@ -71,6 +71,17 @@ Cada entrada diz se **exige trabalho manual** no projecto. As que não dizem nad
 - **A versão de Node passou a ser declarada, e a que estava no CI estava errada.** O workflow fixava Node 20, copiado do `engines` do Next (`>=20.9`); o `jsdom@30` exige `^22.22.2` e usa o `undici` 8, que chama uma API de `node:worker_threads` só existente desde o Node 22.10. Em Node 20 os 66 ficheiros de teste falhavam **antes de correr um único teste**, com um `TypeError` que nomeia o `undici` e não o Node. Agora o [.nvmrc](.nvmrc) fixa a versão exacta (`22.23.2`) e o CI lê-a por `node-version-file`, para o CI e quem desenvolve correrem o mesmo runtime; o `engines` fica com o piso (`>=22.22.2`), que é o que o jsdom declara, e avisa quem estiver abaixo. O `nvm-windows` não lê o `.nvmrc`, portanto lá instala-se pelo nome.
 - O `createProvider.test.ts` passou de `timeout: 20_000` a `60_000`. Os dois testes mais lentos do repositório levam 8,0 s e 7,5 s dentro da suite (1,9 s e 2,4 s isolados) porque importar o `createProvider` arrasta o grafo inteiro do Payload. É margem, não a correcção do incidente acima.
 
+### Adicionado — `pnpm create:foundation`
+
+- **Gera um projecto novo em vez de mutilar a foundation.** Copia os ficheiros que o git segue para a
+  pasta indicada, corre lá dentro **o mesmo `planRemoval`** do `setup:provider` — o mesmo objecto e os
+  mesmos testes, só com outra raiz —, reescreve o `package.json` (nome da pasta, `version` a `0.1.0`,
+  comandos da foundation fora), formata com o Prettier e faz `git init` com um commit. O `.env.local`
+  nunca é copiado, e há um teste a fixá-lo.
+- O verificador de ligações passou a **módulo** (`checkLinks`), com o `run.ts` reduzido a CLI fino e o
+  varredor único partilhado. É o que permite ao gerador reportar as ligações que o projecto novo
+  herdou.
+
 ### Limpeza
 
 - O `pnpm setup:provider` passou a apagar duas coisas que sobreviviam sem dono: a excepção do eslint para `src/app/(payload)/**` e `src/app/(frontend)/next/**`, duas pastas que o próprio comando apaga, e o `src/providers/env.ts` num projecto `mock`, onde o `readEnv` deixa de ter um único chamador.
