@@ -427,6 +427,11 @@ O segundo tem uma nota: parte dele **é** do projecto. Invalidar por evento exig
 3. Se a API precisar de contexto no pedido, [createPageRequest.ts](../../src/providers/api/requests/createPageRequest.ts).
 4. Descreve o corpo num `ApiPage.schema.ts` e traduz em [mapApiPage.ts](../../src/providers/api/mappers/mapApiPage.ts).
 5. Garante que cada `alias` que produzes existe em [src/modules/](../../src/modules). Um bloco da API sem módulo é uma linha no mapa de aliases, ou um módulo novo.
-6. Testa o mapper com um corpo verdadeiro copiado da API.
+6. **Escreve o [ApiSiteSource.ts](../../src/providers/api/sources/ApiSiteSource.ts)**, que é a
+   terceira costura e a que se esquece. Sem ele o site serve o nome literal `Site` — que chega ao
+   browser como sufixo do `<title>` e como `og:site_name` — e um único idioma, o que faz o
+   `resolveRoute` deixar de retirar prefixos de idioma sem que nada o diga. Avisa no log a cada
+   pedido até ser escrito.
+7. Testa o mapper com um corpo verdadeiro copiado da API.
 
 O `core` não muda. O renderer não muda. Os módulos não mudam.

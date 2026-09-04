@@ -314,7 +314,7 @@ preenche passa a ser o `mapApiPage`.
 
 [providers/api/](../../src/providers/api) serve conteúdo de uma API HTTP externa, escrita por alguém que não conhece esta estrutura.
 
-O pedido vai a cru — `API_URL` mais o caminho onde estamos — e a resposta, que não se sabe qual é, é traduzida para o contrato interno. São duas costuras, uma por direcção, e são os únicos ficheiros a editar:
+O pedido vai a cru — `API_URL` mais o caminho onde estamos — e a resposta, que não se sabe qual é, é traduzida para o contrato interno. São duas costuras, uma por direcção — mais uma terceira que se esquece, o `ApiSiteSource`, que decide o nome do site e os idiomas e que avisa no log até ser escrita:
 
 | Direcção | Ficheiro                                                                      |
 | -------- | ----------------------------------------------------------------------------- |
