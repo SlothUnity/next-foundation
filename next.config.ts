@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
 
   poweredByHeader: false,
 
+  sassOptions: {
+    loadPaths: ['src/styles'],
+  },
+
   images: {
     remotePatterns: remoteImageHosts.map((hostname) => ({
       protocol: 'https' as const,

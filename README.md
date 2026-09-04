@@ -25,10 +25,12 @@ Oito passos. Os três primeiros são iguais para todos; **do quarto em diante o 
 
 | O quê        | Versão                   | Porquê                                                                                   |
 | ------------ | ------------------------ | ---------------------------------------------------------------------------------------- |
-| **Node**     | `>= 20.9`                | é o que o Next 16 declara em `engines`                                                   |
+| **Node**     | `>= 22.22.2`             | está no `engines` e no [.nvmrc](.nvmrc). Não é o Next que manda: é o jsdom               |
 | **pnpm**     | `10.7.1`                 | está fixado no `packageManager`; `corepack enable` põe o Node a usar essa versão sozinho |
 | **git**      | qualquer                 | o passo 4 recusa arrancar com alterações não commitadas, portanto precisa de repositório |
 | **Postgres** | só no provider `payload` | e quem o fornece está em [Quem fornece a base de dados](#quem-fornece-a-base-de-dados)   |
+
+**A versão de Node não é negociável, e o número não vem do Next.** O Next 16 aceita `>=20.9`, mas o `jsdom` — o ambiente onde os testes correm — declara `^22.22.2 || ^24.15.0 || >=26.0.0`, e usa o `undici` 8, que chama uma API de `node:worker_threads` que só existe a partir do Node 22.10. Num Node 20 **nenhum ficheiro de teste chega a arrancar**: o worker do vitest morre a carregar o jsdom. O `engines` do `package.json` avisa-te, e o CI lê a versão do `.nvmrc` para não haver dois números a divergir.
 
 **Não precisas de Docker**, e não é esquecimento — a razão está na mesma secção.
 
@@ -167,16 +169,17 @@ O `dev:mock` e a variável `PROVIDER` já não existem: o passo 4 apagou-os, e o
 
 ### 7. Dar conteúdo ao site
 
-#### `payload` — quatro coisas no admin, por esta ordem
+#### `payload` — cinco coisas no admin, por esta ordem
 
 Com o servidor a correr, abre `/admin`:
 
-| #   | No admin                                                                           | Sem isto                                                                         |
-| --- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| 1   | **cria o primeiro utilizador** — o ecrã aparece sozinho enquanto não houver nenhum | não entras. É a única criação de conta que dispensa autorização, e dá-te `admin` |
-| 2   | **Website → Site Settings**: nome e idiomas (o primeiro é o default)               | o site responde, mas com dois avisos no log e sem template de título             |
-| 3   | **Pages**: cria a página de raiz e marca-a como **Root Page**                      | `/` responde «404 — Page not found»                                              |
-| 4   | **Pages**: cria a página de erro e marca-a como **Not Found Page**                 | um caminho inexistente cai no 404 genérico, sem conteúdo teu                     |
+| #   | No admin                                                                                    | Sem isto                                                                         |
+| --- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 1   | **cria o primeiro utilizador** — o ecrã aparece sozinho enquanto não houver nenhum          | não entras. É a única criação de conta que dispensa autorização, e dá-te `admin` |
+| 2   | **Website → Site Settings**: nome e idiomas (o primeiro é o default)                        | o site responde, mas com dois avisos no log e sem template de título             |
+| 3   | **Pages**: cria a página de raiz e marca-a como **Root Page**                               | `/` responde «404 — Page not found»                                              |
+| 4   | **Pages**: cria a página de erro e marca-a como **Not Found Page**                          | um caminho inexistente cai no 404 genérico, sem conteúdo teu                     |
+| 5   | **Website → Navigation** e **Website → Footer**: põe lá os módulos do cabeçalho e do rodapé | o site sai só com `<main>`: sem menu e sem rodapé, em todas as páginas           |
 
 Publica as duas — um rascunho não é conteúdo público.
 
@@ -233,6 +236,7 @@ Não se lê de seguida. Cada documento cobre um assunto por inteiro, e é onde v
 | o CMS                              | [payload.md](docs/reference/payload.md)           |
 | uma API externa                    | [api.md](docs/reference/api.md)                   |
 | onde pôr e como nomear um ficheiro | [conventions.md](docs/reference/conventions.md)   |
+| trazer o que a base mudou          | [upgrading.md](docs/reference/upgrading.md)       |
 
 E o [guide.md](docs/reference/guide.md): 3500 linhas, o projecto inteiro ficheiro a ficheiro, com o porquê de cada linha. É a versão completa de tudo o que está na tabela acima, e lê-se com o editor aberto ao lado.
 
@@ -300,16 +304,18 @@ Duas regras de pastas que evitam a maior parte das dúvidas:
 | `pnpm dev:mock`             | o `dev` com o provider `mocks`, sem base de dados            |
 | `pnpm setup:provider`       | escolhe o provider do projecto e apaga os outros dois        |
 | `pnpm payload:generate`     | `payload:types` + `payload:importMap`                        |
+| `pnpm payload:migrate*`     | `create`, `status` e a aplicação das migrações do Postgres   |
 
 Corre `pnpm payload:generate` (ou arranca com `pnpm dev:payload`) sempre que mudares collections, globals, campos ou o caminho de um componente de admin.
 
 ## Verificações automáticas
 
-| Momento                                             | O que corre                                                                |
-| --------------------------------------------------- | -------------------------------------------------------------------------- |
-| `pnpm dev`                                          | `lint`, `typecheck`                                                        |
-| pre-commit ([.husky/pre-commit](.husky/pre-commit)) | `lint-staged` (prettier), `lint`, `typecheck`, `check:links`, `test --run` |
-| `pnpm build`                                        | `lint`, `typecheck`, `test --run`, e depois `next build`                   |
+| Momento                                                      | O que corre                                                                |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `pnpm dev`                                                   | `lint`, `typecheck`                                                        |
+| pre-commit ([.husky/pre-commit](.husky/pre-commit))          | `lint-staged` (prettier), `lint`, `typecheck`, `check:links`, `test --run` |
+| `pnpm build`                                                 | `lint`, `typecheck`, `test --run`, e depois `next build`                   |
+| push e pull request ([gate.yml](.github/workflows/gate.yml)) | o portão todo, mais `format:check` e o `next build`                        |
 
 O commit é a barreira completa: nada entra no histórico sem passar eslint, TypeScript, o verificador de ligações e a suite de testes. O `pnpm dev` fica com a versão rápida — lint e typecheck, sem testes — para não atrasar o arranque do servidor.
 
@@ -323,7 +329,9 @@ pnpm check:links
 pnpm test --run
 ```
 
-**O `build` é o portão real.** Não há CI neste repositório e o deploy vai para o Vercel; como um `git commit --no-verify` contorna o hook por inteiro, o `pnpm build` corre as verificações explicitamente antes do `next build`. Nada chega a produção sem as passar. O preço são alguns segundos por deploy.
+**Há três portões, e nenhum é redundante.** O hook é o mais rápido e o mais fácil de contornar — um `git commit --no-verify` passa-lhe por cima. O **CI** corre o mesmo, mais o `format:check` e o `next build`, e não se contorna: é o que garante que o portão existe mesmo quando alguém tem pressa. E o `pnpm build` repete as verificações antes do `next build` porque o deploy corre esse comando — o [vercel.json](vercel.json) fixa-o — portanto nada chega a produção sem as passar.
+
+O passo de build no CI corre com credenciais fictícias: o build precisa que a config do Payload **carregue**, não que a base de dados responda. Loga um `ECONNREFUSED` porque a página de not-found estática pergunta à origem de conteúdo, e termina a zero — esse log é o error reporter a fazer o trabalho dele, não um passo a falhar.
 
 ## Todos os documentos
 
@@ -342,6 +350,8 @@ pnpm test --run
 | [payload.md](docs/reference/payload.md)           | Como está configurado o Payload                             |
 | [api.md](docs/reference/api.md)                   | Como ligo uma API externa                                   |
 | [routing.md](docs/reference/routing.md)           | Como funcionam URLs, locales e metadata                     |
+| [upgrading.md](docs/reference/upgrading.md)       | Como traço para o meu projecto o que a base mudou           |
+| [CHANGELOG.md](CHANGELOG.md)                      | O que mudou na base, e o que exige trabalho manual          |
 
 ## Stack
 

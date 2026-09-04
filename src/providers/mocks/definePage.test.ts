@@ -25,7 +25,7 @@ describe('definePage', () => {
       },
     });
 
-    expect(page?.page.main.map((module) => module.id)).toEqual(['hero-1', 'hero-2']);
+    expect(page?.page.main.map((module) => module.id)).toEqual(['main-hero-1', 'main-hero-2']);
   });
 
   it('puts the locale in the meta so it is written in one place only', () => {
@@ -53,18 +53,34 @@ describe('definePage', () => {
     expect(page?.page.footer).toBeUndefined();
   });
 
-  it('gives navigation and footer ids that cannot collide with main', () => {
+  it('gives every region ids that cannot collide with another region', () => {
     const [page] = definePage({
       'pt-PT': {
         path: '',
-        navigation: block(heroModule, { title: 'Nav' }),
+        navigation: [block(heroModule, { title: 'Nav' })],
         main: [block(heroModule, { title: 'Olá' })],
-        footer: block(heroModule, { title: 'Footer' }),
+        footer: [block(heroModule, { title: 'Footer' })],
       },
     });
 
-    expect(page?.page.navigation?.id).toBe('hero-navigation');
-    expect(page?.page.footer?.id).toBe('hero-footer');
-    expect(page?.page.main[0]?.id).toBe('hero-1');
+    expect(page?.page.navigation?.[0]?.id).toBe('navigation-hero-1');
+    expect(page?.page.main[0]?.id).toBe('main-hero-1');
+    expect(page?.page.footer?.[0]?.id).toBe('footer-hero-1');
+  });
+
+  it('takes more than one module per region, which is why they are arrays', () => {
+    const [page] = definePage({
+      'pt-PT': {
+        path: '',
+        navigation: [block(heroModule, { title: 'Banner' }), block(heroModule, { title: 'Nav' })],
+        main: [block(heroModule, { title: 'Olá' })],
+      },
+    });
+
+    expect(page?.page.navigation).toHaveLength(2);
+    expect(page?.page.navigation?.map((module) => module.id)).toEqual([
+      'navigation-hero-1',
+      'navigation-hero-2',
+    ]);
   });
 });

@@ -4,9 +4,9 @@ import type { PageDefinition } from '@/core/pages';
 
 import { isPayloadUpload, mapPayloadImage } from './mapPayloadImage';
 
-type PayloadPageBlock = NonNullable<Page['main']>[number];
+export type PayloadBlock = NonNullable<Page['main']>[number];
 
-function mapBlock(block: PayloadPageBlock): ModuleInstance {
+function mapBlock(block: PayloadBlock): ModuleInstance {
   if (!block.id) {
     throw new Error(`Payload block "${block.blockType}" is missing an id.`);
   }
@@ -20,6 +20,10 @@ function mapBlock(block: PayloadPageBlock): ModuleInstance {
     data: removeNullValues(data),
   };
   return returnModule;
+}
+
+export function mapPayloadBlocks(blocks: PayloadBlock[] | null | undefined): ModuleInstance[] {
+  return (blocks ?? []).map(mapBlock);
 }
 
 function cleanValue(value: unknown): unknown {
@@ -66,6 +70,6 @@ export function mapPayloadPage(
       noFollow: page.meta?.noFollow ?? false,
     },
 
-    main: (page.main ?? []).map(mapBlock),
+    main: mapPayloadBlocks(page.main),
   };
 }

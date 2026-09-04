@@ -17,27 +17,25 @@ Organiza as três regiões e delega tudo o resto:
 
 ```tsx
 <>
-  {page.navigation && (
+  {navigation.length > 0 && (
     <nav>
-      <ModuleRenderer module={page.navigation} foundation={foundation} />
+      <Region modules={navigation} foundation={foundation} />
     </nav>
   )}
 
-  <main>
-    {page.main.map((module) => (
-      <Fragment key={module.id}>
-        <ModuleRenderer module={module} foundation={foundation} />
-      </Fragment>
-    ))}
+  <main id={MAIN_LANDMARK_ID}>
+    <Region modules={page.main} foundation={foundation} />
   </main>
 
-  {page.footer && (
+  {footer.length > 0 && (
     <footer>
-      <ModuleRenderer module={page.footer} foundation={foundation} />
+      <Region modules={footer} foundation={foundation} />
     </footer>
   )}
 </>
 ```
+
+O `Region` é uma função local que percorre uma lista de módulos, e é a mesma nas três regiões: o que distingue uma região da outra é o landmark que a envolve, não a forma como se desenha. O teste do landmark cobre o caso que engana — uma região que vem **vazia** e não ausente, que é o que um global do CMS devolve antes de alguém o preencher: a lista existe, e o `<nav>` não deve aparecer.
 
 O `Fragment` evita um wrapper no DOM. A chave é o `module.id`, que pertence à instância e vem do CMS — não o índice, para que reordenar blocos no admin não force React a recriar a árvore toda.
 
@@ -49,7 +47,7 @@ O `<main>` leva um `id`, e ele vem de [landmarks.ts](../../src/core/renderer/lan
 
 O skip link aceita um `label`, com um default em português, para um projecto o traduzir sem editar o componente. O CSS dele usa as cores de sistema (`Canvas`, `CanvasText`) em vez de valores próprios: assim adapta-se ao modo claro ou escuro do visitante e **não impõe paleta nenhuma** a um projecto que ainda não escolheu a sua.
 
-**Hoje nenhum provider preenche o `navigation` nem o `footer`**, e isso é deliberado. Onde esse conteúdo vive no CMS — provavelmente globals, no Payload — é uma decisão de quem monta o site, não da foundation. Ela garante os landmarks e o sítio onde os módulos entram; o resto é do projecto.
+**As três regiões têm dono no CMS.** No Payload são dois globals, `Navigation` e `Footer`, que oferecem os mesmos blocos que uma página — ver [payload.md § Navigation e Footer](payload.md#navigation-e-footer). No provider `mocks` são dois campos opcionais do `definePage`. Antes disto o renderer desenhava três regiões e nenhum provider enchia duas, portanto um site nascia só com `<main>` e cada projecto reconstruía a mesma peça.
 
 O mesmo vale para o **nível dos títulos**: o gerador emite `<h2>`, que é o que costuma estar certo, e garantir um `<h1>` por página exige dar ao módulo a sua posição na página — o que altera o contrato dos módulos. É responsabilidade de quem constrói o frontend do projecto, não da foundation.
 

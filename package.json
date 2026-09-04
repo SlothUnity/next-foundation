@@ -1,8 +1,11 @@
 {
   "name": "next-foundation",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.22.2"
+  },
   "scripts": {
     "dev": "pnpm lint && pnpm typecheck && next dev",
     "dev:mock": "cross-env PROVIDER=mock pnpm run dev",
@@ -20,6 +23,9 @@
     "payload:types": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:types",
     "payload:importMap": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:importmap",
     "payload:generate": "pnpm run payload:types && pnpm run payload:importMap",
+    "payload:migrate": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload migrate",
+    "payload:migrate:create": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload migrate:create",
+    "payload:migrate:status": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload migrate:status",
     "check:links": "tsx scripts/links/run.ts"
   },
   "lint-staged": {

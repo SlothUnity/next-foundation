@@ -91,6 +91,12 @@ A excepção é o que os testes **partilham**: [src/testing/](../../src/testing)
 
 O contrário também vale: **um ficheiro de teste tem de testar o que o nome dele diz.** Houve aqui um `ModuleErrorFallback.test.tsx` cujo `describe` se chamava `ModuleRenderer` e que nunca importava o `ModuleErrorFallback` — três dos seus cinco testes eram cópias do ficheiro ao lado. Um nome desses é pior do que nenhum teste: conta-se na cobertura e não cobre nada.
 
+**Dois testes têm um limite de tempo explícito, e a razão é medível.** O [createProvider.test.ts](../../src/providers/createProvider.test.ts) corre com `timeout: 60_000` porque importar o `createProvider` arrasta o grafo inteiro do Payload — o adaptador de Postgres, o `sharp`, os plugins — e o `switch` tem os três providers em imports **estáticos**, logo o ramo `mock` paga o mesmo carregamento que o `payload`.
+
+Medido: isolados, os dois testes levam 1,9 s e 2,4 s; **dentro da suite completa, 8,0 s e 7,5 s**, porque competem por CPU com os outros 64 ficheiros. O terceiro teste mais lento do repositório leva 372 ms, portanto não há mais nada perto de limite nenhum.
+
+O limite existe pela margem, e não por um incidente: um teste que leva 8 s numa máquina rápida não pode ter um orçamento de 20 s onde o CI corre. **A primeira corrida do CI chumbou por outra razão** — o workflow fixava Node 20 e o jsdom exige 22, portanto nenhum worker do vitest arrancava. Está em [upgrading.md](upgrading.md#a-versão-de-node-é-um-requisito-da-árvore-e-não-do-next). O passo do CI usa `--reporter=verbose` para o próximo caso de tempo se nomear a si mesmo.
+
 **O `vitest.setup.ts` desmonta o DOM entre testes**, com um `afterEach(cleanup)`. Isto não é cerimónia: o auto-cleanup do testing-library só se registra quando o Vitest corre com `globals: true`, e esta configuração não corre. Sem ele os renders acumulavam-se no `document.body` dentro de cada ficheiro, e um `screen.getByRole(...)` podia encontrar o elemento do teste anterior — um teste a passar pela razão errada, que é pior do que um teste a faltar. Provado com dois testes num ficheiro: o segundo via **dois** cabeçalhos.
 
 ## Pastas

@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createFoundation } from '@/core/foundation';
+import { TEST_HEADLINE_ALIAS, testHeadlineModule } from '@/testing/testModule';
 import { TestPageSource, TestSiteSource } from '@/testing/testSources';
 
 import { ModuleRenderer } from './ModuleRenderer';
@@ -9,10 +10,14 @@ import { ModuleRenderer } from './ModuleRenderer';
 vi.stubEnv('NODE_ENV', 'development');
 
 function createTestFoundation() {
-  return createFoundation({
+  const foundation = createFoundation({
     page: new TestPageSource(),
     site: new TestSiteSource(),
   });
+
+  foundation.modules.register(testHeadlineModule);
+
+  return foundation;
 }
 
 describe('ModuleRenderer', () => {
@@ -23,9 +28,9 @@ describe('ModuleRenderer', () => {
       <ModuleRenderer
         foundation={foundation}
         module={{
-          id: 'hero-1',
-          alias: 'hero',
-          name: 'Hero',
+          id: 'headline-1',
+          alias: TEST_HEADLINE_ALIAS,
+          name: 'Headline',
           data: {
             title: 'Hello Foundation',
             subtitle: 'Testing the renderer',
@@ -51,16 +56,16 @@ describe('ModuleRenderer', () => {
         <ModuleRenderer
           foundation={foundation}
           module={{
-            id: 'hero-1',
-            alias: 'hero',
-            name: 'Hero',
+            id: 'headline-1',
+            alias: TEST_HEADLINE_ALIAS,
+            name: 'Headline',
             data: {
               subtitle: 'Missing title',
             },
           }}
         />,
       ),
-    ).toThrow('Module "hero" data validation failed.');
+    ).toThrow(`Module "${TEST_HEADLINE_ALIAS}" data validation failed.`);
   });
 
   it('throws when module alias is not registered in development', () => {
@@ -107,9 +112,9 @@ describe('ModuleRenderer, in production', () => {
       <ModuleRenderer
         foundation={createTestFoundation()}
         module={{
-          id: 'hero-invalid-1',
-          alias: 'hero',
-          name: 'Hero',
+          id: 'headline-invalid-1',
+          alias: TEST_HEADLINE_ALIAS,
+          name: 'Headline',
           data: { subtitle: 'Missing title' },
         }}
       />,

@@ -29,13 +29,17 @@ const eslintConfig = defineConfig([
   ...nextTs,
 
   // Default ignores of eslint-config-next, repeated because overriding them drops them.
-  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts']),
+  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'src/migrations/**']),
 
   {
     // O core é a camada de baixo: não conhece o framework, o CMS, nem quem o consome.
     // Excepção nomeada: os dois ficheiros da raiz de composição — ver architecture.md.
     files: ['src/core/**/*.{ts,tsx}'],
-    ignores: ['src/core/foundation/foundation.ts', 'src/core/setup/registerModules.ts'],
+    ignores: [
+      'src/core/foundation/foundation.ts',
+      'src/core/setup/registerModules.ts',
+      'src/core/foundation/createFoundation.test.ts',
+    ],
     rules: {
       'no-restricted-imports': restrict(
         { group: NEXT, message: 'O core não conhece o Next. Passa o valor por argumento.' },

@@ -35,7 +35,7 @@ export default buildConfig({
   admin: { … },
 
   collections: [Users, Pages, Redirects, Media],
-  globals: [Site],
+  globals: [Site, Navigation, Footer],
 
   db: postgresAdapter({ pool: { connectionString: env.DATABASE_URL } }),
   plugins: [nestedDocs, seo, storage],
@@ -52,6 +52,30 @@ Uma leitura em vez de três chamadas tem duas consequências práticas. As mensa
 | `NEXT_PUBLIC_SERVER_URL` | ser URL absoluto e **não terminar em barra**                            |
 
 A segunda linha não é preciosismo. O Live Preview compara este valor com a origem do browser por **igualdade de string**, portanto uma barra final quebra-o sem erro nenhum: o iframe abre, o conteúdo nunca actualiza, e não há nada no log. É o género de defeito que se procura durante uma tarde.
+
+## O schema da base de dados
+
+Há **dois caminhos**, e a diferença entre eles é a razão pela qual um deles não pode ficar por ligar.
+
+Em desenvolvimento o adaptador empurra o schema da config para a base de dados no arranque — `pushDevSchema`, e o guarda é `NODE_ENV !== 'production'`. Cria as tabelas na primeira corrida e ajusta-as depois; quando uma alteração não se aplica sem uma decisão (uma coluna nova obrigatória numa tabela que já tem linhas), **pergunta no terminal e espera**. É por isso que o arranque quer um terminal onde se possa responder.
+
+Em produção esse push não corre, de propósito: um deploy não tem onde perguntar, e uma coluna a menos é preferível a uma tabela reescrita sem ninguém a ver. O caminho de produção são migrações, e são estes três comandos:
+
+| Comando                       | Quando                                                          |
+| ----------------------------- | --------------------------------------------------------------- |
+| `pnpm payload:migrate:create` | depois de mexer em collections, globals ou campos               |
+| `pnpm payload:migrate:status` | para ver o que já correu e o que falta                          |
+| `pnpm payload:migrate`        | no ambiente de destino, antes de o código novo começar a servir |
+
+**A primeira migração já vem no repositório**, em [src/migrations/](../../src/migrations/): cria as 31 tabelas do schema actual, `navigation` e `footer` incluídos.
+
+Vale explicar como ela pôde ser escrita, porque este documento já disse o contrário e estava errado. O `migrate:create` **não liga à base de dados**: gera um snapshot JSON a partir da **config**, compara-o com o **último snapshot em disco** — o `.json` ao lado de cada migração — e escreve o SQL da diferença. Sem migrações, compara com um snapshot vazio e produz o schema inteiro. É por isso que os dois ficheiros são commitados: o `.ts` é o que corre, o `.json` é a memória contra a qual a próxima diferença é calculada.
+
+A consequência prática é a que interessa: **cada alteração de modelo é uma migração criada offline e revista em code review**, como qualquer outro ficheiro. Os dois são gerados, portanto estão fora do Prettier e do eslint, ao lado do `payload-types.ts`.
+
+**A armadilha é a transição.** Uma base de dados construída pelo push de desenvolvimento **já tem as tabelas** e não tem registo nenhum em `payload_migrations`, portanto correr `pnpm payload:migrate` contra ela falha no primeiro `CREATE TABLE`. A migração inicial é para uma base de dados **vazia** — produção, ou um ambiente novo. Em desenvolvimento continua a valer o push, e não há nada a reconciliar.
+
+**O passo de deploy fica fora do [vercel.json](../../vercel.json)**, e agora por uma razão diferente da que aqui estava: esse ficheiro é partilhado pelos três providers, e num projecto `api` ou `mock` o comando `payload` não existe. Num projecto `payload`, o `buildCommand` a usar é `pnpm payload:migrate && pnpm build` — no `vercel.json` do projecto ou nas settings do Vercel. O custo é o que se ganha: uma migração falhada chumba o deploy, em vez de deixar código novo a servir contra um schema velho.
 
 ## Localização
 
@@ -249,6 +273,26 @@ O [`@payloadcms/plugin-redirects`](https://payloadcms.com/docs/plugins/redirects
 **Este global tem de estar gravado**, mas já não é catastrófico se não estiver. Com `enabledLocales` vazio, o `mapPayloadSite` cai no `payloadDefaultLocale` para o routing não parar e avisa no log que o está a fazer; o Live Preview e o `pageUrl` continuam a funcionar, porque os dois passam a resposta a esse mesmo mapeador.
 
 Tem um `afterChange` a invalidar a tag `payload:site` — sem guarda nenhuma, porque um global não tem rascunhos e mudar a ordem dos idiomas muda o `<html lang>` de todas as páginas. Ver [Cache](#cache).
+
+## Navigation e Footer
+
+[globals/Navigation.ts](../../src/providers/payload/globals/Navigation.ts) e [globals/Footer.ts](../../src/providers/payload/globals/Footer.ts) — um campo `blocks` cada, chamado `modules`, com **os mesmos blocos que uma página oferece**.
+
+A decisão que importa é essa: não há registo de blocos separado para o cabeçalho. Um módulo é um módulo, e o que decide onde ele serve é quem autora, não o tipo — logo o `pnpm generate` continua a registar num sítio só, e um módulo novo aparece nas três regiões sem trabalho nenhum. A troca assumida é que o admin permite pôr um Hero no rodapé; um projecto que queira restringir passa uma lista filtrada em vez do `pageBlocks`.
+
+**São conteúdo, não configuração**, e por isso a escrita é de `isEditor` e não de `isAdmin` — ao contrário do `Site`, que muda idiomas e derruba URLs.
+
+O `afterChange` invalida a tag **das páginas** e não uma tag própria: o layout viaja dentro de cada `PageResponse`, portanto mudar o rodapé torna velha a resposta cacheada de todas as páginas. Uma tag só para o layout obrigaria a invalidar as duas em conjunto, o que é a mesma coisa com mais peças.
+
+O carregamento está em [loadPayloadLayout.ts](../../src/providers/payload/sources/loadPayloadLayout.ts): lê os dois globals **em paralelo** com o `Promise.all`, com `fallbackLocale: false` pela mesma razão que as páginas — um menu que ninguém traduziu deve vir vazio e não em português no site inglês. Uma região sem módulos é omitida em vez de vir como lista vazia, e é isso que faz o renderer não desenhar o landmark.
+
+**O menu tem de ser traduzido, e até o ser o outro idioma não tem menu.** O campo `modules` não é localizado — as **linhas** dos blocos são partilhadas pelos idiomas — mas os campos de dentro são (`title` do `HeroBlock` é `required` e `localized`). É o mesmo modelo do `main` de uma página, e é o idiomático: a estrutura do menu é a mesma em todas as línguas, só as etiquetas mudam, portanto o editor troca de idioma no admin e preenche os textos das mesmas linhas.
+
+A consequência, que vale saber antes de a encontrar em QA: com `fallbackLocale: false`, um idioma cujas etiquetas ninguém preencheu recebe blocos sem texto, esses módulos falham a validação do schema e o renderer degrada-os — sai um `<nav>` vazio, e a razão fica no log do error reporter. **Não é o menu na língua errada, e essa é a troca deliberada:** um menu em português num site inglês parece um bug de produto, um menu ausente parece o que é, uma tradução a faltar. Um projecto que prefira menus estruturalmente diferentes por idioma põe `localized: true` no campo `modules` dos dois globals — aí um idioma sem tradução vem sem linhas nenhumas, e o renderer nem desenha o landmark.
+
+**Os dois globals não têm rascunhos nem Live Preview.** Uma alteração ao cabeçalho é publicada assim que é gravada. Foi o que se seguiu do resto: um global não tem `_status`, e dar-lhe versões obrigava a decidir o que é «publicar o layout» — que não é a mesma pergunta que publicar uma página.
+
+A composição acontece no [loadPayloadPage.ts](../../src/providers/payload/sources/loadPayloadPage.ts) e não no mapper: o mapper continua a ser uma função pura sobre **uma** página, e quem junta as três regiões é o loader. A página de erro do CMS recebe o mesmo layout — um 404 com cabeçalho e rodapé é o que um visitante espera. Quando não há página nenhuma para servir, os globals nem são lidos.
 
 ## Media e Users
 

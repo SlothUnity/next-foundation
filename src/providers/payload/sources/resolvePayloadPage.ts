@@ -3,26 +3,69 @@ import type { Payload, Where } from 'payload';
 import type { Page } from '@payload-types';
 import type { SupportedLocale } from '@/providers/payload/locales';
 
-async function findPage(
+function onlyPublished(match: Where, draft: boolean): Where {
+  return draft ? match : { and: [match, { _status: { equals: 'published' } }] };
+}
+
+async function findFlagged(
   payload: Payload,
   match: Where,
   locale: SupportedLocale,
   draft: boolean,
 ): Promise<Page | undefined> {
-  const where: Where = draft ? match : { and: [match, { _status: { equals: 'published' } }] };
-
   const result = await payload.find({
     collection: 'pages',
     locale,
     fallbackLocale: false,
     draft,
     overrideAccess: true,
-    where,
+    where: onlyPublished(match, draft),
     limit: 1,
     depth: 2,
   });
 
   return result.docs[0];
+}
+
+function ownUrl(page: Pick<Page, 'breadcrumbs'>): string | undefined {
+  const breadcrumbs = page.breadcrumbs ?? [];
+
+  return breadcrumbs[breadcrumbs.length - 1]?.url ?? undefined;
+}
+
+async function findByUrl(
+  payload: Payload,
+  url: string,
+  locale: SupportedLocale,
+  draft: boolean,
+): Promise<Page | undefined> {
+  const candidates = await payload.find({
+    collection: 'pages',
+    locale,
+    fallbackLocale: false,
+    draft,
+    overrideAccess: true,
+    where: onlyPublished({ 'breadcrumbs.url': { equals: url } }, draft),
+    limit: 0,
+    depth: 0,
+    select: { breadcrumbs: true },
+  });
+
+  const match = candidates.docs.find((doc) => ownUrl(doc) === url);
+
+  if (!match) {
+    return undefined;
+  }
+
+  return payload.findByID({
+    collection: 'pages',
+    id: match.id,
+    locale,
+    fallbackLocale: false,
+    draft,
+    overrideAccess: true,
+    depth: 2,
+  });
 }
 
 export async function resolvePayloadPage(
@@ -31,11 +74,11 @@ export async function resolvePayloadPage(
   locale: SupportedLocale,
   draft = false,
 ): Promise<Page | undefined> {
-  const byPath: Where = !path
-    ? { isHome: { equals: true } }
-    : { 'breadcrumbs.url': { equals: `/${path}` } };
+  if (!path) {
+    return findFlagged(payload, { isHome: { equals: true } }, locale, draft);
+  }
 
-  return findPage(payload, byPath, locale, draft);
+  return findByUrl(payload, `/${path}`, locale, draft);
 }
 
 export async function resolvePayloadNotFoundPage(
@@ -43,5 +86,5 @@ export async function resolvePayloadNotFoundPage(
   locale: SupportedLocale,
   draft = false,
 ): Promise<Page | undefined> {
-  return findPage(payload, { is404: { equals: true } }, locale, draft);
+  return findFlagged(payload, { is404: { equals: true } }, locale, draft);
 }

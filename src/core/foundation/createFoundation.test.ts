@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import * as projectModules from '@/modules';
+
 import { TestPageSource, TestSiteSource } from '@/testing/testSources';
 
 import { createFoundation } from './createFoundation';
@@ -26,7 +28,9 @@ describe('createFoundation', () => {
   it('registers every module the project exports, so the renderer can find them by alias', () => {
     const foundation = build();
 
-    expect(foundation.modules.getByAlias('hero')).toBeDefined();
+    for (const exported of Object.values(projectModules)) {
+      expect(foundation.modules.getByAlias(exported.alias)).toBe(exported);
+    }
   });
 
   it('answers undefined for an alias nobody registered, instead of throwing', () => {

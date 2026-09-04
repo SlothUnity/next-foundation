@@ -87,6 +87,17 @@ where: !path
 
 O `generateURL` do plugin constrói o `breadcrumbs.url` a partir dos títulos dos ancestrais, passados por `createSlug`, **excluindo** documentos com `isHome`. É por isso que os filhos da homepage não herdam o slug dela.
 
+**Essa consulta não basta, e a razão é a forma dos breadcrumbs.** O plugin guarda **um registo por ancestral mais o próprio documento** — uma página em `/servicos/consultoria` tem dois, `/servicos` e `/servicos/consultoria`. Como `breadcrumbs` é um array, `breadcrumbs.url equals '/servicos'` casa com a página `/servicos` **e com todos os seus descendentes**. Com `limit: 1` e sem `sort`, qual deles vinha era o que a base de dados desse primeiro: bastava a secção ter uma página filha publicada para o pai poder servir o conteúdo do filho.
+
+O [resolvePayloadPage](../../src/providers/payload/sources/resolvePayloadPage.ts) resolve em dois passos, e não em um:
+
+1. a consulta pelo crumb, mas com `depth: 0`, `select: { breadcrumbs: true }` e **sem limite** — traz os candidatos, e nada mais do que os breadcrumbs de cada um;
+2. dos candidatos, fica o que tem esse URL como **último** crumb, ou seja o seu próprio; e só esse é lido por `findByID` com `depth: 2`.
+
+O custo é uma ida a mais à base de dados por página, dentro da mesma entrada de cache. O preço da alternativa era pior: um único `find` com `depth: 2` e sem limite traria todos os descendentes com os seus uploads populados — numa secção com muitas páginas, isso é a consulta a crescer com o tamanho do site.
+
+A correcção definitiva é outra: um campo `url` indexado, escrito por hook, em vez de resolver contra um array. Isso muda a collection e exige migração e backfill, portanto fica para quem tiver o problema à escala. Os testes em [resolvePayloadPage.test.ts](../../src/providers/payload/sources/resolvePayloadPage.test.ts) fixam o comportamento com pai, filho e neto.
+
 Nota: o `breadcrumbs.url` só é recalculado quando o documento é gravado. Um título alterado e ainda não gravado não muda o URL.
 
 ## Metadata
@@ -136,6 +147,8 @@ O `lang` sai do locale **da rota** e não do `meta.locale` da página. É uma fu
 Não reescreve nem redirecciona: só copia o pathname para o header `x-pathname`. É deliberado. Reescrever obrigaria o proxy a saber qual é o locale por omissão, e esse é uma resposta do provider — ver [providers.md](providers.md). Ao não decidir nada aqui, o default continua a viver onde deve e as URLs ficam como estão.
 
 O `matcher` exclui o admin, a API do Payload, as rotas de preview, os assets do Next e os ficheiros com extensão. Como não se reescreve nada, apanhar o resto seria inofensivo — mas é trabalho por pedido a troco de nada.
+
+**As exclusões são os caminhos do Payload**, e num projecto que escolheu `api` ou `mock` são caminhos livres: nada os serve, e uma rota futura em `/admin` ou `/api` ficaria sem o `x-pathname` em silêncio. O `pnpm setup:provider` deliberadamente **não** mexe aqui, porque o [proxy.test.ts](../../src/proxy.test.ts) fixa as exclusões e o comando teria de reescrever o teste a par do padrão — duas âncoras frágeis a troco de um risco hipotético. Se o teu projecto vier a servir algo nesses caminhos, encurta o padrão e o teste ao mesmo tempo.
 
 **As exclusões têm fronteira de segmento**, `admin(?:/|$)` e não `admin`. Sem ela o padrão excluía qualquer caminho que apenas _comece_ pelo prefixo: uma página chamada «Administração» ou «Apiário» ficava sem o `x-pathname`. Era inerte por sorte — o primeiro segmento desses caminhos nunca é um segmento de locale, portanto o fallback do layout coincidia com o locale certo — e deixava de o ser no dia em que o header servisse outra coisa. O [proxy.test.ts](../../src/proxy.test.ts) tem os três casos (`/administracao`, `/apiario`, `/apis-e-abelhas`), e são exactamente os que chumbam se o padrão voltar atrás.
 

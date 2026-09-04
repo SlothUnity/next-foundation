@@ -130,9 +130,9 @@ Uma `ModuleInstance` traz `alias`, e o renderer pergunta ao registry quem respon
 ### 4. Nada é obrigatório
 
 ```ts
-navigation?: ModuleInstance;
+navigation?: ModuleInstance[];
 main: ModuleInstance[];      // pode ser vazio
-footer?: ModuleInstance;
+footer?: ModuleInstance[];
 ```
 
 Uma página sem navegação, sem footer e sem módulos é válida.

@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 
 import type { Foundation } from '@/core/foundation';
+import type { ModuleInstance } from '@/core/modules';
 import type { PageDefinition } from '@/core/pages';
 
 import { MAIN_LANDMARK_ID } from './landmarks';
@@ -11,26 +12,33 @@ interface PageRendererProps {
   foundation: Foundation;
 }
 
+function Region({ modules, foundation }: { modules: ModuleInstance[]; foundation: Foundation }) {
+  return modules.map((module) => (
+    <Fragment key={module.id}>
+      <ModuleRenderer module={module} foundation={foundation} />
+    </Fragment>
+  ));
+}
+
 export function PageRenderer({ page, foundation }: PageRendererProps) {
+  const navigation = page.navigation ?? [];
+  const footer = page.footer ?? [];
+
   return (
     <>
-      {page.navigation && (
+      {navigation.length > 0 && (
         <nav>
-          <ModuleRenderer module={page.navigation} foundation={foundation} />
+          <Region modules={navigation} foundation={foundation} />
         </nav>
       )}
 
       <main id={MAIN_LANDMARK_ID}>
-        {page.main.map((module) => (
-          <Fragment key={module.id}>
-            <ModuleRenderer module={module} foundation={foundation} />
-          </Fragment>
-        ))}
+        <Region modules={page.main} foundation={foundation} />
       </main>
 
-      {page.footer && (
+      {footer.length > 0 && (
         <footer>
-          <ModuleRenderer module={page.footer} foundation={foundation} />
+          <Region modules={footer} foundation={foundation} />
         </footer>
       )}
     </>

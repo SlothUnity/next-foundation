@@ -30,7 +30,44 @@ Os estilos são um **CSS Module**: o `.module.scss` faz o Next gerar nomes de cl
 
 Foi isso que obrigou a renomear a definição do módulo para `.definition.ts`. As duas coisas queriam chamar-se `.module.*` com significados diferentes, e o [guide.md](guide.md) já tinha marcado a colisão como «uma armadilha à espera». O `.module.*` passa a querer dizer só uma coisa nesta pasta: CSS com scope.
 
-O `sass` está declarado como devDependency — o Next compila `.scss` assim que o pacote existe, sem configuração nenhuma. **Não há sistema de tema, e é deliberado**: variáveis, tokens, reset, escalas — a foundation não impõe nenhum, porque isso é decisão de quem monta o site. O que ela garante é o sítio onde os estilos de um módulo vivem e o nome que têm.
+O `sass` está declarado como devDependency — o Next compila `.scss` assim que o pacote existe.
+
+### A camada partilhada
+
+O scoping resolve a colisão entre módulos, e deixa de fora o problema oposto: o que é **comum** a todos. Sem uma camada partilhada, cada módulo reinventa espaçamentos e cores, e cada projecto reinventa a camada — que é exactamente o que uma base existe para evitar.
+
+São dois ficheiros, e a divisão não é arbitrária: **um emite CSS, o outro não.**
+
+| Ficheiro                                                | O que é                                                 | Como se usa                                                                          |
+| ------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [globals.scss](<../../src/app/(frontend)/globals.scss>) | os tokens em custom properties no `:root`, mais o reset | importado **uma vez** no [layout do frontend](<../../src/app/(frontend)/layout.tsx>) |
+| [\_media.scss](../../src/styles/_media.scss)            | os breakpoints, como mixin                              | `@use 'media'` de qualquer módulo                                                    |
+
+Os tokens são custom properties do CSS e não variáveis de Sass, e é essa escolha que faz a camada funcionar: um módulo escreve `var(--space-2)` **sem importar nada**. Se fossem variáveis de Sass, cada módulo tinha de as importar, e cada `.module.scss` é uma compilação independente — o `:root` sairia repetido em cada chunk. Por isso o `_media.scss` pode ser importado à vontade: um mixin não emite nada até ser chamado.
+
+O `sassOptions.loadPaths` no [next.config.ts](../../next.config.ts) aponta para `src/styles`, e é o que permite `@use 'media'` em vez de contar `../../` até lá.
+
+**O que a foundation escolhe e o que deixa ao projecto.** Ela escolhe _que_ tokens existem — a escala de espaço, a de texto, as quatro cores de superfície e texto, o raio, a medida de linha — porque é o vocabulário que os módulos usam e tem de ser o mesmo em todos. Não escolhe os **valores**: a paleta é neutra de propósito, e um projecto troca-a editando um ficheiro sem tocar em módulo nenhum. O reset traz o que ninguém deve ter de repetir e é fácil esquecer: `box-sizing`, imagens em bloco com `max-width`, `:focus-visible` visível, `text-wrap: balance` nos títulos, e `prefers-reduced-motion` a desligar animações.
+
+### O Hero é demonstração, e pode ir
+
+É o módulo de exemplo, e existe para haver um caminho completo para ler: componente, schema, tipos, estilos, teste, registo, e o bloco correspondente no Payload. Um projecto real não o quer.
+
+Apagá-lo são **três sítios**, e nenhum é adivinhado:
+
+|                                 |                                                 |
+| ------------------------------- | ----------------------------------------------- |
+| `src/modules/Hero/`             | a pasta do módulo                               |
+| `src/modules/index.ts`          | a linha que o exporta                           |
+| `src/providers/payload/blocks/` | o `HeroBlock.ts` e as duas linhas do `index.ts` |
+
+Num projecto `mock`, há um quarto: as páginas de fixture em [src/providers/mocks/pages/](../../src/providers/mocks/pages/) importam o `heroModule`, portanto ou passam a usar um módulo teu ou vão com ele. Também são conteúdo de demonstração — servem para o `pnpm dev:mock` ter algo para mostrar antes de existir projecto.
+
+Depois de o apagar, corre `pnpm payload:generate`: os tipos gerados ainda declaram o bloco, e é o `payload-types.ts` que o mapper usa.
+
+**Nenhum teste do `core` depende dele**, e isso é verificado: apagar o Hero e correr `pnpm exec vitest run src/core src/app` dá verde. Não era assim — dois testes do renderer renderizavam o alias `hero` contra o `createFoundation` verdadeiro, e o teste do `createFoundation` afirmava que `getByAlias('hero')` existia. Hoje o renderer usa o [testModule](../../src/testing/testModule.tsx), que vive no `src/testing/` ao lado dos outros utilitários de teste, e o do `createFoundation` afirma a **propriedade** — que cada módulo que o projecto exporta está registado —, o que continua verdadeiro com um módulo, com vinte ou com nenhum.
+
+A ordem que poupa trabalho é a inversa: `pnpm generate` primeiro, o teu módulo a funcionar, e o Hero fora depois.
 
 **Schema primeiro.** Ele é a fonte de verdade e o tipo deriva dele, não o contrário:
 
@@ -277,6 +314,6 @@ Se um projecto precisar de o resolver a sério, o módulo tem de saber a sua pos
 
 **Formulários e interactividade.** Não há módulo cliente nem padrão para um. Um módulo é hoje um componente de servidor que recebe `data`; um formulário precisa de estado no browser, de uma server action e de um sítio para guardar a submissão. Onde vive a action é a pergunta a decidir primeiro: não pode ser no `core`, que não conhece o Next, e `modules/` não pode conhecer providers. Nota prática para quem o fizer: as props atravessam a fronteira RSC, portanto um `.transform()` que devolva um `Date` ou uma classe no schema produz uma prop não serializável.
 
-**Variantes de página.** O `PageDefinition` admite um layout: uma navegação, uma lista de módulos, um footer. Não há campo `template`, nem variante de header, nem forma de ter uma landing sem navegação — e o `navigation` é **um** `ModuleInstance` e não um array, portanto uma barra de anúncios acima da nav precisaria de um módulo composto. Acrescentar um eixo de variantes altera o contrato, e o desenho depende de quantas variantes o projecto tem: um campo `template` na collection, uma classe no `<body>`, ou rotas distintas são respostas diferentes para necessidades diferentes.
+**Variantes de página.** O `PageDefinition` admite um layout: navegação, uma lista de módulos, rodapé — as três como listas, portanto uma barra de anúncios acima do menu não precisa de módulo composto nenhum. O que continua a não existir é um **eixo de variantes**: não há campo `template`, e a navegação é a mesma em todas as páginas, porque vem de um global. Uma landing sem navegação exige hoje mais do que autorar: acrescentar esse eixo altera o contrato, e o desenho depende de quantas variantes o projecto tem — um campo `template` na collection, uma classe no `<body>`, ou rotas distintas são respostas diferentes para necessidades diferentes.
 
 **Navegação e footer.** As regiões existem no contrato e o renderer desenha-as; onde o conteúdo delas vive no CMS é do projecto — ver [renderer.md](renderer.md#pagerenderer).
