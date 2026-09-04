@@ -23,7 +23,7 @@ export async function loadPayloadPage(
 
   if (page) {
     const [alternates, layout] = await Promise.all([
-      loadPayloadAlternates(payload, page.id, locales, defaultLocale),
+      loadPayloadAlternates(payload, page.id, locales, defaultLocale, locale),
       loadPayloadLayout(payload, locale),
     ]);
 

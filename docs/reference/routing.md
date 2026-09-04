@@ -137,6 +137,19 @@ O `canonical` sai do `createPagePath` com o locale da rota, o que o torna a miti
 
 O **hreflang** não se pode adivinhar prefixando o caminho actual com cada idioma, porque os slugs são traduzidos — o URL sairia errado. Vem do provider, que responde o caminho da mesma página em cada idioma: no Payload, o campo `breadcrumbs` é localizado, portanto um `findByID` com `locale: 'all'` traz todos de uma vez. É uma consulta a mais por página, dentro da mesma entrada de cache. Uma origem que não saiba responder deixa o `alternates` vazio, e o `hreflang` simplesmente não é emitido.
 
+**Um idioma sem tradução não recebe alternate**, e a razão é o modelo do Payload: o `_status` está na
+tabela do documento e **não** nas tabelas por idioma, portanto não há estado de publicação por
+idioma. Uma página publicada com título preenchido em `pt-PT` e vazio em `en-GB` tem breadcrumb
+inglês derivado de um título vazio — e o `generateURL` do plugin descarta segmentos vazios, portanto
+o URL que sai é o do **ancestral**, ou `/` se não houver nenhum.
+
+O efeito era emitir `hreflang="en-GB"` a apontar para a homepage inglesa em **cada página não
+traduzida**, ou pior, para o URL do pai. O [loadPayloadAlternates](../../src/providers/payload/sources/loadPayloadAlternates.ts)
+compara agora a profundidade: um alternate com **menos segmentos** do que o URL da página que se
+resolveu vem de um título em branco, e é deixado de fora com um aviso que nomeia o idioma. Uma
+homepage verdadeira tem zero segmentos em todos os idiomas, portanto não é afectada; dois slugs
+traduzidos com a mesma profundidade passam os dois.
+
 O `generateMetadata` e a página chamam ambos o mesmo [resolvePage](<../../src/app/(frontend)/_lib/resolvePage.ts>), envolvido no `cache` do React: duas chamadas, uma resolução por pedido. A chave é o caminho em string e não o array de segmentos, porque o `cache` compara argumentos por identidade e cada `await params` devolve um array novo.
 
 ## O idioma do `<html>`

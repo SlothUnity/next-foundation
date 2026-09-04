@@ -1210,19 +1210,17 @@ O `protected readonly` está explicado em [0.5](#05-protected-private-readonly).
 
 O `String(key)` na mensagem existe porque `TKey` pode ser qualquer coisa — pôr um valor arbitrário dentro de uma template string podia rebentar (um `Symbol`, por exemplo, atira se for convertido implicitamente). `String()` converte sempre, sem atirar.
 
-E os métodos públicos:
+E o método público — **um**:
 
 ```ts
   get(key: TKey): TValue | undefined
-  has(key: TKey): boolean
-  remove(key: TKey): void      // atira se a chave não existir
-  clear(): void
-  getAll(): TValue[]           // return [...this.items.values()]
 ```
 
-Duas observações. O `get` devolve `TValue | undefined` — **não atira**. Quem chama tem de lidar com a ausência, e o TypeScript obriga-o a isso. É a decisão certa: um módulo em falta não deve derrubar a aplicação, deve ser tratado (Cap. 10). Já o `remove` **atira**, porque apagar uma coisa que não existe é sempre um erro de programação, nunca um caso normal.
+Devolve `TValue | undefined` e **não atira**. Quem chama tem de lidar com a ausência, e o TypeScript obriga-o a isso. É a decisão certa: um módulo em falta não deve derrubar a aplicação, deve ser tratado (Cap. 10).
 
-O `getAll` devolve `[...this.items.values()]` — um array **novo**, por espalhamento. Se devolvesse o iterador do `Map`, quem recebesse podia consumi-lo uma vez só, e mexer nele mexia no registo. Copiar é mais seguro e, com dezenas de módulos, o custo é irrelevante.
+> ✅ **Corrigido**
+>
+> Aqui estavam documentados mais quatro — `has`, `remove`, `clear` e `getAll` — com dois parágrafos sobre porque é que o `remove` atira e o `getAll` copia o array. **Nenhum deles existe.** Foram apagados na limpeza de código morto, por não terem um único chamador, e este capítulo ficou a explicá-los. Se algum voltar a ser preciso, volta com o chamador que o justifica.
 
 ## 5.2 Porque rebenta em vez de sobrescrever
 

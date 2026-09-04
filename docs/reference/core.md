@@ -215,12 +215,14 @@ export interface ModuleInstance<TData extends ModuleProps = ModuleProps> {
 class Registry<TKey, TValue> {
   protected add(key, value): void; // lança se a chave já existir
   get(key): TValue | undefined;
-  has(key): boolean;
-  remove(key): void; // lança se a chave não existir
-  clear(): void;
-  getAll(): TValue[];
 }
 ```
+
+**São dois métodos, e aqui estiveram seis.** O `has`, o `remove`, o `clear` e o `getAll` foram
+apagados na limpeza de código morto — nenhum tinha um único chamador — e este documento ficou a
+descrevê-los. Quem seguisse esta página escrevia `foundation.modules.getAll()` e não compilava.
+
+Se algum voltar a ser preciso, volta com o chamador que o justifica.
 
 O `add` é `protected`: as subclasses decidem como se deriva a chave. Falhar com chave duplicada é intencional — dois módulos com o mesmo alias é um erro de programação, não uma situação a resolver em silêncio.
 
