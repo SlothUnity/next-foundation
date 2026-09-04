@@ -45,9 +45,11 @@ Consequência a ter em conta: o locale por omissão **não tem prefixo**, logo u
 
 [core/routing/getLocaleSegment.ts](../../src/core/routing/getLocaleSegment.ts)
 
-```ts
+```ts src/core/routing/getLocaleSegment.ts
 export function getLocaleSegment(locale: string): string {
-  return locale.split('-')[0].toLowerCase();
+  const [language = locale] = locale.split('-');
+
+  return language.toLowerCase();
 }
 ```
 

@@ -421,19 +421,25 @@ Um locale que o Payload não conheça devolve `{ status: 'notFound' }` **com um 
 
 O [getPayloadClient](../../src/providers/payload/getPayloadClient.ts) importa o `payload.config.ts` **dinamicamente**, para que o config não seja avaliado com `PROVIDER=mock`.
 
-[sources/resolvePayloadPage.ts](../../src/providers/payload/sources/resolvePayloadPage.ts) — a query:
+[sources/resolvePayloadPage.ts](../../src/providers/payload/sources/resolvePayloadPage.ts) — **duas**
+consultas para um caminho, e uma só para a raiz e para a página de erro. A razão está em
+[routing.md](routing.md#como-o-path-chega-ao-cms): a consulta pelo breadcrumb casa com a página **e
+com os seus descendentes**, portanto o candidato certo é escolhido antes de se ler o conteúdo.
 
-```ts
-await payload.find({
+```ts src/providers/payload/sources/resolvePayloadPage.ts
+const candidates = await payload.find({
   collection: 'pages',
   locale,
   fallbackLocale: false,
   draft,
   overrideAccess: true,
-  where, // caminho + `_status: 'published'` quando não é rascunho
-  limit: 1,
-  depth: 2,
+  where: onlyPublished({ 'breadcrumbs.url': { equals: url } }, draft),
+  limit: 0,
+  depth: 0,
+  select: { breadcrumbs: true },
 });
+
+const match = candidates.docs.find((doc) => ownUrl(doc) === url);
 ```
 
 Cinco decisões que importam:
@@ -478,18 +484,23 @@ Há um limite de mil linhas. Não é um número mágico: é o ponto onde carrega
 
 [mappers/mapPayloadPage.ts](../../src/providers/payload/mappers/mapPayloadPage.ts) — a fronteira onde o formato do Payload deixa de existir.
 
-```ts
-function mapBlock(block): ModuleInstance {
+```ts src/providers/payload/mappers/mapPayloadPage.ts
+function mapBlock(block: PayloadBlock): ModuleInstance | undefined {
+  …
   const { id, blockType, blockName, ...data } = block;
 
   return {
     id,
     name: blockName || blockType,
-    alias: blockType, // ← a ligação ao módulo
+    alias: blockType,
     data: removeNullValues(data),
   };
 }
 ```
+
+O tipo de retorno inclui o `undefined` porque um bloco **sem `id`** é descartado em vez de atirar — o
+`id` é a chave estável do React, e sem ela não há como renderizar; matar a página por causa de um
+bloco era o contrário do que o [renderer](renderer.md) promete.
 
 O `blockType` do Payload torna-se o `alias` do módulo. É essa a única ligação entre o CMS e o frontend.
 

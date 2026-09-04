@@ -1932,8 +1932,14 @@ E o `notFound` sem `page` é um estado legítimo, não um erro: um site acabado 
 
 `src/providers/payload/mappers/mapPayloadPage.ts`. É aqui que um documento do Payload deixa de ser um documento do Payload e passa a ser um `PageDefinition` — a fronteira depois da qual mais nada no projeto sabe que existe um CMS.
 
-```ts
-export function mapPayloadPage(page: Page, locale: string): PageDefinition {
+```ts src/providers/payload/mappers/mapPayloadPage.ts
+export function mapPayloadPage(
+  page: Page,
+  locale: string,
+  alternates?: Record<string, string>,
+): PageDefinition {
+  const image = page.meta?.image;
+
   return {
     meta: {
       locale,
@@ -1941,11 +1947,13 @@ export function mapPayloadPage(page: Page, locale: string): PageDefinition {
       description: page.meta?.description ?? undefined,
       ogTitle: page.meta?.ogTitle ?? undefined,
       ogDescription: page.meta?.ogDescription ?? undefined,
+      image: isPayloadUpload(image) ? mapPayloadImage(image) : undefined,
+      alternates,
       noIndex: page.meta?.noIndex ?? false,
       noFollow: page.meta?.noFollow ?? false,
     },
 
-    main: (page.main ?? []).map(mapBlock),
+    main: mapPayloadBlocks(page.main),
   };
 }
 ```
