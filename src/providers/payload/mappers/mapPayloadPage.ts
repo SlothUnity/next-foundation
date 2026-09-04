@@ -6,24 +6,27 @@ import { isPayloadUpload, mapPayloadImage } from './mapPayloadImage';
 
 export type PayloadBlock = NonNullable<Page['main']>[number];
 
-function mapBlock(block: PayloadBlock): ModuleInstance {
+function mapBlock(block: PayloadBlock): ModuleInstance | undefined {
   if (!block.id) {
-    throw new Error(`Payload block "${block.blockType}" is missing an id.`);
+    console.warn(
+      `Payload block "${block.blockType}" has no id, so it cannot be rendered. Dropping it and keeping the rest of the page.`,
+    );
+
+    return undefined;
   }
 
   const { id, blockType, blockName, ...data } = block;
 
-  const returnModule: ModuleInstance = {
+  return {
     id,
     name: blockName || blockType,
     alias: blockType,
     data: removeNullValues(data),
   };
-  return returnModule;
 }
 
 export function mapPayloadBlocks(blocks: PayloadBlock[] | null | undefined): ModuleInstance[] {
-  return (blocks ?? []).map(mapBlock);
+  return (blocks ?? []).map(mapBlock).filter((module): module is ModuleInstance => Boolean(module));
 }
 
 function cleanValue(value: unknown): unknown {

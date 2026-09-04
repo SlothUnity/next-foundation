@@ -1,8 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Page } from '@payload-types';
 
 import { mapPayloadPage } from './mapPayloadPage';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 function createPage(page: Partial<Page> = {}): Page {
   return { id: 1, title: 'Sobre nós', ...page } as Page;
@@ -78,8 +82,27 @@ describe('mapPayloadPage', () => {
       expect(module?.data).toEqual({ title: 'Olá', subtitle: 'Mundo' });
     });
 
-    it('refuses a block without an id, because the key would not be stable', () => {
-      expect(() => mapBlocks(createBlock({ id: undefined }))).toThrow(/missing an id/);
+    it('drops a block without an id, because the key would not be stable', () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      expect(mapBlocks(createBlock({ id: undefined }))).toEqual([]);
+    });
+
+    it('keeps the rest of the page when one block has no id', () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      const modules = mapBlocks(createBlock({ id: undefined }), createBlock({ id: 'ok' }));
+
+      expect(modules).toHaveLength(1);
+      expect(modules[0]?.id).toBe('ok');
+    });
+
+    it('says which block type it dropped, because the id is not in the CMS UI', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      mapBlocks(createBlock({ id: undefined }));
+
+      expect(String(warn.mock.calls[0]?.[0])).toContain('hero');
     });
   });
 

@@ -51,6 +51,21 @@ O skip link aceita um `label`, com um default em português, para um projecto o 
 
 O mesmo vale para o **nível dos títulos**: o gerador emite `<h2>`, que é o que costuma estar certo, e garantir um `<h1>` por página exige dar ao módulo a sua posição na página — o que altera o contrato dos módulos. É responsabilidade de quem constrói o frontend do projecto, não da foundation.
 
+## A degradação começa antes do renderer
+
+O renderer garante «perde-se um módulo, salva-se a página» — mas só para as falhas que **ele** vê:
+um alias não registado e dados que não passam o schema. Uma falha no mapper acontece antes, e
+escapava a essa regra.
+
+Era o caso do bloco sem `id`: o [mapPayloadPage](../../src/providers/payload/mappers/mapPayloadPage.ts)
+atirava, o throw escapava ao `getPage`, e **um bloco mau dava 500 na página inteira** — o oposto
+exacto do que este documento promete. Agora o mapper avisa nomeando o `blockType` (o `id` não aparece
+na interface do CMS, portanto o tipo é a única pista útil) e **descarta esse bloco**, mantendo o resto
+da página.
+
+A razão de exigir o `id` não mudou: é a chave estável do React, e sem ela reordenar blocos no admin
+faria o React recriar a árvore. O que mudou é o preço de ela faltar.
+
 ## ModuleRenderer
 
 [core/renderer/ModuleRenderer.tsx](../../src/core/renderer/ModuleRenderer.tsx)
