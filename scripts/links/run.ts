@@ -1,33 +1,11 @@
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { markdownFiles } from './markdownFiles';
 import { collectLinks, headingSlugs } from './parse';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-
-function markdownFiles(dir: string): string[] {
-  const found: string[] = [];
-
-  for (const entry of readdirSync(dir)) {
-    if (entry === 'node_modules' || entry === '.next' || entry === '.git') {
-      continue;
-    }
-
-    const full = path.join(dir, entry);
-
-    if (statSync(full).isDirectory()) {
-      found.push(...markdownFiles(full));
-      continue;
-    }
-
-    if (entry.endsWith('.md')) {
-      found.push(full);
-    }
-  }
-
-  return found;
-}
 
 const files = markdownFiles(root);
 

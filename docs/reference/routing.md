@@ -183,6 +183,14 @@ As definições estão em [securityHeaders.ts](../../src/app/_lib/securityHeader
 | `mocks`   | nada — as imagens estão no repositório, logo na mesma origem                                                    |
 | `api`     | nada, até alguém dizer de onde a API as serve — ver [api.md](api.md#as-imagens-vêm-de-um-sítio-que-só-tu-sabes) |
 
+**O estado `source` avisa quando ninguém o preenche.** Nenhum provider escreve hoje o
+`SiteDefinition.sitemapUrl` — o campo tem um leitor (o `robots.ts`) e nenhum escritor. Isso fazia com
+que um projecto que escolhesse esse estado ficasse com um `robots.txt` **sem linha `Sitemap:`**, em
+silêncio: dos quatro estados da tabela, um estava entregue morto.
+
+Agora avisa nomeando o ficheiro a mudar. O escritor continua a ser trabalho do projecto — é a
+`SiteSource` dele que sabe o URL —, mas deixa de ser uma omissão invisível.
+
 O `pnpm setup:provider` escreve a lista certa para a escolha feita. O `'self'` está sempre lá, o que quer dizer que uma imagem em `public/` ou importada estaticamente **não precisa de declaração nenhuma**: é da mesma origem, e o `remotePatterns` só existe para hosts remotos. A `public/` está vazia — só com um `.gitkeep` — precisamente porque é onde as imagens de um projecto `mocks` vão viver, e o git não guarda pastas vazias.
 
 **São dois conjuntos, e a divisão é uma admissão de ignorância.** O `nosniff`, o `Referrer-Policy`, o `HSTS` e o `Permissions-Policy` valem para tudo. O **CSP** só se aplica aos caminhos públicos: o padrão exclui `/admin` e `/api`, com fronteira de segmento, porque o admin do Payload é uma aplicação que não escrevemos e uma política apertada podia parti-la sem que ninguém percebesse. Verificado com o servidor a correr — `/administracao` recebe o CSP, `/admin` não.

@@ -1,10 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
 import { format, getFileInfo, resolveConfig } from 'prettier';
+
+import { markdownFiles } from '../links/markdownFiles';
 
 import { applyPlan } from './applyPlan';
 import { planRemoval } from './planRemoval';
@@ -149,14 +151,6 @@ async function formatTouchedFiles(plan: SetupPlan): Promise<void> {
   }
 }
 
-function markdownFiles(): string[] {
-  const docs = readdirSync(path.join(root, 'docs'))
-    .filter((entry) => entry.endsWith('.md'))
-    .map((entry) => `docs/${entry}`);
-
-  return ['README.md', ...docs];
-}
-
 function reportDanglingReferences(names: string[]): void {
   if (names.length === 0) {
     return;
@@ -164,8 +158,10 @@ function reportDanglingReferences(names: string[]): void {
 
   const hits: string[] = [];
 
-  for (const file of markdownFiles()) {
-    const lines = readFileSync(path.join(root, file), 'utf8').split('\n');
+  for (const absolute of markdownFiles(root)) {
+    const file = path.relative(root, absolute).replaceAll('\\', '/');
+
+    const lines = readFileSync(absolute, 'utf8').split('\n');
 
     lines.forEach((line, index) => {
       if (names.some((name) => line.includes(name))) {

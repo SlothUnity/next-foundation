@@ -16,7 +16,15 @@ async function sitemapReference(): Promise<string | undefined> {
   if (sitemapLocation.kind === 'source') {
     const { sitemapUrl } = await foundation.site.getSite();
 
-    return sitemapUrl?.trim() || undefined;
+    if (!sitemapUrl?.trim()) {
+      console.warn(
+        'sitemapLocation is { kind: "source" }, but the content source reported no sitemapUrl, so robots.txt names no sitemap. Report it from your SiteSource, or pick another state in src/app/_lib/sitemapLocation.ts.',
+      );
+
+      return undefined;
+    }
+
+    return sitemapUrl.trim();
   }
 
   return `${await requestOrigin()}/sitemap.xml`;

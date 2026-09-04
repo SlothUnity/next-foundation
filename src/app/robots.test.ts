@@ -65,9 +65,24 @@ describe('robots.txt', () => {
 
     getSite.mockResolvedValue({});
 
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
     const { sitemap } = await robots();
 
     expect(sitemap).toBeUndefined();
+    expect(warn).toHaveBeenCalledOnce();
+  });
+
+  it('names the file to change when the source does not know, because no provider writes that field', async () => {
+    location.current = { kind: 'source' };
+
+    getSite.mockResolvedValue({});
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    await robots();
+
+    expect(String(warn.mock.calls[0]?.[0])).toContain('sitemapLocation.ts');
   });
 
   it('never asks the source when the project already said where it is', async () => {
