@@ -234,6 +234,7 @@ Não se lê de seguida. Cada documento cobre um assunto por inteiro, e é onde v
 | o CMS                              | [payload.md](docs/reference/payload.md)           |
 | uma API externa                    | [api.md](docs/reference/api.md)                   |
 | onde pôr e como nomear um ficheiro | [conventions.md](docs/reference/conventions.md)   |
+| trazer o que a base mudou          | [upgrading.md](docs/reference/upgrading.md)       |
 
 E o [guide.md](docs/reference/guide.md): 3500 linhas, o projecto inteiro ficheiro a ficheiro, com o porquê de cada linha. É a versão completa de tudo o que está na tabela acima, e lê-se com o editor aberto ao lado.
 
@@ -347,6 +348,8 @@ O passo de build no CI corre com credenciais fictícias: o build precisa que a c
 | [payload.md](docs/reference/payload.md)           | Como está configurado o Payload                             |
 | [api.md](docs/reference/api.md)                   | Como ligo uma API externa                                   |
 | [routing.md](docs/reference/routing.md)           | Como funcionam URLs, locales e metadata                     |
+| [upgrading.md](docs/reference/upgrading.md)       | Como traço para o meu projecto o que a base mudou           |
+| [CHANGELOG.md](CHANGELOG.md)                      | O que mudou na base, e o que exige trabalho manual          |
 
 ## Stack
 
