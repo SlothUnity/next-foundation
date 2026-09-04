@@ -63,6 +63,10 @@ Apagá-lo são **três sítios**, e nenhum é adivinhado:
 
 Num projecto `mock`, há um quarto: as páginas de fixture em [src/providers/mocks/pages/](../../src/providers/mocks/pages/) importam o `heroModule`, portanto ou passam a usar um módulo teu ou vão com ele. Também são conteúdo de demonstração — servem para o `pnpm dev:mock` ter algo para mostrar antes de existir projecto.
 
+Depois de o apagar, corre `pnpm payload:generate`: os tipos gerados ainda declaram o bloco, e é o `payload-types.ts` que o mapper usa.
+
+**Nenhum teste do `core` depende dele**, e isso é verificado: apagar o Hero e correr `pnpm exec vitest run src/core src/app` dá verde. Não era assim — dois testes do renderer renderizavam o alias `hero` contra o `createFoundation` verdadeiro, e o teste do `createFoundation` afirmava que `getByAlias('hero')` existia. Hoje o renderer usa o [testModule](../../src/testing/testModule.tsx), que vive no `src/testing/` ao lado dos outros utilitários de teste, e o do `createFoundation` afirma a **propriedade** — que cada módulo que o projecto exporta está registado —, o que continua verdadeiro com um módulo, com vinte ou com nenhum.
+
 A ordem que poupa trabalho é a inversa: `pnpm generate` primeiro, o teu módulo a funcionar, e o Hero fora depois.
 
 **Schema primeiro.** Ele é a fonte de verdade e o tipo deriva dele, não o contrário:
