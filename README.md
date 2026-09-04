@@ -199,7 +199,7 @@ As páginas são ficheiros do repositório — [providers.md § Escrever uma pá
 pnpm build
 ```
 
-Corre `lint`, `typecheck`, os testes e só depois o `next build`. **É o portão real** — não há CI neste repositório, e um `git commit --no-verify` contorna o hook por inteiro. Se isto passa, o projecto está de pé.
+Corre `lint`, `typecheck`, os testes e só depois o `next build`. **É o último dos três portões** — o hook contorna-se com um `git commit --no-verify`, o [CI](.github/workflows/gate.yml) não, e este é o que o deploy corre. Se isto passa, o projecto está de pé.
 
 Num projecto `api` ou `mock`, passa **sem base de dados nenhuma**: o passo 4 levou consigo as rotas que exigiam a config do Payload.
 

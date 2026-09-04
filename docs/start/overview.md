@@ -95,7 +95,7 @@ pnpm dev
 
 Sem base de dados: `PROVIDER=mock pnpm dev`.
 
-O `pnpm build` corre `lint`, `typecheck` e os testes antes do `next build` — sem CI, é este o portão antes de produção.
+O `pnpm build` corre `lint`, `typecheck` e os testes antes do `next build`, e é o último de três portões: o hook de pre-commit, o CI em `.github/workflows/gate.yml`, e este, que é o que o deploy corre.
 
 → [README.md](../../README.md)
 

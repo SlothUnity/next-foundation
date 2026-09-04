@@ -16,6 +16,45 @@ Cada entrada diz se **exige trabalho manual** no projecto. As que não dizem nad
 - **`docs/reference/upgrading.md`** e este ficheiro.
 - **`docs/reference/deploy.md`** — o portão, o workflow do CI decisão por decisão, o comando de deploy, e a lista honesta do que falta a um site em produção (email, telemetria, backups, purga de cache, tecto de tempo, o limite real de upload).
 
+### Corrigido — segurança
+
+- **Um caminho do visitante escapava à base da API e levava o `API_TOKEN` com ele.** O `createUrl`
+  concatenava base e caminho e passava o resultado ao `new URL`, que resolve `..`: um pedido a
+  `../../admin` saía de `https://cms/api/v1/` para `https://cms/admin`, com o cabeçalho
+  `Authorization` colado. Resolve agora **contra** a base e confirma que o resultado ainda começa por
+  ela.
+- **Redirect aberto na fronteira da aplicação.** O `page.tsx` passava o `response.to` do provider
+  directamente ao `redirect()`. O guarda `isSafeRedirectPath` já existia e estava aplicado em três
+  sítios — todos dentro do provider payload, o único que não pode produzir um redirect externo.
+- **Os dois segredos que assinam coisas eram os dois não validados.** O `PAYLOAD_SECRET` era `min(1)`
+  e o `PREVIEW_SECRET` não passava por schema nenhum. Ambos têm agora um mínimo de **32 caracteres**;
+  o `PREVIEW_SECRET` é opcional, mas presente e fraco derruba o arranque.
+
+### Corrigido — comportamento
+
+- **Um bloco sem `id` deixa de matar a página inteira.** O mapper atirava e o throw escapava ao
+  `getPage`, o que dava 500 — o oposto da regra escrita do renderer. Agora avisa nomeando o
+  `blockType` e descarta só esse bloco.
+- **O `onRequestError` imprime a causa.** Era o único caminho global de erro e imprimia só a mensagem
+  e o `digest`, portanto nomeava sempre o sintoma («Request to … failed.») e nunca a causa (o
+  `ECONNREFUSED`, o erro do Zod). Percorre agora a cadeia de `cause` e imprime o `stack`.
+- **O relatório de referências penduradas do `setup:provider` via 2 de 19 documentos.** O varrimento
+  não era recursivo e os documentos vivem em `start/` e `reference/` desde a reorganização. Há agora
+  um varredor só, testado, partilhado com o `check:links`.
+- **O estado `{ kind: 'source' }` do sitemap estava entregue morto** — lê um campo que nenhum provider
+  escreve, portanto dava um `robots.txt` sem linha `Sitemap:` em silêncio. Avisa e nomeia o ficheiro.
+
+### Corrigido — documentação
+
+- **O `guide.md` descrevia um código materialmente diferente.** Uma auditoria encontrou 82 derivas
+  entre prosa e código, dois terços neste documento. As quatro que faziam alguém agir errado estão
+  corrigidas: dizia que **não havia controlo de acesso** (há dois papéis e regras por collection), que
+  **não havia sistema de tema** (há tokens e reset), que **não havia CI** (há), e trazia um aviso
+  marcado como «problema vivo» sobre um defeito já corrigido. O documento passou a dizer no topo que,
+  onde discordar de um de `reference/`, é o outro que está certo.
+- A mesma afirmação sobre o CI estava no `README.md` (que se contradizia 117 linhas depois) e no
+  `overview.md`.
+
 ### Corrigido
 
 - **A versão de Node passou a ser declarada, e a que estava no CI estava errada.** O workflow fixava Node 20, copiado do `engines` do Next (`>=20.9`); o `jsdom@30` exige `^22.22.2` e usa o `undici` 8, que chama uma API de `node:worker_threads` só existente desde o Node 22.10. Em Node 20 os 66 ficheiros de teste falhavam **antes de correr um único teste**, com um `TypeError` que nomeia o `undici` e não o Node. Agora o [.nvmrc](.nvmrc) fixa a versão exacta (`22.23.2`) e o CI lê-a por `node-version-file`, para o CI e quem desenvolve correrem o mesmo runtime; o `engines` fica com o piso (`>=22.22.2`), que é o que o jsdom declara, e avisa quem estiver abaixo. O `nvm-windows` não lê o `.nvmrc`, portanto lá instala-se pelo nome.

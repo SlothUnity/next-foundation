@@ -8,6 +8,21 @@ No fim deves conseguir abrir qualquer ficheiro do `src/` e explicar o que lá es
 >
 > Se não tens tempo para o percurso todo: o [overview.md](../start/overview.md) dá a ideia inteira em dez minutos, e o [flows.md](../start/flows.md) dá por onde passa cada pedido, ficheiro a ficheiro.
 
+> **Onde este documento e um de `reference/` discordarem, o de `reference/` está certo.**
+>
+> Este é o documento mais antigo e o maior do repositório, e o que mais depressa envelhece: descreve
+> o projecto ficheiro a ficheiro, portanto **cada mudança de código deixa-o a mentir** até alguém o
+> reescrever. Uma auditoria de Setembro de 2026 encontrou 82 derivas entre a prosa e o código, e dois
+> terços estavam aqui.
+>
+> O `pnpm check:links` garante que cada ligação e cada âncora resolvem — e **não consegue verificar
+> que um bloco de código citado ainda corresponde ao ficheiro que nomeia**. É a única categoria de
+> erro que o portão não apanha, e é onde ela se acumula.
+>
+> As quatro afirmações que mais custavam — «não há controlo de acesso», «não há sistema de tema»,
+> «não há CI», e o aviso de que o `PROVIDER=mock` carregava o Payload inteiro — estão corrigidas.
+> Trata o resto com a mesma desconfiança: confirma contra o ficheiro antes de agir.
+
 ## Como ler este guia
 
 **Para quem é.** Para quem sabe JavaScript mas olha para este projeto e não percebe o vocabulário: porquê classes nuns sítios e funções noutros, o que é uma classe abstrata, para que serve um `Registry` genérico, porque é que há um ficheiro que exporta uma variável já criada. O Capítulo 0 dá esse vocabulário todo antes de o percurso começar.
@@ -1477,7 +1492,7 @@ A primeira é o **scope**. O sufixo `.module.scss` faz o Next gerar um nome de c
 
 Foi isso que forçou a decisão que este capítulo antes deixava em aberto: a definição do módulo passou a `.definition.ts`, para o `.module.*` significar uma coisa só nesta pasta.
 
-A segunda é o que **não** existe. Não há sistema de tema: nem variáveis, nem tokens, nem reset, nem escala tipográfica. Não é um esquecimento — é a mesma linha que separa o nível do título acima. A foundation garante onde os estilos de um módulo vivem e como se chamam; o que lá dentro se escreve é decisão de quem monta o site.
+A segunda é o que existe **por cima** do módulo. Aqui esteve escrito que não havia sistema de tema nenhum — nem variáveis, nem tokens, nem reset. Passou a haver: o [globals.scss](<../../src/app/(frontend)/globals.scss>) define os tokens em custom properties (espaço, escala de texto, cores, raio, medida) e um reset, e o [\_media.scss](../../src/styles/_media.scss) traz os breakpoints como mixin. A foundation escolhe **que** tokens existem, porque é o vocabulário que os módulos partilham; **não** escolhe os valores, e a paleta troca-se num ficheiro. Ver [modules.md § A camada partilhada](modules.md#a-camada-partilhada).
 
 O `sass` é uma devDependency declarada. Chegou a compilar sem estar no `package.json`, por vir por arrasto do `@payloadcms/ui` — o tipo de dependência que funciona até alguém actualizar a de cima.
 
@@ -1594,9 +1609,11 @@ Três coisas a reter:
 
 E ao lado, `src/providers/provider.ts` — uma linha: `export const provider = createProvider();`. O mesmo par fábrica/instância do `foundation` ([0.8](#08-módulos-esm-importar-é-executar-e-o-singleton)).
 
-> ⚠ **Lapso, não decisão**
+> ✅ **Corrigido**
 >
-> Os três providers são importados **estaticamente** no topo do `createProvider.ts` (linhas 3-5), e cada `provider.ts` cria as suas fontes no momento do import (`new PayloadPageSource()` etc.). Como o `PayloadPageSource.ts:3` importa `@payload-config`, **correr com `PROVIDER=mock` continua a carregar a config do Payload inteira e o adapter de Postgres**. O `mocks` existe precisamente para poder correr o site sem base de dados, e este detalhe estraga metade do ganho. A correção é um `await import()` dinâmico dentro de cada `case`.
+> Aqui esteve um `⚠ Lapso` a dizer que o `PayloadPageSource` importava o `@payload-config` no topo, e que por isso correr com `PROVIDER=mock` carregava a config do Payload inteira e o adaptador de Postgres.
+>
+> Os três providers continuam a ser importados estaticamente, mas **nenhum deles importa a config**: quem o faz é o [getPayloadClient.ts](../../src/providers/payload/getPayloadClient.ts), com um `await import('@payload-config')` **dentro** da função, portanto a config só carrega quando alguém pede uma página ao Payload. O teste que o fixa é o `createProvider.test.ts`, que serve uma página do provider `mock` com o `PAYLOAD_SECRET` e o `DATABASE_URL` apagados do ambiente.
 
 ## 7.3 As três implementações
 
@@ -2475,27 +2492,39 @@ O [`@payloadcms/plugin-redirects`](https://payloadcms.com/docs/plugins/redirects
 ```ts
 export const Media: CollectionConfig = {
   slug: 'media',
-  access: { read: () => true },
+  access: { read: isPublic, create: isEditor, update: isEditor, delete: isEditor },
   labels: { singular: 'Asset', plural: 'Media' },
-  admin: { group: 'Content' },
-  upload: true,
-  fields: [],
+  admin: { group: 'Content', useAsTitle: 'alt' },
+  upload: { mimeTypes: allowedMediaMimeTypes, imageSizes: [...] },
+  fields: [{ name: 'alt', type: 'text', required: true, localized: true }],
 };
 ```
 
-- **`upload: true`** — transforma a collection num repositório de ficheiros. O Payload trata do armazenamento, das miniaturas e dos metadados sozinho, e é por isso que `fields: []` chega.
-- **`access: { read: () => true }`** — a **única** regra de acesso explícita do projeto, e é uma abertura. Sem ela, as imagens do site não carregavam no browser: um `<img src="/api/media/...">` é um pedido anónimo.
+- **`upload`** com **allowlist de mimeTypes** e três derivadas — não `upload: true`. O SVG está deliberadamente fora, e o porquê está em [payload.md § Media](payload.md#media-e-users).
+- **`read: isPublic`** — a leitura é aberta porque um `<img src="/api/media/...">` é um pedido anónimo. As outras três regras são de editor.
+- **O campo `alt` é obrigatório e localizado**, e serve de `useAsTitle`: sem ele, uma imagem acessível não era exprimível no modelo de conteúdo.
 
   Vale a pena saber o que isto abre além dos ficheiros: torna também a **listagem** legível, ou seja, `/api/media` devolve a lista de assets a quem a pedir. Não é um problema aqui; seria se algum dia houvesse ficheiros com nomes sensíveis.
 
 **`Users`** — `auth: true` e mais nada de relevante. Essa única opção acrescenta email, password, sessões, recuperação de conta e as rotas de login. `useAsTitle: 'email'` mostra o email nas listagens.
 
-**A regra de acesso geral.** As collections `Pages` e `Users` **não declaram `access`**. Isso não quer dizer «aberto» — quer dizer que vale a omissão do Payload, que é «só utilizadores autenticados». Daí o modelo do projeto:
+**A regra de acesso geral.** Aqui esteve escrito que as collections `Pages` e `Users` **não declaram
+`access`** e que valia a omissão do Payload («só utilizadores autenticados»). **Já não é verdade, e a
+razão pela qual mudou é a que interessa:** com a omissão do Payload qualquer conta do CMS era
+superadmin — um editor podia mudar o email e a password do dono do site.
+
+Há dois papéis (`admin` e `editor`) e cada collection declara as suas regras, uma função por regra em
+`access/`. O modelo actual:
 
 ```
 Rede (anónimo)   →  Pages: ✗   Users: ✗   Site: ✗   Media: ✓ (leitura)
+Editor           →  Pages, Redirects, Media, Navigation, Footer;  Site: só ler
+Admin            →  tudo, mais Users e as Site Settings
 Local API        →  tudo, porque overrideAccess: true
 ```
+
+A tabela completa, com o que cada função decide e porquê, está em
+[payload.md § Access control](payload.md#access-control).
 
 O frontend não é «autorizado»; **passa ao lado** do sistema de acesso, porque lê pela Local API ([8.2](#82-payloadsitesource-e-a-local-api)). Por isso é que o filtro `_status` é indispensável ([8.4](#84-resolvepayloadpage-opção-a-opção)).
 
@@ -3133,7 +3162,7 @@ pnpm test --run
 
 A ordem é do mais barato para o mais caro, para falhar cedo. O `lint-staged` corre o prettier só nos ficheiros em staging.
 
-**Onde estão os portões.** Não existe CI neste repositório, e o deploy vai para o Vercel. Como um `git commit --no-verify` contorna o hook por inteiro, o `build` foi feito portão explícito:
+**Onde estão os portões.** São três, e o [deploy.md](deploy.md) explica cada linha do workflow: o hook de pre-commit (rápido e contornável com `--no-verify`), o **CI** em `.github/workflows/gate.yml` (o mesmo mais o `format:check` e o `next build`, e não se contorna), e o `pnpm build`, que é o comando que o deploy corre:
 
 ```json
 "build": "pnpm lint && pnpm typecheck && pnpm test --run && next build"
