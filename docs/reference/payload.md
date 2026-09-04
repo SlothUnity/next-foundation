@@ -50,6 +50,19 @@ Uma leitura em vez de três chamadas tem duas consequências práticas. As mensa
 | ------------------------ | ----------------------------------------------------------------------- |
 | `DATABASE_URL`           | começar por `postgres://` ou `postgresql://` — o Supabase entrega ambos |
 | `NEXT_PUBLIC_SERVER_URL` | ser URL absoluto e **não terminar em barra**                            |
+| `PAYLOAD_SECRET`         | ter **32 caracteres ou mais** — assina os tokens de sessão do admin     |
+| `PREVIEW_SECRET`         | opcional; **presente**, o mesmo mínimo — assina os tokens de preview    |
+
+As duas linhas dos segredos são a correcção de uma contradição que este documento tinha em cima. O
+`PAYLOAD_SECRET` era `min(1)`: **um segredo de um carácter passava** o schema cuja razão declarada é
+que «um `|| ''` num segredo de assinatura produziria tokens forjáveis sem um único aviso». E o
+`PREVIEW_SECRET` — a chave que faz o HMAC dos tokens de pré-visualização — **não passava por schema
+nenhum**: era lido em cru com `process.env` em dois sítios, portanto qualquer valor não vazio servia.
+
+Agora os dois têm o mesmo mínimo, e o `PREVIEW_SECRET` é opcional-mas-forte: ausente desliga o
+preview, presente e fraco **derruba o arranque**. Os dois sítios que o consomem continuam a ler o
+`process.env` de propósito — a validação acontece uma vez, no arranque, e o que lá chega depois já
+passou por ela. Ler o schema outra vez acoplava o construtor do URL de preview ao ambiente inteiro.
 
 A segunda linha não é preciosismo. O Live Preview compara este valor com a origem do browser por **igualdade de string**, portanto uma barra final quebra-o sem erro nenhum: o iframe abre, o conteúdo nunca actualiza, e não há nada no log. É o género de defeito que se procura durante uma tarde.
 

@@ -2,16 +2,24 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { payloadEnv } from './payloadEnv';
 
-const KEYS = ['DATABASE_URL', 'PAYLOAD_SECRET', 'NEXT_PUBLIC_SERVER_URL'] as const;
+const KEYS = [
+  'DATABASE_URL',
+  'PAYLOAD_SECRET',
+  'NEXT_PUBLIC_SERVER_URL',
+  'PREVIEW_SECRET',
+] as const;
 
 type Key = (typeof KEYS)[number];
+
+const REQUIRED: Key[] = ['DATABASE_URL', 'PAYLOAD_SECRET', 'NEXT_PUBLIC_SERVER_URL'];
 
 const saved: Record<string, string | undefined> = {};
 
 const WORKING: Record<Key, string> = {
   DATABASE_URL: 'postgresql://user:pw@db.exemplo.pt:5432/site',
-  PAYLOAD_SECRET: 'um-valor-longo-e-aleatorio',
+  PAYLOAD_SECRET: 'r6Qv2yLpX9wKmTnB4hJsD8fGzA3cE7uV',
   NEXT_PUBLIC_SERVER_URL: 'https://exemplo.pt',
+  PREVIEW_SECRET: 'H4kPz7nRtY2wQmS9bXcV6dL3jF8gN5aU',
 };
 
 function set(overrides: Partial<Record<Key, string | null>> = {}): void {
@@ -88,8 +96,55 @@ describe('payloadEnv', () => {
       message = error instanceof Error ? error.message : '';
     }
 
-    for (const key of KEYS) {
+    for (const key of REQUIRED) {
       expect(message).toContain(key);
     }
+
+    expect(message).not.toContain('PREVIEW_SECRET');
   });
 });
+
+describe('the two secrets that sign things', () => {
+  it('refuses a PAYLOAD_SECRET shorter than 32 characters', () => {
+    set({ PAYLOAD_SECRET: 'x' });
+
+    expect(() => payloadEnv()).toThrow(/PAYLOAD_SECRET: must be at least 32 characters/);
+  });
+
+  it('says what the secret signs, so the length reads as a reason and not a rule', () => {
+    set({ PAYLOAD_SECRET: 'curto' });
+
+    expect(() => payloadEnv()).toThrow(/signs the admin session tokens/);
+  });
+
+  it('accepts a PREVIEW_SECRET that is absent, because preview is optional', () => {
+    set({ PREVIEW_SECRET: null });
+
+    expect(payloadEnv().PREVIEW_SECRET).toBeUndefined();
+  });
+
+  it('refuses a PREVIEW_SECRET that is present and weak, which is worse than absent', () => {
+    set({ PREVIEW_SECRET: 'segredo' });
+
+    expect(() => payloadEnv()).toThrow(/PREVIEW_SECRET: must be at least 32 characters/);
+  });
+
+  it('reports both secrets at once when both are weak', () => {
+    set({ PAYLOAD_SECRET: 'a', PREVIEW_SECRET: 'b' });
+
+    const message = String(expectThrow());
+
+    expect(message).toContain('PAYLOAD_SECRET');
+    expect(message).toContain('PREVIEW_SECRET');
+  });
+});
+
+function expectThrow(): unknown {
+  try {
+    payloadEnv();
+  } catch (error) {
+    return error;
+  }
+
+  throw new Error('payloadEnv did not throw');
+}
