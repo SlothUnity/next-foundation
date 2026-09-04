@@ -96,6 +96,7 @@ const PAYLOAD_DEPENDENCIES = [
   '@payloadcms/storage-vercel-blob',
   '@payloadcms/ui',
   'payload',
+  'sharp',
 ];
 
 const PAYLOAD_SCRIPTS = [

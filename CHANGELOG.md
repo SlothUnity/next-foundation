@@ -44,6 +44,17 @@ Cada entrada diz se **exige trabalho manual** no projecto. As que não dizem nad
 - **O estado `{ kind: 'source' }` do sitemap estava entregue morto** — lê um campo que nenhum provider
   escreve, portanto dava um `robots.txt` sem linha `Sitemap:` em silêncio. Avisa e nomeia o ficheiro.
 
+### Corrigido — testes e o plano de remoção
+
+- **O `sharp` sobrevivia ao `setup:provider` sem quem o importe.** O seu único importador é o
+  `payload.config.ts`, que o comando apaga — mas o `sharp` não estava na lista de dependências a
+  remover, e no mesmo passo perdia a aprovação de build no `pnpm-workspace.yaml`. Ficava instalado,
+  sem uso e sem poder compilar.
+- **O teste dos blocos não afirmava o que o nome prometia.** Chamava-se «gives every block a
+  localized, required title field» e só fazia `toBeDefined()`: qualquer bloco passava com
+  `required: false` e `localized: false`. São agora três testes, um por afirmação — verificado a
+  chumbar com os valores errados.
+
 ### Corrigido — documentação
 
 - **O `guide.md` descrevia um código materialmente diferente.** Uma auditoria encontrou 82 derivas
