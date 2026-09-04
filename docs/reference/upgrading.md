@@ -66,7 +66,18 @@ A cadeia, verificada no `node_modules`:
 
 No Node 20 o `undici` atira `TypeError: webidl.util.markAsUncloneable is not a function` ao carregar, o jsdom não inicializa, e **o worker do vitest morre antes de haver testes**. O erro não nomeia o Node em sítio nenhum — nomeia o `undici`, o que faz perder tempo à procura no lado errado.
 
-Por isso o número vive em **dois sítios que não podem divergir**: o `.nvmrc` (que o `nvm use` e o `actions/setup-node` lêem, via `node-version-file`) e o `engines` do `package.json`, que faz o `pnpm install` avisar quem estiver abaixo. Quando um projecto subir uma dependência de teste, é aqui que se confirma o que ela exige — `node -e "console.log(require('jsdom/package.json').engines)"` responde em segundos.
+Por isso o número vive em **dois sítios com papéis diferentes**:
+
+|                             |             |                                                                                                                                                                           |
+| --------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [.nvmrc](../../.nvmrc)      | `22.23.2`   | a versão **exacta**, pela mesma razão que o `packageManager` fixa o pnpm: o CI lê-a por `node-version-file`, e quem desenvolve corre a mesma. Subir é um commit que se vê |
+| `engines` do `package.json` | `>=22.22.2` | o **piso**, que é o que o jsdom declara. Faz o `pnpm install` avisar quem estiver abaixo, em vez de deixar o erro do `undici` aparecer três passos depois                 |
+
+Um é paridade, o outro é aviso. Sem o primeiro, o CI corria o 22 mais recente e uma máquina de desenvolvimento corria outro — que é precisamente como esta classe de defeito se esconde.
+
+**Atenção a quem desenvolve em Windows:** o `nvm-windows` **não lê o `.nvmrc`**, ao contrário do `nvm` de Linux e macOS. Lá a versão instala-se pelo nome: `nvm install 22.23.2 && nvm use 22.23.2`.
+
+Quando um projecto subir uma dependência de teste, é aqui que se confirma o que ela exige — `node -e "console.log(require('jsdom/package.json').engines)"` responde em segundos.
 
 ## O que a base não promete
 
