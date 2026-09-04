@@ -203,7 +203,14 @@ Três coisas que só ele faz, porque só fazem sentido num projecto novo:
 - **o `package.json` passa a ser do projecto:** o `name` vem do nome da pasta, a `version` volta
   a `0.1.0`, e os comandos da foundation — o `setup:provider` e o próprio `create:foundation` —
   saem;
-- **as ferramentas da foundation não viajam.** O `scripts/setup/` e o `scripts/create/` ficam
+- **as ferramentas da foundation não viajam**, e a lista de quais vive **num só sítio**
+  ([foundationTooling.ts](../../scripts/foundationTooling.ts)). Estava em três — o filtro de cópia,
+  o reescritor do `package.json` e a auto-destruição — e de cada vez que se acrescentava uma
+  ferramenta actualizava-se uma e esqueciam-se as outras. Aconteceu duas vezes: o `scripts/create`
+  ficou partido depois de o eject remover o `scripts/setup`, e depois o `scripts/verify` ficou
+  partido da mesma forma num projecto gerado. Nenhuma das duas era visível antes de a matriz correr.
+  O `scripts/links/` e o `scripts/docs/` **vão**, porque um projecto continua a ter documentos para
+  manter honestos;
   para trás; o `scripts/links/` vai, porque um projecto continua a ter documentos para manter
   honestos;
 - **o `.env.local` nunca é copiado.** A lista vem do `git ls-files`, que não o vê — e há um

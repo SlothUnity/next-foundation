@@ -1,4 +1,4 @@
-const FOUNDATION_SCRIPTS = ['setup:provider', 'create:foundation'];
+import { FOUNDATION_SCRIPTS } from '../foundationTooling';
 
 export interface ManifestInput {
   manifest: Record<string, unknown>;

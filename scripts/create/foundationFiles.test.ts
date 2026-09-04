@@ -47,3 +47,22 @@ describe('what a generated project gets', () => {
     ]);
   });
 });
+
+describe('every foundation directory is excluded, not just the ones someone remembered', () => {
+  it.each([
+    'scripts/setup/Setup.cli.ts',
+    'scripts/create/Create.cli.ts',
+    'scripts/verify/shapes.ts',
+  ])('leaves %s behind', (file) => {
+    expect(isProjectFile(file)).toBe(false);
+  });
+
+  it('keeps scripts/links, because a project still has documents to keep honest', () => {
+    expect(isProjectFile('scripts/links/run.ts')).toBe(true);
+    expect(isProjectFile('scripts/docs/run.ts')).toBe(true);
+  });
+
+  it('does not exclude a directory that merely starts with the same letters', () => {
+    expect(isProjectFile('scripts/setups-of-mine/x.ts')).toBe(true);
+  });
+});

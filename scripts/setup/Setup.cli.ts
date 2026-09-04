@@ -9,6 +9,8 @@ import { format, getFileInfo, resolveConfig } from 'prettier';
 import { deannotateMissingQuotes, flattenDeadLinks } from '../links/flattenDeadLinks';
 import { markdownFiles } from '../links/markdownFiles';
 
+import { FOUNDATION_DIRECTORIES, FOUNDATION_SCRIPTS } from '../foundationTooling';
+
 import { applyPlan } from './applyPlan';
 import { planRemoval } from './planRemoval';
 import { isSetupProvider, setupProviders } from './Setup.types';
@@ -236,14 +238,16 @@ function selfDestruct(): void {
   };
 
   if (parsed.scripts) {
-    delete parsed.scripts['setup:provider'];
-    delete parsed.scripts['create:foundation'];
+    for (const script of FOUNDATION_SCRIPTS) {
+      delete parsed.scripts[script];
+    }
   }
 
   writeFileSync(manifest, `${JSON.stringify(parsed, null, 2)}\n`);
 
-  rmSync(path.join(root, 'scripts/setup'), { recursive: true, force: true });
-  rmSync(path.join(root, 'scripts/create'), { recursive: true, force: true });
+  for (const directory of FOUNDATION_DIRECTORIES) {
+    rmSync(path.join(root, directory), { recursive: true, force: true });
+  }
 }
 
 async function main(): Promise<void> {
