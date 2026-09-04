@@ -51,6 +51,22 @@ O skip link aceita um `label`, com um default em português, para um projecto o 
 
 O mesmo vale para o **nível dos títulos**: o gerador emite `<h2>`, que é o que costuma estar certo, e garantir um `<h1>` por página exige dar ao módulo a sua posição na página — o que altera o contrato dos módulos. É responsabilidade de quem constrói o frontend do projecto, não da foundation.
 
+## O `onRequestError` imprime a causa, e não só o sintoma
+
+[src/instrumentation.ts](../../src/instrumentation.ts) é o **único** caminho global de erro do
+projecto, e imprimia apenas a mensagem e o `digest`. Isso deixava-o a nomear sempre o sintoma e nunca
+a causa:
+
+| O que se via                            | O que faltava                        |
+| --------------------------------------- | ------------------------------------ |
+| `Request to https://cms/... failed.`    | o `ECONNREFUSED` que a embrulhava    |
+| `Module "hero" data validation failed.` | o erro do Zod que diz **qual campo** |
+
+Os erros deste repositório passam o `cause` de propósito — é o que o `ModuleValidationError` guarda —
+e o único sítio que os lê descartava-o. Agora percorre a cadeia inteira de `cause`, indentando cada
+nível, nomeia o tipo (`ZodError`, e não «Error»), lida com um `cause` que não é `Error`, e imprime o
+`stack`. Um `cause` que aponte para si mesmo não faz laço infinito — há um teste para isso.
+
 ## A degradação começa antes do renderer
 
 O renderer garante «perde-se um módulo, salva-se a página» — mas só para as falhas que **ele** vê:

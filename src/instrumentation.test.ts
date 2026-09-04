@@ -64,3 +64,48 @@ describe('onRequestError', () => {
     expect(lines).toContain('/robots.txt');
   });
 });
+
+describe('the cause, which was the part that never reached the log', () => {
+  it('prints the cause of a wrapped error', () => {
+    const error = new Error('Request to https://cms failed.', {
+      cause: new Error('connect ECONNREFUSED 127.0.0.1:443'),
+    });
+
+    expect(call(error)).toContain('ECONNREFUSED');
+  });
+
+  it('names the cause type, because that is what says which layer failed', () => {
+    const cause = Object.assign(new Error('title: expected string'), { name: 'ZodError' });
+
+    expect(call(new Error('data validation failed.', { cause }))).toContain('ZodError');
+  });
+
+  it('walks a chain of causes, deepest included', () => {
+    const root = new Error('socket hang up');
+    const middle = new Error('fetch failed', { cause: root });
+
+    const log = call(new Error('Request failed.', { cause: middle }));
+
+    expect(log).toContain('fetch failed');
+    expect(log).toContain('socket hang up');
+  });
+
+  it('handles a cause that is not an Error, instead of printing [object Object]', () => {
+    expect(call(new Error('rebentou', { cause: 'E263' }))).toContain('E263');
+  });
+
+  it('survives a cause that points back at the error', () => {
+    const error: Error & { cause?: unknown } = new Error('ciclo');
+    error.cause = error;
+
+    expect(() => call(error)).not.toThrow();
+  });
+
+  it('prints the stack, which is what makes the message locatable', () => {
+    expect(call(new Error('rebentou'))).toContain('instrumentation.test.ts');
+  });
+
+  it('says nothing extra when there is no cause', () => {
+    expect(call(new Error('rebentou'))).not.toContain('caused:');
+  });
+});
