@@ -204,11 +204,13 @@ function selfDestruct(): void {
 
   if (parsed.scripts) {
     delete parsed.scripts['setup:provider'];
+    delete parsed.scripts['create:foundation'];
   }
 
   writeFileSync(manifest, `${JSON.stringify(parsed, null, 2)}\n`);
 
   rmSync(path.join(root, 'scripts/setup'), { recursive: true, force: true });
+  rmSync(path.join(root, 'scripts/create'), { recursive: true, force: true });
 }
 
 async function main(): Promise<void> {

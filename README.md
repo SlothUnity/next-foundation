@@ -77,7 +77,7 @@ Três coisas que vale saber antes de correr:
 
 - **recusa arrancar com alterações não commitadas**, para tudo o que ele faz caber num só `git diff` legível;
 - **para quando não reconhece um ficheiro.** Cada operação falha em voz alta se a âncora que espera não estiver lá, em vez de editar à sorte. Se personalizaste algum destes ficheiros, o comando pára e diz qual;
-- **apaga-se a si mesmo no fim.** Um comando destes esquecido dentro de um projecto de cliente é uma armadilha. `--keep` para o manter.
+- **apaga-se a si mesmo no fim**, e leva o `create:foundation` com ele. Um comando de eject esquecido dentro de um projecto de cliente é uma armadilha, e o gerador importa do `scripts/setup/` — deixá-lo para trás sem a outra metade dava um projecto que **não compila**. `--keep` para manter os dois.
 
 No fim lista as referências em prosa que ficaram a apontar para o documento apagado. São frases, não linhas de tabela, portanto quem as lê é uma pessoa e não um script.
 
@@ -273,6 +273,7 @@ src/
 
 generator/            templates do `pnpm generate` (Plop)
 scripts/setup/        o `pnpm setup:provider`, que se apaga a si mesmo
+scripts/create/       o `pnpm create:foundation`, que sai com ele
 scripts/links/        o `pnpm check:links`
 docs/                 a documentação, em duas vertentes
 ```
