@@ -25,10 +25,12 @@ Oito passos. Os três primeiros são iguais para todos; **do quarto em diante o 
 
 | O quê        | Versão                   | Porquê                                                                                   |
 | ------------ | ------------------------ | ---------------------------------------------------------------------------------------- |
-| **Node**     | `>= 20.9`                | é o que o Next 16 declara em `engines`                                                   |
+| **Node**     | `>= 22.22.2`             | está no `engines` e no [.nvmrc](.nvmrc). Não é o Next que manda: é o jsdom               |
 | **pnpm**     | `10.7.1`                 | está fixado no `packageManager`; `corepack enable` põe o Node a usar essa versão sozinho |
 | **git**      | qualquer                 | o passo 4 recusa arrancar com alterações não commitadas, portanto precisa de repositório |
 | **Postgres** | só no provider `payload` | e quem o fornece está em [Quem fornece a base de dados](#quem-fornece-a-base-de-dados)   |
+
+**A versão de Node não é negociável, e o número não vem do Next.** O Next 16 aceita `>=20.9`, mas o `jsdom` — o ambiente onde os testes correm — declara `^22.22.2 || ^24.15.0 || >=26.0.0`, e usa o `undici` 8, que chama uma API de `node:worker_threads` que só existe a partir do Node 22.10. Num Node 20 **nenhum ficheiro de teste chega a arrancar**: o worker do vitest morre a carregar o jsdom. O `engines` do `package.json` avisa-te, e o CI lê a versão do `.nvmrc` para não haver dois números a divergir.
 
 **Não precisas de Docker**, e não é esquecimento — a razão está na mesma secção.
 

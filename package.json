@@ -3,6 +3,9 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.22.2"
+  },
   "scripts": {
     "dev": "pnpm lint && pnpm typecheck && next dev",
     "dev:mock": "cross-env PROVIDER=mock pnpm run dev",

@@ -52,6 +52,22 @@ pnpm lint && pnpm typecheck && pnpm format:check && pnpm check:links && pnpm tes
 
 O `check:links` é o que apanha a documentação que ficou a apontar para ficheiros que o projecto não tem, e é o passo que mais vezes chumba depois de trazer mudanças de uma base que documenta mais do que o projecto guarda.
 
+## A versão de Node é um requisito da árvore, e não do Next
+
+O `engines` do Next 16 diz `>=20.9`, e é o número que apetece copiar. **Está errado para este repositório**, e a primeira corrida do CI provou-o: com Node 20, os 66 ficheiros de teste falharam antes de correr um único teste.
+
+A cadeia, verificada no `node_modules`:
+
+|                |                                                                                                            |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
+| `jsdom@30.0.1` | `engines: { node: "^22.22.2 \|\| ^24.15.0 \|\| >=26.0.0" }` — não suporta Node 20                          |
+| e depende de   | `undici ^8.9.0`                                                                                            |
+| que chama      | `webidl.util.markAsUncloneable`, sobre a API de `node:worker_threads` que só existe desde o Node **22.10** |
+
+No Node 20 o `undici` atira `TypeError: webidl.util.markAsUncloneable is not a function` ao carregar, o jsdom não inicializa, e **o worker do vitest morre antes de haver testes**. O erro não nomeia o Node em sítio nenhum — nomeia o `undici`, o que faz perder tempo à procura no lado errado.
+
+Por isso o número vive em **dois sítios que não podem divergir**: o `.nvmrc` (que o `nvm use` e o `actions/setup-node` lêem, via `node-version-file`) e o `engines` do `package.json`, que faz o `pnpm install` avisar quem estiver abaixo. Quando um projecto subir uma dependência de teste, é aqui que se confirma o que ela exige — `node -e "console.log(require('jsdom/package.json').engines)"` responde em segundos.
+
 ## O que a base não promete
 
 **Compatibilidade de contratos.** O `PageDefinition`, o `PageSource` e o `Module` mudam quando há razão para mudar, e o CHANGELOG diz quando. A mudança das regiões `navigation` e `footer` de um módulo para uma lista é o exemplo: um merge cego passa o `typecheck` a chumbar, o que é o comportamento certo.

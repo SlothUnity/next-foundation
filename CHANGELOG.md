@@ -15,6 +15,11 @@ Cada entrada diz se **exige trabalho manual** no projecto. As que não dizem nad
 - **Migrações do Postgres ligadas** — `payload:migrate`, `payload:migrate:create` e `payload:migrate:status`. A primeira migração tem de ser criada no projecto, contra a sua base de dados.
 - **`docs/reference/upgrading.md`** e este ficheiro.
 
+### Corrigido
+
+- **A versão de Node passou a ser declarada, e a que estava no CI estava errada.** O workflow fixava Node 20, copiado do `engines` do Next (`>=20.9`); o `jsdom@30` exige `^22.22.2` e usa o `undici` 8, que chama uma API de `node:worker_threads` só existente desde o Node 22.10. Em Node 20 os 66 ficheiros de teste falhavam **antes de correr um único teste**, com um `TypeError` que nomeia o `undici` e não o Node. Agora o número vive no [.nvmrc](.nvmrc) e no `engines`, e o CI lê o ficheiro em vez de repetir o valor.
+- O `createProvider.test.ts` passou de `timeout: 20_000` a `60_000`. Os dois testes mais lentos do repositório levam 8,0 s e 7,5 s dentro da suite (1,9 s e 2,4 s isolados) porque importar o `createProvider` arrasta o grafo inteiro do Payload. É margem, não a correcção do incidente acima.
+
 ### Limpeza
 
 - O `pnpm setup:provider` passou a apagar duas coisas que sobreviviam sem dono: a excepção do eslint para `src/app/(payload)/**` e `src/app/(frontend)/next/**`, duas pastas que o próprio comando apaga, e o `src/providers/env.ts` num projecto `mock`, onde o `readEnv` deixa de ter um único chamador.
