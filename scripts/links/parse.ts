@@ -10,10 +10,18 @@ const HEADING = /^#{1,6}\s+(.+)$/gm;
 
 const EXTERNAL = /^(?:https?:|mailto:|tel:|#!)/;
 
+const FENCED = /^```[\s\S]*?^```/gm;
+
+const INLINE_CODE = /`[^`\n]*`/g;
+
+export function withoutCode(text: string): string {
+  return text.replace(FENCED, '').replace(INLINE_CODE, '');
+}
+
 export function collectLinks(text: string): DocLink[] {
   const links: DocLink[] = [];
 
-  for (const match of text.matchAll(LINK)) {
+  for (const match of withoutCode(text).matchAll(LINK)) {
     const raw = match[1] ?? match[2];
 
     if (!raw || EXTERNAL.test(raw)) {

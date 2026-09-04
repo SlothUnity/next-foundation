@@ -64,3 +64,29 @@ describe('headingSlugs', () => {
     expect(headingSlugs('texto # não é título\n')).toEqual(new Set());
   });
 });
+
+const NEWLINE = String.fromCharCode(10);
+
+describe('code is not prose', () => {
+  it('ignores a link inside inline code, which a document may need to show', () => {
+    expect(collectLinks('escreve-se `[label](../ficheiro.ts)` assim')).toEqual([]);
+  });
+
+  it('ignores links inside a fenced block', () => {
+    const text = ['antes', '```md', '[x](nao-existe.md)', '```', 'depois'].join(NEWLINE);
+
+    expect(collectLinks(text)).toEqual([]);
+  });
+
+  it('still finds a real link on a line that also has inline code', () => {
+    const links = collectLinks('o `pnpm dev` e o [guia](guide.md)');
+
+    expect(links.map((link) => link.target)).toEqual(['guide.md']);
+  });
+
+  it('still finds a real link after a fenced block', () => {
+    const text = ['```ts', 'const a = 1;', '```', 'ver o [guia](guide.md)'].join(NEWLINE);
+
+    expect(collectLinks(text).map((link) => link.target)).toEqual(['guide.md']);
+  });
+});

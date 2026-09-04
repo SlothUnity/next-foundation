@@ -13,12 +13,12 @@ import { fileURLToPath } from 'node:url';
 
 import { format, getFileInfo, resolveConfig } from 'prettier';
 
-import { checkLinks } from '../links/checkLinks';
 import { applyPlan } from '../setup/applyPlan';
 import { planRemoval } from '../setup/planRemoval';
 import { isSetupProvider, setupProviders } from '../setup/Setup.types';
 import type { SetupPlan, SetupProvider } from '../setup/Setup.types';
 
+import { flattenDeadLinks } from './flattenDeadLinks';
 import { projectFiles } from './foundationFiles';
 import { isValidProjectName, projectManifest } from './projectManifest';
 
@@ -181,22 +181,26 @@ function initGit(target: string, provider: SetupProvider): void {
 }
 
 function reportBrokenLinks(target: string): void {
-  const { failures } = checkLinks(target);
+  const { flattened, remaining } = flattenDeadLinks(target);
 
-  if (failures.length === 0) {
-    console.log('\nEvery link in the documentation resolves.');
+  if (flattened > 0) {
+    console.log(
+      `\nFlattened ${flattened} link(s) that named files this provider does not have. The sentences are intact — only the links are gone, because their targets are.`,
+    );
+  }
+
+  if (remaining.length === 0) {
+    console.log('Every link in the documentation resolves.');
 
     return;
   }
 
   console.log(
-    `\n${failures.length} link(s) in the documentation point at what this provider does not have.`,
+    `\n${remaining.length} link(s) still do not resolve, and a script should not guess:\n`,
   );
 
-  console.log('They are prose, so read them rather than letting a script rewrite them:\n');
-
-  for (const { file, raw } of failures) {
-    console.log(`  ${file} -> ${raw}`);
+  for (const { file, raw, reason } of remaining) {
+    console.log(`  ${file} -> ${raw}  (${reason})`);
   }
 
   console.log('\n  pnpm check:links shows this list again at any time.');
@@ -243,11 +247,11 @@ async function main(): Promise<void> {
 
   await formatTouched(target, plan);
 
+  reportBrokenLinks(target);
+
   if (!flags.noGit) {
     initGit(target, provider);
   }
-
-  reportBrokenLinks(target);
 
   if (plan.notes.length) {
     console.log('\nWorth knowing:\n');

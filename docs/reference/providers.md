@@ -218,9 +218,24 @@ limpa como a do `setup:provider`.
 O commit inicial do projecto novo é feito com `--no-verify`, e tem de ser: o hook de pre-commit
 corre o `lint`, o `typecheck` e os testes, e nesse instante a pasta ainda não tem `node_modules`.
 
-No fim corre o verificador de ligações **contra o projecto novo** e mostra a lista exacta de
-prosa que ficou a apontar para o que este provider não tem. É a mesma lista que o
-`pnpm check:links` dá lá dentro a qualquer momento.
+No fim corre o verificador de ligações **contra o projecto novo** e **achata** as ligações que
+apontam para ficheiros que este provider não tem: um `[mapApiPage](…/src/providers/api/…)` fica só
+`mapApiPage`. A frase sobrevive inteira; desaparece só a ligação, porque o ficheiro que ela nomeava
+desapareceu.
+
+Isto não é cosmética — é o que faz o projecto novo nascer com o **portão verde**. Um projecto `mock`
+herdava **56 ligações mortas** em 17 documentos, e o `check:links` corre no hook de pre-commit,
+portanto o primeiro commit de quem recebia o projecto ficava travado por prosa que ele não escreveu.
+
+Porque achatar e não podar a frase: as ligações mortas não estão agrupadas em secções, estão
+espalhadas por prosa que continua **verdadeira**. O `flows.md` traça um pedido pelo provider payload e
+é natural que lá aponte; num projecto `mock` a explicação continua a valer como contexto, e só o
+caminho de ficheiro deixou de existir. Apagar as frases perdia a explicação; achatar as ligações
+perde apenas o clique.
+
+O que **não** é achatado é uma âncora que não existe dentro de um documento que existe — isso é prosa
+por corrigir, e um script não deve adivinhar. Fica listada, e o `pnpm check:links` mostra-a lá dentro
+a qualquer momento.
 
 E chama-se `create:foundation` e não `create` pela mesma razão que o outro se chama
 `setup:provider`: **o `pnpm create` é um comando do próprio pnpm**, e um script com esse nome
