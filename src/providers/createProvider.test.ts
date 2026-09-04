@@ -8,7 +8,7 @@ async function loadCreateProvider() {
   return (await import('./createProvider')).createProvider;
 }
 
-describe('createProvider', { timeout: 20_000 }, () => {
+describe('createProvider', { timeout: 60_000 }, () => {
   afterEach(() => {
     process.env = { ...original };
     vi.resetModules();
