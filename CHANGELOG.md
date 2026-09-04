@@ -15,6 +15,12 @@ Cada entrada diz se **exige trabalho manual** no projecto. As que não dizem nad
 - **Migrações do Postgres ligadas** — `payload:migrate`, `payload:migrate:create` e `payload:migrate:status`. A primeira migração tem de ser criada no projecto, contra a sua base de dados.
 - **`docs/reference/upgrading.md`** e este ficheiro.
 
+### Limpeza
+
+- O `pnpm setup:provider` passou a apagar duas coisas que sobreviviam sem dono: a excepção do eslint para `src/app/(payload)/**` e `src/app/(frontend)/next/**`, duas pastas que o próprio comando apaga, e o `src/providers/env.ts` num projecto `mock`, onde o `readEnv` deixa de ter um único chamador.
+- A nota final do `pnpm generate` já não nomeia o provider `payload` a quem nunca o teve.
+- A documentação passou a dizer **o que é conteúdo de demonstração** — o módulo `Hero`, as fixtures do provider `mocks` — e os três sítios onde se apaga.
+
 ### Alterado — **exige trabalho manual**
 
 - **`PageDefinition.navigation` e `PageDefinition.footer` passaram de `ModuleInstance` a `ModuleInstance[]`.** Um provider próprio ou um `mapApiPage` escrito à mão deixam de compilar até devolverem listas. Foi por isto: com um módulo só, uma barra de anúncios acima do menu obrigava a inventar um módulo composto para agrupar dois.

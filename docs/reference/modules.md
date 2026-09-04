@@ -49,6 +49,22 @@ O `sassOptions.loadPaths` no [next.config.ts](../../next.config.ts) aponta para 
 
 **O que a foundation escolhe e o que deixa ao projecto.** Ela escolhe _que_ tokens existem — a escala de espaço, a de texto, as quatro cores de superfície e texto, o raio, a medida de linha — porque é o vocabulário que os módulos usam e tem de ser o mesmo em todos. Não escolhe os **valores**: a paleta é neutra de propósito, e um projecto troca-a editando um ficheiro sem tocar em módulo nenhum. O reset traz o que ninguém deve ter de repetir e é fácil esquecer: `box-sizing`, imagens em bloco com `max-width`, `:focus-visible` visível, `text-wrap: balance` nos títulos, e `prefers-reduced-motion` a desligar animações.
 
+### O Hero é demonstração, e pode ir
+
+É o módulo de exemplo, e existe para haver um caminho completo para ler: componente, schema, tipos, estilos, teste, registo, e o bloco correspondente no Payload. Um projecto real não o quer.
+
+Apagá-lo são **três sítios**, e nenhum é adivinhado:
+
+|                                 |                                                 |
+| ------------------------------- | ----------------------------------------------- |
+| `src/modules/Hero/`             | a pasta do módulo                               |
+| `src/modules/index.ts`          | a linha que o exporta                           |
+| `src/providers/payload/blocks/` | o `HeroBlock.ts` e as duas linhas do `index.ts` |
+
+Num projecto `mock`, há um quarto: as páginas de fixture em [src/providers/mocks/pages/](../../src/providers/mocks/pages/) importam o `heroModule`, portanto ou passam a usar um módulo teu ou vão com ele. Também são conteúdo de demonstração — servem para o `pnpm dev:mock` ter algo para mostrar antes de existir projecto.
+
+A ordem que poupa trabalho é a inversa: `pnpm generate` primeiro, o teu módulo a funcionar, e o Hero fora depois.
+
 **Schema primeiro.** Ele é a fonte de verdade e o tipo deriva dele, não o contrário:
 
 ```ts

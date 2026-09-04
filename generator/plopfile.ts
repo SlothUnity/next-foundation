@@ -80,7 +80,7 @@ export default function generator(plop: NodePlopAPI): void {
   const closingNote: ActionType = hasPayloadBlocks
     ? () => 'Falta correr `pnpm payload:generate` para os tipos do Payload apanharem o bloco novo.'
     : () =>
-        'Provider payload não encontrado — só o módulo foi criado. Liga-o à tua origem de conteúdo.';
+        'Só o módulo foi criado. Se a tua origem de conteúdo precisa de um bloco correspondente, acrescenta-o lá.';
 
   plop.setGenerator('Module', {
     description: 'Generate a new module: component, schema, types, styles, test and Payload block',

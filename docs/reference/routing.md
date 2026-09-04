@@ -137,6 +137,8 @@ Não reescreve nem redirecciona: só copia o pathname para o header `x-pathname`
 
 O `matcher` exclui o admin, a API do Payload, as rotas de preview, os assets do Next e os ficheiros com extensão. Como não se reescreve nada, apanhar o resto seria inofensivo — mas é trabalho por pedido a troco de nada.
 
+**As exclusões são os caminhos do Payload**, e num projecto que escolheu `api` ou `mock` são caminhos livres: nada os serve, e uma rota futura em `/admin` ou `/api` ficaria sem o `x-pathname` em silêncio. O `pnpm setup:provider` deliberadamente **não** mexe aqui, porque o [proxy.test.ts](../../src/proxy.test.ts) fixa as exclusões e o comando teria de reescrever o teste a par do padrão — duas âncoras frágeis a troco de um risco hipotético. Se o teu projecto vier a servir algo nesses caminhos, encurta o padrão e o teste ao mesmo tempo.
+
 **As exclusões têm fronteira de segmento**, `admin(?:/|$)` e não `admin`. Sem ela o padrão excluía qualquer caminho que apenas _comece_ pelo prefixo: uma página chamada «Administração» ou «Apiário» ficava sem o `x-pathname`. Era inerte por sorte — o primeiro segmento desses caminhos nunca é um segmento de locale, portanto o fallback do layout coincidia com o locale certo — e deixava de o ser no dia em que o header servisse outra coisa. O [proxy.test.ts](../../src/proxy.test.ts) tem os três casos (`/administracao`, `/apiario`, `/apis-e-abelhas`), e são exactamente os que chumbam se o padrão voltar atrás.
 
 ## Cabeçalhos de resposta
