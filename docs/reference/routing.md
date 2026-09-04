@@ -67,6 +67,25 @@ createPagePath({ path: '/', locale: 'en-GB', defaultLocale: 'pt-PT' }); // '/en'
 
 Normaliza barras a mais e omite o prefixo quando o locale é o default. É usado pelo `getLivePreviewUrl` e pelo campo `PageUrl` do admin — os dois sítios que precisam de construir um URL público a partir de dados do CMS.
 
+## O redirect do provider é validado na fronteira
+
+[app/(frontend)/\_lib/redirectTarget.ts](<../../src/app/(frontend)/_lib/redirectTarget.ts>) passa o
+`response.to` pelo `isSafeRedirectPath` **antes** de ele chegar ao `redirect()` do Next. Se não for um
+caminho deste site, avisa nomeando o valor e a página cai no not-found.
+
+Faltava, e a razão pela qual faltava é instrutiva: o guarda **já estava aplicado em três sítios** —
+na validação da collection `Redirects`, no `loadPayloadRedirects` e na rota de preview — e todos os
+três estão **dentro do provider payload**. Portanto o provider que não pode produzir um redirect
+externo era o único guardado, e um `mapApiPage` escrito por um projecto, ou um redirect à mão nos
+mocks, ia directo para o `redirect()`.
+
+Pior: o `pnpm setup:provider` apaga a rota de preview num projecto `api` ou `mock`, e com ela o
+**último consumidor do guarda na camada `app`** — exactamente no projecto que passa a escrever o seu
+próprio mapper.
+
+É fail-closed de propósito: um projecto que queira redirects para fora do site muda o guarda
+deliberadamente, em vez de o descobrir por acidente.
+
 ## isSafeRedirectPath
 
 [core/routing/isSafeRedirectPath.ts](../../src/core/routing/isSafeRedirectPath.ts) — aceita apenas caminhos relativos à própria origem.

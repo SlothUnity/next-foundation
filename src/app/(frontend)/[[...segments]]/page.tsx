@@ -8,6 +8,7 @@ import { createPagePath } from '@/core/routing';
 import type { RawQuery } from '@/core/routing';
 
 import { createMetadata } from '../_lib/createMetadata';
+import { redirectTarget } from '../_lib/redirectTarget';
 import { MissingNotFoundPage } from '../_components/MissingNotFoundPage';
 import { resolvePage } from '../_lib/resolvePage';
 
@@ -48,7 +49,13 @@ export default async function Page({ params, searchParams }: PageProps) {
   const { response } = await resolvePage(segments, await searchParams);
 
   if (response.status === 'redirect') {
-    return response.permanent ? permanentRedirect(response.to) : redirect(response.to);
+    const to = redirectTarget(response.to);
+
+    if (to) {
+      return response.permanent ? permanentRedirect(to) : redirect(to);
+    }
+
+    return <MissingNotFoundPage />;
   }
 
   if (!response.page) {
