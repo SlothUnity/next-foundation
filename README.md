@@ -309,6 +309,8 @@ Duas regras de pastas que evitam a maior parte das dúvidas:
 | `pnpm format:check`         | verifica sem escrever                                        |
 | `pnpm generate`             | gera um módulo novo, com bloco do Payload incluído (Plop)    |
 | `pnpm check:links`          | ligações e âncoras dos `.md`, e chumba se alguma apodreceu   |
+| `pnpm check:quotes`         | blocos citados contra o ficheiro que nomeiam                 |
+| `pnpm verify:shapes`        | gera um projecto por provider e corre o portão em cada um    |
 | `pnpm dev:mock`             | o `dev` com o provider `mocks`, sem base de dados            |
 | `pnpm setup:provider`       | escolhe o provider do projecto e apaga os outros dois        |
 | `pnpm create:foundation`    | gera um projecto novo numa pasta, e deixa esta intacta       |
@@ -319,12 +321,13 @@ Corre `pnpm payload:generate` (ou arranca com `pnpm dev:payload`) sempre que mud
 
 ## Verificações automáticas
 
-| Momento                                                      | O que corre                                                                |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| `pnpm dev`                                                   | `lint`, `typecheck`                                                        |
-| pre-commit ([.husky/pre-commit](.husky/pre-commit))          | `lint-staged` (prettier), `lint`, `typecheck`, `check:links`, `test --run` |
-| `pnpm build`                                                 | `lint`, `typecheck`, `test --run`, e depois `next build`                   |
-| push e pull request ([gate.yml](.github/workflows/gate.yml)) | o portão todo, mais `format:check` e o `next build`                        |
+| Momento                                                      | O que corre                                                                         |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `pnpm dev`                                                   | `lint`, `typecheck`                                                                 |
+| pre-commit ([.husky/pre-commit](.husky/pre-commit))          | `lint-staged` (prettier), `lint`, `typecheck`, `check:links`, `test --run`          |
+| `pnpm build`                                                 | `lint`, `typecheck`, `test --run`, e depois `next build`                            |
+| push e pull request ([gate.yml](.github/workflows/gate.yml)) | o portão todo, mais `format:check` e o `next build`                                 |
+| push e pull request, por provider                            | um projecto gerado por provider: `lint`, `typecheck`, `check:links`, `check:quotes` |
 
 O commit é a barreira completa: nada entra no histórico sem passar eslint, TypeScript, o verificador de ligações e a suite de testes. O `pnpm dev` fica com a versão rápida — lint e typecheck, sem testes — para não atrasar o arranque do servidor.
 
@@ -343,6 +346,8 @@ pnpm test --run
 O passo de build no CI corre com credenciais fictícias: o build precisa que a config do Payload **carregue**, não que a base de dados responda. Loga um `ECONNREFUSED` porque a página de not-found estática pergunta à origem de conteúdo, e termina a zero — esse log é o error reporter a fazer o trabalho dele, não um passo a falhar.
 
 Cada decisão dentro do workflow — porque a versão do pnpm não está lá escrita, porque a ordem dos dois primeiros passos importa, porque o `format:check` está no CI e não no hook — está em [deploy.md](docs/reference/deploy.md), com o que falta a um site em produção.
+
+**E há um segundo job, que é o que faltava.** O portão acima verifica a foundation, que é uma forma que ninguém entrega. O job `shapes` gera **um projecto por provider** e corre o portão lá dentro — porque todos os defeitos que apareciam depois de uma correcção só existiam depois de um provider ser removido, e nenhum era visível antes. Localmente é o `pnpm verify:shapes`.
 
 ## Todos os documentos
 
