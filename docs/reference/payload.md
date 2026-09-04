@@ -286,6 +286,12 @@ O `afterChange` invalida a tag **das páginas** e não uma tag própria: o layou
 
 O carregamento está em [loadPayloadLayout.ts](../../src/providers/payload/sources/loadPayloadLayout.ts): lê os dois globals **em paralelo** com o `Promise.all`, com `fallbackLocale: false` pela mesma razão que as páginas — um menu que ninguém traduziu deve vir vazio e não em português no site inglês. Uma região sem módulos é omitida em vez de vir como lista vazia, e é isso que faz o renderer não desenhar o landmark.
 
+**O menu tem de ser traduzido, e até o ser o outro idioma não tem menu.** O campo `modules` não é localizado — as **linhas** dos blocos são partilhadas pelos idiomas — mas os campos de dentro são (`title` do `HeroBlock` é `required` e `localized`). É o mesmo modelo do `main` de uma página, e é o idiomático: a estrutura do menu é a mesma em todas as línguas, só as etiquetas mudam, portanto o editor troca de idioma no admin e preenche os textos das mesmas linhas.
+
+A consequência, que vale saber antes de a encontrar em QA: com `fallbackLocale: false`, um idioma cujas etiquetas ninguém preencheu recebe blocos sem texto, esses módulos falham a validação do schema e o renderer degrada-os — sai um `<nav>` vazio, e a razão fica no log do error reporter. **Não é o menu na língua errada, e essa é a troca deliberada:** um menu em português num site inglês parece um bug de produto, um menu ausente parece o que é, uma tradução a faltar. Um projecto que prefira menus estruturalmente diferentes por idioma põe `localized: true` no campo `modules` dos dois globals — aí um idioma sem tradução vem sem linhas nenhumas, e o renderer nem desenha o landmark.
+
+**Os dois globals não têm rascunhos nem Live Preview.** Uma alteração ao cabeçalho é publicada assim que é gravada. Foi o que se seguiu do resto: um global não tem `_status`, e dar-lhe versões obrigava a decidir o que é «publicar o layout» — que não é a mesma pergunta que publicar uma página.
+
 A composição acontece no [loadPayloadPage.ts](../../src/providers/payload/sources/loadPayloadPage.ts) e não no mapper: o mapper continua a ser uma função pura sobre **uma** página, e quem junta as três regiões é o loader. A página de erro do CMS recebe o mesmo layout — um 404 com cabeçalho e rodapé é o que um visitante espera. Quando não há página nenhuma para servir, os globals nem são lidos.
 
 ## Media e Users
