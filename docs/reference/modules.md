@@ -30,7 +30,24 @@ Os estilos são um **CSS Module**: o `.module.scss` faz o Next gerar nomes de cl
 
 Foi isso que obrigou a renomear a definição do módulo para `.definition.ts`. As duas coisas queriam chamar-se `.module.*` com significados diferentes, e o [guide.md](guide.md) já tinha marcado a colisão como «uma armadilha à espera». O `.module.*` passa a querer dizer só uma coisa nesta pasta: CSS com scope.
 
-O `sass` está declarado como devDependency — o Next compila `.scss` assim que o pacote existe, sem configuração nenhuma. **Não há sistema de tema, e é deliberado**: variáveis, tokens, reset, escalas — a foundation não impõe nenhum, porque isso é decisão de quem monta o site. O que ela garante é o sítio onde os estilos de um módulo vivem e o nome que têm.
+O `sass` está declarado como devDependency — o Next compila `.scss` assim que o pacote existe.
+
+### A camada partilhada
+
+O scoping resolve a colisão entre módulos, e deixa de fora o problema oposto: o que é **comum** a todos. Sem uma camada partilhada, cada módulo reinventa espaçamentos e cores, e cada projecto reinventa a camada — que é exactamente o que uma base existe para evitar.
+
+São dois ficheiros, e a divisão não é arbitrária: **um emite CSS, o outro não.**
+
+| Ficheiro                                                | O que é                                                 | Como se usa                                                                          |
+| ------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [globals.scss](<../../src/app/(frontend)/globals.scss>) | os tokens em custom properties no `:root`, mais o reset | importado **uma vez** no [layout do frontend](<../../src/app/(frontend)/layout.tsx>) |
+| [\_media.scss](../../src/styles/_media.scss)            | os breakpoints, como mixin                              | `@use 'media'` de qualquer módulo                                                    |
+
+Os tokens são custom properties do CSS e não variáveis de Sass, e é essa escolha que faz a camada funcionar: um módulo escreve `var(--space-2)` **sem importar nada**. Se fossem variáveis de Sass, cada módulo tinha de as importar, e cada `.module.scss` é uma compilação independente — o `:root` sairia repetido em cada chunk. Por isso o `_media.scss` pode ser importado à vontade: um mixin não emite nada até ser chamado.
+
+O `sassOptions.loadPaths` no [next.config.ts](../../next.config.ts) aponta para `src/styles`, e é o que permite `@use 'media'` em vez de contar `../../` até lá.
+
+**O que a foundation escolhe e o que deixa ao projecto.** Ela escolhe _que_ tokens existem — a escala de espaço, a de texto, as quatro cores de superfície e texto, o raio, a medida de linha — porque é o vocabulário que os módulos usam e tem de ser o mesmo em todos. Não escolhe os **valores**: a paleta é neutra de propósito, e um projecto troca-a editando um ficheiro sem tocar em módulo nenhum. O reset traz o que ninguém deve ter de repetir e é fácil esquecer: `box-sizing`, imagens em bloco com `max-width`, `:focus-visible` visível, `text-wrap: balance` nos títulos, e `prefers-reduced-motion` a desligar animações.
 
 **Schema primeiro.** Ele é a fonte de verdade e o tipo deriva dele, não o contrário:
 

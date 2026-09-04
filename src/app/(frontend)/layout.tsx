@@ -11,6 +11,8 @@ import { PATHNAME_HEADER } from '@/proxy';
 import { SkipToContent } from './_components/SkipToContent';
 import { resolveSite } from './_lib/resolveSite';
 
+import './globals.scss';
+
 interface LayoutProps {
   children: React.ReactNode;
 }
