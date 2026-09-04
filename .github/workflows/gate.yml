@@ -1,0 +1,46 @@
+name: gate
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+
+      - run: pnpm typecheck
+
+      - run: pnpm format:check
+
+      - run: pnpm check:links
+
+      - run: pnpm test --run
+
+      # Placeholders: the build needs the Payload config to be loadable, not a
+      # reachable database. It logs one ECONNREFUSED because the static
+      # not-found page asks the content source, and it exits 0 — that log is
+      # the error reporter doing its job, not a failing step.
+      - run: pnpm exec next build
+        env:
+          DATABASE_URL: postgres://user:pass@localhost:5432/placeholder
+          PAYLOAD_SECRET: placeholder-secret-for-the-build
+          NEXT_PUBLIC_SERVER_URL: http://localhost:3000

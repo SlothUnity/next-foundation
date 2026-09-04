@@ -306,11 +306,12 @@ Corre `pnpm payload:generate` (ou arranca com `pnpm dev:payload`) sempre que mud
 
 ## Verificações automáticas
 
-| Momento                                             | O que corre                                                                |
-| --------------------------------------------------- | -------------------------------------------------------------------------- |
-| `pnpm dev`                                          | `lint`, `typecheck`                                                        |
-| pre-commit ([.husky/pre-commit](.husky/pre-commit)) | `lint-staged` (prettier), `lint`, `typecheck`, `check:links`, `test --run` |
-| `pnpm build`                                        | `lint`, `typecheck`, `test --run`, e depois `next build`                   |
+| Momento                                                      | O que corre                                                                |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `pnpm dev`                                                   | `lint`, `typecheck`                                                        |
+| pre-commit ([.husky/pre-commit](.husky/pre-commit))          | `lint-staged` (prettier), `lint`, `typecheck`, `check:links`, `test --run` |
+| `pnpm build`                                                 | `lint`, `typecheck`, `test --run`, e depois `next build`                   |
+| push e pull request ([gate.yml](.github/workflows/gate.yml)) | o portão todo, mais `format:check` e o `next build`                        |
 
 O commit é a barreira completa: nada entra no histórico sem passar eslint, TypeScript, o verificador de ligações e a suite de testes. O `pnpm dev` fica com a versão rápida — lint e typecheck, sem testes — para não atrasar o arranque do servidor.
 
@@ -324,7 +325,9 @@ pnpm check:links
 pnpm test --run
 ```
 
-**O `build` é o portão real.** Não há CI neste repositório e o deploy vai para o Vercel; como um `git commit --no-verify` contorna o hook por inteiro, o `pnpm build` corre as verificações explicitamente antes do `next build`. Nada chega a produção sem as passar. O preço são alguns segundos por deploy.
+**Há três portões, e nenhum é redundante.** O hook é o mais rápido e o mais fácil de contornar — um `git commit --no-verify` passa-lhe por cima. O **CI** corre o mesmo, mais o `format:check` e o `next build`, e não se contorna: é o que garante que o portão existe mesmo quando alguém tem pressa. E o `pnpm build` repete as verificações antes do `next build` porque o deploy corre esse comando — o [vercel.json](vercel.json) fixa-o — portanto nada chega a produção sem as passar.
+
+O passo de build no CI corre com credenciais fictícias: o build precisa que a config do Payload **carregue**, não que a base de dados responda. Loga um `ECONNREFUSED` porque a página de not-found estática pergunta à origem de conteúdo, e termina a zero — esse log é o error reporter a fazer o trabalho dele, não um passo a falhar.
 
 ## Todos os documentos
 
