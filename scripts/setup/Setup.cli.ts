@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import { format, getFileInfo, resolveConfig } from 'prettier';
 
+import { flattenDeadLinks } from '../links/flattenDeadLinks';
 import { markdownFiles } from '../links/markdownFiles';
 
 import { applyPlan } from './applyPlan';
@@ -195,6 +196,29 @@ function printNotes(notes: string[]): void {
   }
 }
 
+function flattenRemovedLinks(): void {
+  const { flattened, remaining } = flattenDeadLinks(root);
+
+  if (flattened > 0) {
+    console.log(
+      `
+Flattened ${flattened} link(s) that named files this provider does not have. The sentences are intact — only the links are gone, because their targets are.`,
+    );
+  }
+
+  if (remaining.length === 0) {
+    return;
+  }
+
+  console.log(`
+${remaining.length} link(s) still do not resolve, and a script should not guess:
+`);
+
+  for (const { file, raw, reason } of remaining) {
+    console.log(`  ${file} -> ${raw}  (${reason})`);
+  }
+}
+
 function selfDestruct(): void {
   const manifest = path.join(root, 'package.json');
 
@@ -241,6 +265,7 @@ async function main(): Promise<void> {
   await formatTouchedFiles(plan);
 
   reportDanglingReferences(plan.danglingReferencesTo);
+  flattenRemovedLinks();
   printNotes(plan.notes);
 
   if (!flags.keep) {

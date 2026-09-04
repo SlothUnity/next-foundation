@@ -13,12 +13,13 @@ import { fileURLToPath } from 'node:url';
 
 import { format, getFileInfo, resolveConfig } from 'prettier';
 
+import { flattenDeadLinks } from '../links/flattenDeadLinks';
+
 import { applyPlan } from '../setup/applyPlan';
 import { planRemoval } from '../setup/planRemoval';
 import { isSetupProvider, setupProviders } from '../setup/Setup.types';
 import type { SetupPlan, SetupProvider } from '../setup/Setup.types';
 
-import { flattenDeadLinks } from './flattenDeadLinks';
 import { projectFiles } from './foundationFiles';
 import { isValidProjectName, projectManifest } from './projectManifest';
 
